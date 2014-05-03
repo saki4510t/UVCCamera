@@ -1184,7 +1184,7 @@ int API_EXPORTED libusb_open(libusb_device *dev, libusb_device_handle **handle) 
 
 int API_EXPORTED libusb_set_device_fd(libusb_device *dev, int fd) {
 
-	int r = usbi_backend->set_device_fd(dev, fd);
+	return usbi_backend->set_device_fd(dev, fd);
 }
 
 /** \ingroup dev

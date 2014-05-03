@@ -1274,6 +1274,7 @@ static int linux_default_scan_devices(struct libusb_context *ctx) {
 static int op_set_device_fd(struct libusb_device *device, int fd) {
 	struct linux_device_priv *dpriv = _device_priv(device);
 	dpriv->fd = fd;
+	return 0;
 }
 
 static int op_open(struct libusb_device_handle *handle) {
