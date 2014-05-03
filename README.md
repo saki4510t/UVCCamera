@@ -18,4 +18,31 @@ Copyright (c) 2014 saki t_saki@serenegiant.com
  limitations under the License.
 
 All files in the folder are under this Apache License, Version 2.0.
-Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+Files in the jni/libjpeg, jni/libusb and jin/libuvc folders may have a different license,
+see the respective files.
+
+=========
+How to compile library (tested NDK-r9d 64bit on OSX)
+If you want to compile this library,
+1. move to library/jni directory
+2. run ndk-build clean
+3. run ndk-build
+The libraries are saved into libs/"architecture name" directory, for example libs/armeabi-v7a
+Only library for armeabi-v7a architecture is compiled with the default setting.
+If you want to compile for other architecture, you need change APP_ABI flag in the
+library/jni/Application.mk file.
+
+After compiling, copy or move libuvc.so and libUVCCamera.so into your project's 
+libs/"architecture name" folder.
+
+libusb and libjpeg are embedded　into libuvc.so with current setting. You can also compile to
+separate shared libraries but some compile/link error may occur(we have not confirmed well yet). 
+
+=========
+How to use
+See sample project and/or our web site(but sorry web site is Japanese only).
+This library works at least Android 3.1 or later(API >= 12), but Android 4.0(API >= 14)
+or later is better. USB host function must be required.
+If you want to try on Android 3.1, you will need some modification(need to remove 
+setPreviewTexture method in UVCCamera.java etc.), but we have not confirm whether the sample
+project run on Android 3.1 yet.
