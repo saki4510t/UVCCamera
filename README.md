@@ -1,8 +1,9 @@
 UVCCamera
 Copyright (c) 2014 saki <t_saki@serenegiant.com>
-library and sample to access to UVC web camera on non-rooted Android device
+UVCCamera
 =========
 
+library and sample to access to UVC web camera on non-rooted Android device
 
 This software is provided 'as-is', without any express or implied warranty.
 In no event will the authors be held liable for any damages arising from the use of this software.
