@@ -157,8 +157,8 @@ void uvc_exit(uvc_context_t *ctx) {
  * are already open (and being handled).
  */
 void uvc_start_handler_thread(uvc_context_t *ctx) {
-	if (ctx->own_usb_ctx)
-		pthread_create(&ctx->handler_thread, NULL, _uvc_handle_events,
-				(void*) ctx);
+	if (ctx->own_usb_ctx) {
+		pthread_create(&ctx->handler_thread, NULL, _uvc_handle_events, (void*) ctx);
+	}
 }
 

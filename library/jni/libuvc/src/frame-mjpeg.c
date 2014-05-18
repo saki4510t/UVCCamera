@@ -37,7 +37,7 @@
  */
 #include "libuvc/libuvc.h"
 #include "libuvc/libuvc_internal.h"
-#include "jpeglib.h"
+#include <jpeglib.h>
 #include <setjmp.h>
 
 extern uvc_error_t uvc_ensure_frame_size(uvc_frame_t *frame, size_t need_bytes);

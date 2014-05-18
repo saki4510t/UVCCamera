@@ -491,7 +491,7 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 						header_len = pktbuf[0];
 					}
 				} else {
-					header_len = pktbuf[0];	// XXX crash
+					header_len = pktbuf[0];
 				}
 
 				if (UNLIKELY(check_header && pktbuf[1] & 0x40)) {
@@ -518,7 +518,7 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					strmh->got_bytes = 0;
 					strmh->last_scr = 0;
 					strmh->pts = 0;
-					strmh->fid = pktbuf[1] & 1;	// XXX crash
+					strmh->fid = pktbuf[1] & 1;
 				}
 
 				if (check_header) {
@@ -555,7 +555,7 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					assert(strmh->got_bytes + odd_bytes < strmh->size_buf);
 					assert(strmh->outbuf);
 					assert(pktbuf);
-					memcpy(strmh->outbuf + strmh->got_bytes, pktbuf + header_len, odd_bytes);	// XXX crash
+					memcpy(strmh->outbuf + strmh->got_bytes, pktbuf + header_len, odd_bytes);
 					strmh->got_bytes += odd_bytes;
 				}
 //				strmh->got_bytes += pkt->actual_length - header_len;	// XXX move to upper
@@ -947,7 +947,7 @@ void *_uvc_user_caller(void *arg) {
 		}
 		pthread_mutex_unlock(&strmh->cb_mutex);
 
-		strmh->user_cb(&strmh->frame, strmh->user_ptr);
+		strmh->user_cb(&strmh->frame, strmh->user_ptr);	// call user callback function
 	} while (1);
 //	MARK("finished");
 
@@ -1101,7 +1101,7 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
 	strmh->running = 0;
 
 //	MARK("cb_mutex:lock");
-	pthread_mutex_lock(&strmh->cb_mutex);	// XXX hang-up
+	pthread_mutex_lock(&strmh->cb_mutex);
 	{
 		for (i = 0; i < ARRAYSIZE(strmh->transfers); i++) {
 			if (strmh->transfers[i] != NULL) {
@@ -1129,7 +1129,7 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
 			if (i == ARRAYSIZE(strmh->transfers))
 				break;
 //			MARK("cb_cond:pthread_cond_wait");
-			pthread_cond_wait(&strmh->cb_cond, &strmh->cb_mutex);	// XXX hang-up
+			pthread_cond_wait(&strmh->cb_cond, &strmh->cb_mutex);
 		} while (1);
 		// Kick the user thread awake
 //		MARK("cb_cond:pthread_cond_broadcast:Kick the user thread awake");
@@ -1143,7 +1143,7 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
 	if (strmh->user_cb) {
 		/* wait for the thread to stop (triggered by LIBUSB_TRANSFER_CANCELLED transfer) */
 //		MARK("wait for the thread to stop");
-		pthread_join(strmh->cb_thread, NULL);	// XXX hang-up
+		pthread_join(strmh->cb_thread, NULL);
 	}
 
 	RETURN(UVC_SUCCESS, int);
@@ -1161,7 +1161,7 @@ void uvc_stream_close(uvc_stream_handle_t *strmh) {
 //	MARK("start");
 
 	if (strmh->running)
-		uvc_stream_stop(strmh);	// XXX hang-up
+		uvc_stream_stop(strmh);
 
 //	MARK("uvc_release_if");
 	uvc_release_if(strmh->devh, strmh->stream_if->bInterfaceNumber);

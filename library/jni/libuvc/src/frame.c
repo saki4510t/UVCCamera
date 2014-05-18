@@ -50,18 +50,19 @@
 #include "libuvc/libuvc.h"
 #include "libuvc/libuvc_internal.h"
 
+#define USE_STRIDE 1
 /** @internal */
 uvc_error_t uvc_ensure_frame_size(uvc_frame_t *frame, size_t need_bytes) {
 	if (frame->library_owns_data) {
-		if (!frame->data || frame->data_bytes != need_bytes) {	// XXX
+		if (!frame->data || frame->data_bytes != need_bytes) {
 			frame->data_bytes = need_bytes;
 			frame->data = realloc(frame->data, frame->data_bytes);
 		}
-		if (UNLIKELY(!frame->data || !need_bytes))	// XXX
+		if (UNLIKELY(!frame->data || !need_bytes))
 			return UVC_ERROR_NO_MEM;
 		return UVC_SUCCESS;
 	} else {
-		if (UNLIKELY(!frame->data || frame->data_bytes < need_bytes))	// XXX
+		if (UNLIKELY(!frame->data || frame->data_bytes < need_bytes))
 			return UVC_ERROR_NO_MEM;
 		return UVC_SUCCESS;
 	}
@@ -83,7 +84,7 @@ uvc_frame_t *uvc_allocate_frame(size_t data_bytes) {
 
 //	frame->library_owns_data = 1;	// XXX moved to lower
 
-	if (LIKELY(data_bytes > 0)) {	// XXX add
+	if (LIKELY(data_bytes > 0)) {
 		frame->library_owns_data = 1;
 		frame->data_bytes = data_bytes;
 		frame->data = malloc(data_bytes);
@@ -126,13 +127,31 @@ uvc_error_t uvc_duplicate_frame(uvc_frame_t *in, uvc_frame_t *out) {
 	out->width = in->width;
 	out->height = in->height;
 	out->frame_format = in->frame_format;
-	out->step = in->step;
+	if (out->library_owns_data)
+		out->step = in->step;
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
 
-	memcpy(out->data, in->data, in->data_bytes);	// XXX crash
-
+#if USE_STRIDE
+	if (in->step && out->step) {
+		const int hh = in->height < out->height ? in->height : out->height;
+		const int rowbytes = in->step < out->step ? in->step : out->step;
+		void *ip = in->data;
+		void *op = out->data;
+		int h;
+		for (h = 0; h < hh; h++) {
+			memcpy(op, ip, rowbytes);
+			ip += in->step;
+			op += out->step;
+		}
+	} else {
+		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		memcpy(out->data, in->data, in->data_bytes);
+	}
+#else
+	memcpy(out->data, in->data, in->data_bytes);
+#endif
 	return UVC_SUCCESS;
 }
 
@@ -206,7 +225,8 @@ uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	out->width = in->width;
 	out->height = in->height;
 	out->frame_format = UVC_FRAME_FORMAT_RGBX;
-	out->step = in->width * PIXEL_RGBX;
+	if (out->library_owns_data)
+		out->step = in->width * PIXEL_RGBX;
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
@@ -217,14 +237,40 @@ uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	const uint8_t *prgbx_end = prgbx + out->data_bytes - PIXEL8_RGBX;
 
 	// RGB888 to RGBX8888
-	int r, g, b;
+#if USE_STRIDE
+	if (in->step && out->step && (in->step != out->step)) {
+		const int hh = in->height < out->height ? in->height : out->height;
+		const int ww = in->width < out->width ? in->width : out->width;
+		int h, w;
+		for (h = 0; h < hh; h++) {
+			w = 0;
+			prgb = in->data + in->step * h;
+			prgbx = out->data + out->step * h;
+			while (LIKELY((prgbx <= prgbx_end) && (prgb <= prgb_end) && (w < ww))) {
+				RGB2RGBX_8(prgb, prgbx, 0, 0);
+
+				prgb += PIXEL8_RGB;
+				prgbx += PIXEL8_RGBX;
+				w += 8;
+			}
+		}
+	} else {
+		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		while (LIKELY((prgbx <= prgbx_end) && (prgb <= prgb_end))) {
+			RGB2RGBX_8(prgb, prgbx, 0, 0);
+
+			prgb += PIXEL8_RGB;
+			prgbx += PIXEL8_RGBX;
+		}
+	}
+#else
 	while (LIKELY((prgbx <= prgbx_end) && (prgb <= prgb_end))) {
 		RGB2RGBX_8(prgb, prgbx, 0, 0);
 
 		prgb += PIXEL8_RGB;
 		prgbx += PIXEL8_RGBX;
 	}
-
+#endif
 	return UVC_SUCCESS;
 }
 
@@ -261,7 +307,8 @@ uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	out->width = in->width;
 	out->height = in->height;
 	out->frame_format = UVC_FRAME_FORMAT_RGB565;
-	out->step = in->width * PIXEL_RGB565;
+	if (out->library_owns_data)
+		out->step = in->width * PIXEL_RGB565;
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
@@ -272,13 +319,40 @@ uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	const uint8_t *prgb565_end = prgb565 + out->data_bytes - PIXEL8_RGB565;
 
 	// RGB888 to RGB565
+#if USE_STRIDE
+	if (in->step && out->step && (in->step != out->step)) {
+		const int hh = in->height < out->height ? in->height : out->height;
+		const int ww = in->width < out->width ? in->width : out->width;
+		int h, w;
+		for (h = 0; h < hh; h++) {
+			w = 0;
+			prgb = in->data + in->step * h;
+			prgb565 = out->data + out->step * h;
+			while (LIKELY((prgb565 <= prgb565_end) && (prgb <= prgb_end) && (w < ww))) {
+				RGB2RGB565_8(prgb, prgb565, 0, 0);
+
+				prgb += PIXEL8_RGB;
+				prgb565 += PIXEL8_RGB565;
+				w += 8;
+			}
+		}
+	} else {
+		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		while (LIKELY((prgb565 <= prgb565_end) && (prgb <= prgb_end))) {
+			RGB2RGB565_8(prgb, prgb565, 0, 0);
+
+			prgb += PIXEL8_RGB;
+			prgb565 += PIXEL8_RGB565;
+		}
+	}
+#else
 	while (LIKELY((prgb565 <= prgb565_end) && (prgb <= prgb_end))) {
 		RGB2RGB565_8(prgb, prgb565, 0, 0);
 
 		prgb += PIXEL8_RGB;
 		prgb565 += PIXEL8_RGB565;
 	}
-
+#endif
 	return UVC_SUCCESS;
 }
 /*
@@ -301,12 +375,14 @@ uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		const int r = (22987 * (d3/*(pyuv)[ax+3]*/ - 128)) >> 14; \
 		const int g = (-5636 * (d1/*(pyuv)[ax+1]*/ - 128) - 11698 * (d3/*(pyuv)[ax+3]*/ - 128)) >> 14; \
 		const int b = (29049 * (d1/*(pyuv)[ax+1]*/ - 128)) >> 14; \
-		(prgb)[bx+0] = sat((pyuv)[ax+0] + r); \
-		(prgb)[bx+1] = sat((pyuv)[ax+0] + g); \
-		(prgb)[bx+2] = sat((pyuv)[ax+0] + b); \
-		(prgb)[bx+3] = sat((pyuv)[ax+2] + r); \
-		(prgb)[bx+4] = sat((pyuv)[ax+2] + g); \
-		(prgb)[bx+5] = sat((pyuv)[ax+2] + b); \
+		const int y0 = (pyuv)[ax+0]; \
+		(prgb)[bx+0] = sat(y0 + r); \
+		(prgb)[bx+1] = sat(y0 + g); \
+		(prgb)[bx+2] = sat(y0 + b); \
+		const int y2 = (pyuv)[ax+2]; \
+		(prgb)[bx+3] = sat(y2 + r); \
+		(prgb)[bx+4] = sat(y2 + g); \
+		(prgb)[bx+5] = sat(y2 + b); \
     }
 #define IYUYV2RGB_16(pyuv, prgb, ax, bx) \
 	IYUYV2RGB_8(pyuv, prgb, ax, bx) \
@@ -334,24 +410,52 @@ uvc_error_t uvc_yuyv2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	out->width = in->width;
 	out->height = in->height;
 	out->frame_format = UVC_FRAME_FORMAT_RGB;
-	out->step = in->width * PIXEL_RGB;
+	if (out->library_owns_data)
+		out->step = in->width * PIXEL_RGB;
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_YUYV;	// XXX
+	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_YUYV;
 	uint8_t *prgb = out->data;
-	const uint8_t *prgb_end = prgb + out->data_bytes - PIXEL8_RGB;	// XXX
+	const uint8_t *prgb_end = prgb + out->data_bytes - PIXEL8_RGB;
 
+#if USE_STRIDE
+	if (in->step && out->step && (in->step != out->step)) {
+		const int hh = in->height < out->height ? in->height : out->height;
+		const int ww = in->width < out->width ? in->width : out->width;
+		int h, w;
+		for (h = 0; h < hh; h++) {
+			w = 0;
+			pyuv = in->data + in->step * h;
+			prgb = out->data + out->step * h;
+			while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end) && (w < ww))) {
+				IYUYV2RGB_8(pyuv, prgb, 0, 0);
+
+				prgb += PIXEL8_RGB;
+				pyuv += PIXEL8_YUYV;
+				w += 8;
+			}
+		}
+	} else {
+		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end))) {
+			IYUYV2RGB_8(pyuv, prgb, 0, 0);
+
+			prgb += PIXEL8_RGB;
+			pyuv += PIXEL8_YUYV;
+		}
+	}
+#else
 	// YUYV => RGB888
-	while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end))) {	// XXX
+	while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end))) {
 		IYUYV2RGB_8(pyuv, prgb, 0, 0);
 
 		prgb += PIXEL8_RGB;
 		pyuv += PIXEL8_YUYV;
 	}
-
+#endif
 	return UVC_SUCCESS;
 }
 
@@ -370,7 +474,8 @@ uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	out->width = in->width;
 	out->height = in->height;
 	out->frame_format = UVC_FRAME_FORMAT_RGB565;
-	out->step = in->width * PIXEL_RGB565;
+	if (out->library_owns_data)
+		out->step = in->width * PIXEL_RGB565;
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
@@ -382,6 +487,35 @@ uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 
 	uint8_t tmp[PIXEL8_RGB];	// for temporary rgb888 data(8pixel)
 
+#if USE_STRIDE
+	if (in->step && out->step && (in->step != out->step)) {
+		const int hh = in->height < out->height ? in->height : out->height;
+		const int ww = in->width < out->width ? in->width : out->width;
+		int h, w;
+		for (h = 0; h < hh; h++) {
+			w = 0;
+			pyuv = in->data + in->step * h;
+			prgb565 = out->data + out->step * h;
+			while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end) && (w < ww))) {
+				IYUYV2RGB_8(pyuv, tmp, 0, 0);
+				RGB2RGB565_8(tmp, prgb565, 0, 0);
+
+				prgb565 += PIXEL8_YUYV;
+				pyuv += PIXEL8_RGB565;
+				w += 8;
+			}
+		}
+	} else {
+		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end))) {
+			IYUYV2RGB_8(pyuv, tmp, 0, 0);
+			RGB2RGB565_8(tmp, prgb565, 0, 0);
+
+			prgb565 += PIXEL8_YUYV;
+			pyuv += PIXEL8_RGB565;
+		}
+	}
+#else
 	// YUYV => RGB565
 	while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end))) {
 		IYUYV2RGB_8(pyuv, tmp, 0, 0);
@@ -390,7 +524,7 @@ uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		prgb565 += PIXEL8_YUYV;
 		pyuv += PIXEL8_RGB565;
 	}
-
+#endif
 	return UVC_SUCCESS;
 }
 
@@ -400,13 +534,15 @@ uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		const int r = (22987 * (d3/*(pyuv)[ax+3]*/ - 128)) >> 14; \
 		const int g = (-5636 * (d1/*(pyuv)[ax+1]*/ - 128) - 11698 * (d3/*(pyuv)[ax+3]*/ - 128)) >> 14; \
 		const int b = (29049 * (d1/*(pyuv)[ax+1]*/ - 128)) >> 14; \
-		(prgbx)[bx+0] = sat((pyuv)[ax+0] + r); \
-		(prgbx)[bx+1] = sat((pyuv)[ax+0] + g); \
-		(prgbx)[bx+2] = sat((pyuv)[ax+0] + b); \
+		const int y0 = (pyuv)[ax+0]; \
+		(prgbx)[bx+0] = sat(y0 + r); \
+		(prgbx)[bx+1] = sat(y0 + g); \
+		(prgbx)[bx+2] = sat(y0 + b); \
 		(prgbx)[bx+3] = 0xff; \
-		(prgbx)[bx+4] = sat((pyuv)[ax+2] + r); \
-		(prgbx)[bx+5] = sat((pyuv)[ax+2] + g); \
-		(prgbx)[bx+6] = sat((pyuv)[ax+2] + b); \
+		const int y2 = (pyuv)[ax+2]; \
+		(prgbx)[bx+4] = sat(y2 + r); \
+		(prgbx)[bx+5] = sat(y2 + g); \
+		(prgbx)[bx+6] = sat(y2 + b); \
 		(prgbx)[bx+7] = 0xff; \
     }
 #define IYUYV2RGBX_16(pyuv, prgbx, ax, bx) \
@@ -434,7 +570,8 @@ uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	out->width = in->width;
 	out->height = in->height;
 	out->frame_format = UVC_FRAME_FORMAT_RGBX;
-	out->step = in->width * PIXEL_RGBX;
+	if (out->library_owns_data)
+		out->step = in->width * PIXEL_RGBX;
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
@@ -445,13 +582,40 @@ uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	const uint8_t *prgbx_end = prgbx + out->data_bytes - PIXEL8_RGBX;
 
 	// YUYV => RGBX8888
+#if USE_STRIDE
+	if (in->step && out->step && (in->step != out->step)) {
+		const int hh = in->height < out->height ? in->height : out->height;
+		const int ww = in->width < out->width ? in->width : out->width;
+		int h, w;
+		for (h = 0; h < hh; h++) {
+			w = 0;
+			pyuv = in->data + in->step * h;
+			prgbx = out->data + out->step * h;
+			while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end) && (w < ww))) {
+				IYUYV2RGBX_8(pyuv, prgbx, 0, 0);
+
+				prgbx += PIXEL8_RGBX;
+				pyuv += PIXEL8_YUYV;
+				w += 8;
+			}
+		}
+	} else {
+		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end))) {
+			IYUYV2RGBX_8(pyuv, prgbx, 0, 0);
+
+			prgbx += PIXEL8_RGBX;
+			pyuv += PIXEL8_YUYV;
+		}
+	}
+#else
 	while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end))) {
 		IYUYV2RGBX_8(pyuv, prgbx, 0, 0);
 
 		prgbx += PIXEL8_RGBX;
 		pyuv += PIXEL8_YUYV;
 	}
-
+#endif
 	return UVC_SUCCESS;
 }
 
@@ -461,12 +625,14 @@ uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	    const int r = (22987 * (d3/*(pyuv)[3]*/ - 128)) >> 14; \
 	    const int g = (-5636 * (d1/*(pyuv)[1]*/ - 128) - 11698 * (d3/*(pyuv)[3]*/ - 128)) >> 14; \
 	    const int b = (29049 * (d1/*(pyuv)[1]*/ - 128)) >> 14; \
-		(pbgr)[bx+0] = sat((pyuv)[ax+0] + b); \
-		(pbgr)[bx+1] = sat((pyuv)[ax+0] + g); \
-		(pbgr)[bx+2] = sat((pyuv)[ax+0] + r); \
-		(pbgr)[bx+3] = sat((pyuv)[ax+2] + b); \
-		(pbgr)[bx+4] = sat((pyuv)[ax+2] + g); \
-		(pbgr)[bx+5] = sat((pyuv)[ax+2] + r); \
+		const int y0 = (pyuv)[ax+0]; \
+		(pbgr)[bx+0] = sat(y0 + b); \
+		(pbgr)[bx+1] = sat(y0 + g); \
+		(pbgr)[bx+2] = sat(y0 + r); \
+		const int y2 = (pyuv)[ax+2]; \
+		(pbgr)[bx+3] = sat(y2 + b); \
+		(pbgr)[bx+4] = sat(y2 + g); \
+		(pbgr)[bx+5] = sat(y2 + r); \
     }
 #define IYUYV2BGR_16(pyuv, pbgr, ax, bx) \
 	IYUYV2BGR_8(pyuv, pbgr, ax, bx) \
@@ -494,24 +660,52 @@ uvc_error_t uvc_yuyv2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	out->width = in->width;
 	out->height = in->height;
 	out->frame_format = UVC_FRAME_FORMAT_BGR;
-	out->step = in->width * PIXEL_BGR;
+	if (out->library_owns_data)
+		out->step = in->width * PIXEL_BGR;
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_YUYV;	// XXX
+	uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_YUYV;
 	uint8_t *pbgr = out->data;
-	uint8_t *pbgr_end = pbgr + out->data_bytes - PIXEL8_BGR;	// XXX
+	uint8_t *pbgr_end = pbgr + out->data_bytes - PIXEL8_BGR;
 
 	// YUYV => BGR888
-	while (LIKELY(pbgr <= pbgr_end) && (pyuv <= pyuv_end)) {	// XXX
+#if USE_STRIDE
+	if (in->step && out->step && (in->step != out->step)) {
+		const int hh = in->height < out->height ? in->height : out->height;
+		const int ww = in->width < out->width ? in->width : out->width;
+		int h, w;
+		for (h = 0; h < hh; h++) {
+			w = 0;
+			pyuv = in->data + in->step * h;
+			pbgr = out->data + out->step * h;
+			while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end) && (w < ww))) {
+				IYUYV2BGR_8(pyuv, pbgr, 0, 0);
+
+				pbgr += PIXEL8_BGR;
+				pyuv += PIXEL8_YUYV;
+				w += 8;
+			}
+		}
+	} else {
+		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end))) {
+			IYUYV2BGR_8(pyuv, pbgr, 0, 0);
+
+			pbgr += PIXEL8_BGR;
+			pyuv += PIXEL8_YUYV;
+		}
+	}
+#else
+	while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end))) {
 		IYUYV2BGR_8(pyuv, pbgr, 0, 0);
 
 		pbgr += PIXEL8_BGR;
 		pyuv += PIXEL8_YUYV;
 	}
-
+#endif
 	return UVC_SUCCESS;
 }
 
@@ -521,12 +715,14 @@ uvc_error_t uvc_yuyv2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	    const int r = (22987 * (d2/*(pyuv)[ax+2]*/ - 128)) >> 14; \
 	    const int g = (-5636 * (d0/*(pyuv)[ax+0]*/ - 128) - 11698 * (d2/*(pyuv)[ax+2]*/ - 128)) >> 14; \
 	    const int b = (29049 * (d0/*(pyuv)[ax+0]*/ - 128)) >> 14; \
-		(prgb)[bx+0] = sat((pyuv)[ax+1] + r); \
-		(prgb)[bx+1] = sat((pyuv)[ax+1] + g); \
-		(prgb)[bx+2] = sat((pyuv)[ax+1] + b); \
-		(prgb)[bx+3] = sat((pyuv)[ax+3] + r); \
-		(prgb)[bx+4] = sat((pyuv)[ax+3] + g); \
-		(prgb)[bx+5] = sat((pyuv)[ax+3] + b); \
+		const int y1 = (pyuv)[ax+1]; \
+		(prgb)[bx+0] = sat(y1 + r); \
+		(prgb)[bx+1] = sat(y1 + g); \
+		(prgb)[bx+2] = sat(y1 + b); \
+		const int y3 = (pyuv)[ax+3]; \
+		(prgb)[bx+3] = sat(y3 + r); \
+		(prgb)[bx+4] = sat(y3 + g); \
+		(prgb)[bx+5] = sat(y3 + b); \
     }
 #define IUYVY2RGB_16(pyuv, prgb, ax, bx) \
 	IUYVY2RGB_8(pyuv, prgb, ax, bx) \
@@ -553,24 +749,52 @@ uvc_error_t uvc_uyvy2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	out->width = in->width;
 	out->height = in->height;
 	out->frame_format = UVC_FRAME_FORMAT_RGB;
-	out->step = in->width * PIXEL_RGB;
+	if (out->library_owns_data)
+		out->step = in->width * PIXEL_RGB;
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_UYVY;	// XXX
+	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_UYVY;
 	uint8_t *prgb = out->data;
-	const uint8_t *prgb_end = prgb + out->data_bytes - PIXEL8_RGB;	// XXX
+	const uint8_t *prgb_end = prgb + out->data_bytes - PIXEL8_RGB;
 
 	// UYVY => RGB888
-	while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end))) {	// XXX
+#if USE_STRIDE
+	if (in->step && out->step && (in->step != out->step)) {
+		const int hh = in->height < out->height ? in->height : out->height;
+		const int ww = in->width < out->width ? in->width : out->width;
+		int h, w;
+		for (h = 0; h < hh; h++) {
+			w = 0;
+			pyuv = in->data + in->step * h;
+			prgb = out->data + out->step * h;
+			while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end) && (w < ww))) {
+				IUYVY2RGB_8(pyuv, prgb, 0, 0);
+
+				prgb += PIXEL8_RGB;
+				pyuv += PIXEL8_UYVY;
+				w += 8;
+			}
+		}
+	} else {
+		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end))) {
+			IUYVY2RGB_8(pyuv, prgb, 0, 0);
+
+			prgb += PIXEL8_RGB;
+			pyuv += PIXEL8_UYVY;
+		}
+	}
+#else
+	while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end))) {
 		IUYVY2RGB_8(pyuv, prgb, 0, 0);
 
 		prgb += PIXEL8_RGB;
 		pyuv += PIXEL8_UYVY;
 	}
-
+#endif
 	return UVC_SUCCESS;
 }
 
@@ -589,7 +813,8 @@ uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	out->width = in->width;
 	out->height = in->height;
 	out->frame_format = UVC_FRAME_FORMAT_RGB565;
-	out->step = in->width * PIXEL_RGB565;
+	if (out->library_owns_data)
+		out->step = in->width * PIXEL_RGB565;
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
@@ -602,6 +827,35 @@ uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	uint8_t tmp[PIXEL8_RGB];		// for temporary rgb888 data(8pixel)
 
 	// UYVY => RGB565
+#if USE_STRIDE
+	if (in->step && out->step && (in->step != out->step)) {
+		const int hh = in->height < out->height ? in->height : out->height;
+		const int ww = in->width < out->width ? in->width : out->width;
+		int h, w;
+		for (h = 0; h < hh; h++) {
+			w = 0;
+			pyuv = in->data + in->step * h;
+			prgb565 = out->data + out->step * h;
+			while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end) && (w < ww))) {
+				IUYVY2RGB_8(pyuv, tmp, 0, 0);
+				RGB2RGB565_8(tmp, prgb565, 0, 0);
+
+				prgb565 += PIXEL8_RGB565;
+				pyuv += PIXEL8_UYVY;
+				w += 8;
+			}
+		}
+	} else {
+		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end))) {
+			IUYVY2RGB_8(pyuv, tmp, 0, 0);
+			RGB2RGB565_8(tmp, prgb565, 0, 0);
+
+			prgb565 += PIXEL8_RGB565;
+			pyuv += PIXEL8_UYVY;
+		}
+	}
+#else
 	while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end))) {
 		IUYVY2RGB_8(pyuv, tmp, 0, 0);
 		RGB2RGB565_8(tmp, prgb565, 0, 0);
@@ -609,7 +863,7 @@ uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		prgb565 += PIXEL8_RGB565;
 		pyuv += PIXEL8_UYVY;
 	}
-
+#endif
 	return UVC_SUCCESS;
 }
 
@@ -619,13 +873,15 @@ uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	    const int r = (22987 * (d2/*(pyuv)[ax+2]*/ - 128)) >> 14; \
 	    const int g = (-5636 * (d0/*(pyuv)[ax+0]*/ - 128) - 11698 * (d2/*(pyuv)[ax+2]*/ - 128)) >> 14; \
 	    const int b = (29049 * (d0/*(pyuv)[ax+0]*/ - 128)) >> 14; \
-		(prgbx)[bx+0] = sat((pyuv)[ax+1] + r); \
-		(prgbx)[bx+1] = sat((pyuv)[ax+1] + g); \
-		(prgbx)[bx+2] = sat((pyuv)[ax+1] + b); \
+		const int y1 = (pyuv)[ax+1]; \
+		(prgbx)[bx+0] = sat(y1 + r); \
+		(prgbx)[bx+1] = sat(y1 + g); \
+		(prgbx)[bx+2] = sat(y1 + b); \
 		(prgbx)[bx+3] = 0xff; \
-		(prgbx)[bx+4] = sat((pyuv)[ax+3] + r); \
-		(prgbx)[bx+5] = sat((pyuv)[ax+3] + g); \
-		(prgbx)[bx+6] = sat((pyuv)[ax+3] + b); \
+		const int y3 = (pyuv)[ax+3]; \
+		(prgbx)[bx+4] = sat(y3 + r); \
+		(prgbx)[bx+5] = sat(y3 + g); \
+		(prgbx)[bx+6] = sat(y3 + b); \
 		(prgbx)[bx+7] = 0xff; \
     }
 #define IUYVY2RGBX_16(pyuv, prgbx, ax, bx) \
@@ -653,7 +909,8 @@ uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	out->width = in->width;
 	out->height = in->height;
 	out->frame_format = UVC_FRAME_FORMAT_RGBX;
-	out->step = in->width * PIXEL_RGBX;
+	if (out->library_owns_data)
+		out->step = in->width * PIXEL_RGBX;
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
@@ -664,13 +921,40 @@ uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	const uint8_t *prgbx_end = prgbx + out->data_bytes - PIXEL8_RGBX;
 
 	// UYVY => RGBX8888
+#if USE_STRIDE
+	if (in->step && out->step && (in->step != out->step)) {
+		const int hh = in->height < out->height ? in->height : out->height;
+		const int ww = in->width < out->width ? in->width : out->width;
+		int h, w;
+		for (h = 0; h < hh; h++) {
+			w = 0;
+			pyuv = in->data + in->step * h;
+			prgbx = out->data + out->step * h;
+			while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end) && (w < ww))) {
+				IUYVY2RGBX_8(pyuv, prgbx, 0, 0);
+
+				prgbx += PIXEL8_RGBX;
+				pyuv += PIXEL8_UYVY;
+				w += 8;
+			}
+		}
+	} else {
+		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end))) {
+			IUYVY2RGBX_8(pyuv, prgbx, 0, 0);
+
+			prgbx += PIXEL8_RGBX;
+			pyuv += PIXEL8_UYVY;
+		}
+	}
+#else
 	while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end))) {
 		IUYVY2RGBX_8(pyuv, prgbx, 0, 0);
 
 		prgbx += PIXEL8_RGBX;
 		pyuv += PIXEL8_UYVY;
 	}
-
+#endif
 	return UVC_SUCCESS;
 }
 
@@ -680,12 +964,14 @@ uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	    const int r = (22987 * (d2/*(pyuv)[ax+2]*/ - 128)) >> 14; \
 	    const int g = (-5636 * (d0/*(pyuv)[ax+0]*/ - 128) - 11698 * (d2/*(pyuv)[ax+2]*/ - 128)) >> 14; \
 	    const int b = (29049 * (d0/*(pyuv)[ax+0]*/ - 128)) >> 14; \
-		(pbgr)[bx+0] = sat((pyuv)[ax+1] + b); \
-		(pbgr)[bx+1] = sat((pyuv)[ax+1] + g); \
-		(pbgr)[bx+2] = sat((pyuv)[ax+1] + r); \
-		(pbgr)[bx+3] = sat((pyuv)[ax+3] + b); \
-		(pbgr)[bx+4] = sat((pyuv)[ax+3] + g); \
-		(pbgr)[bx+5] = sat((pyuv)[ax+3] + r); \
+		const int y1 = (pyuv)[ax+1]; \
+		(pbgr)[bx+0] = sat(y1 + b); \
+		(pbgr)[bx+1] = sat(y1 + g); \
+		(pbgr)[bx+2] = sat(y1 + r); \
+		const int y3 = (pyuv)[ax+3]; \
+		(pbgr)[bx+3] = sat(y3 + b); \
+		(pbgr)[bx+4] = sat(y3 + g); \
+		(pbgr)[bx+5] = sat(y3 + r); \
     }
 #define IUYVY2BGR_16(pyuv, pbgr, ax, bx) \
 	IUYVY2BGR_8(pyuv, pbgr, ax, bx) \
@@ -712,24 +998,52 @@ uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	out->width = in->width;
 	out->height = in->height;
 	out->frame_format = UVC_FRAME_FORMAT_BGR;
-	out->step = in->width * PIXEL_BGR;
+	if (out->library_owns_data)
+		out->step = in->width * PIXEL_BGR;
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_UYVY;	// XXX
+	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_UYVY;
 	uint8_t *pbgr = out->data;
-	const uint8_t *pbgr_end = pbgr + out->data_bytes - PIXEL8_BGR;	// XXX
+	const uint8_t *pbgr_end = pbgr + out->data_bytes - PIXEL8_BGR;
 
 	// UYVY => BGR888
-	while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end))) {	// XXX
+#if USE_STRIDE
+	if (in->step && out->step && (in->step != out->step)) {
+		const int hh = in->height < out->height ? in->height : out->height;
+		const int ww = in->width < out->width ? in->width : out->width;
+		int h, w;
+		for (h = 0; h < hh; h++) {
+			w = 0;
+			pyuv = in->data + in->step * h;
+			pbgr = out->data + out->step * h;
+			while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end) && (w < ww))) {
+				IUYVY2BGR_8(pyuv, pbgr, 0, 0);
+
+				pbgr += PIXEL8_BGR;
+				pyuv += PIXEL8_UYVY;
+				w += 8;
+			}
+		}
+	} else {
+		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end))) {
+			IUYVY2BGR_8(pyuv, pbgr, 0, 0);
+
+			pbgr += PIXEL8_BGR;
+			pyuv += PIXEL8_UYVY;
+		}
+	}
+#else
+	while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end))) {
 		IUYVY2BGR_8(pyuv, pbgr, 0, 0);
 
 		pbgr += PIXEL8_BGR;
 		pyuv += PIXEL8_UYVY;
 	}
-
+#endif
 	return UVC_SUCCESS;
 }
 

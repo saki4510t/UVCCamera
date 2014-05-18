@@ -74,14 +74,16 @@ uvc_error_t uvc_set_power_mode(uvc_device_handle_t *devh,
 }
 
 /***** CAMERA TERMINAL CONTROLS *****/
-
 uvc_error_t uvc_get_ae_mode(uvc_device_handle_t *devh, int *mode,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			UVC_CT_AE_MODE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_AE_MODE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data))) {
 		*mode = data[0];
@@ -98,7 +100,10 @@ uvc_error_t uvc_set_ae_mode(uvc_device_handle_t *devh, int mode) {
 	data[0] = mode;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			UVC_CT_AE_MODE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_AE_MODE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data)))
 		return UVC_SUCCESS;
@@ -112,7 +117,10 @@ uvc_error_t uvc_get_ae_priority(uvc_device_handle_t *devh, uint8_t *priority,
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			UVC_CT_AE_PRIORITY_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_AE_PRIORITY_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data))) {
 		*priority = data[0];
@@ -129,7 +137,10 @@ uvc_error_t uvc_set_ae_priority(uvc_device_handle_t *devh, uint8_t priority) {
 	data[0] = priority;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			UVC_CT_AE_PRIORITY_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_AE_PRIORITY_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data)))
 		return UVC_SUCCESS;
@@ -143,7 +154,10 @@ uvc_error_t uvc_get_exposure_abs(uvc_device_handle_t *devh, int *time,
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			UVC_CT_EXPOSURE_TIME_ABSOLUTE_CONTROL << 8, 1 << 8, data,
+			UVC_CT_EXPOSURE_TIME_ABSOLUTE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data,
 			sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data))) {
@@ -161,7 +175,10 @@ uvc_error_t uvc_set_exposure_abs(uvc_device_handle_t *devh, int time) {
 	INT_TO_DW(time, data);
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			UVC_CT_EXPOSURE_TIME_ABSOLUTE_CONTROL << 8, 1 << 8, data,
+			UVC_CT_EXPOSURE_TIME_ABSOLUTE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data,
 			sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data)))
@@ -176,7 +193,10 @@ uvc_error_t uvc_get_exposure_rel(uvc_device_handle_t *devh, int *step,
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			UVC_CT_EXPOSURE_TIME_RELATIVE_CONTROL << 8, 1 << 8, data,
+			UVC_CT_EXPOSURE_TIME_RELATIVE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data,
 			sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data))) {
@@ -194,7 +214,10 @@ uvc_error_t uvc_set_exposure_rel(uvc_device_handle_t *devh, int step) {
 	data[0] = step;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			UVC_CT_EXPOSURE_TIME_RELATIVE_CONTROL << 8, 1 << 8, data,
+			UVC_CT_EXPOSURE_TIME_RELATIVE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data,
 			sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data)))
@@ -209,7 +232,10 @@ uvc_error_t uvc_get_scanning_mode(uvc_device_handle_t *devh, int *step,
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			UVC_CT_SCANNING_MODE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_SCANNING_MODE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data))) {
 		*step = data[0];
@@ -226,7 +252,10 @@ uvc_error_t uvc_set_scanning_mode(uvc_device_handle_t *devh, int mode) {
 	data[0] = mode;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			UVC_CT_SCANNING_MODE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_SCANNING_MODE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data)))
 		return UVC_SUCCESS;
@@ -240,7 +269,10 @@ uvc_error_t uvc_get_autofocus(uvc_device_handle_t *devh, uint8_t *autofocus,
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			UVC_CT_FOCUS_AUTO_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_FOCUS_AUTO_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data))) {
 		*autofocus = data[0];
@@ -257,7 +289,10 @@ uvc_error_t uvc_set_autofocus(uvc_device_handle_t *devh, uint8_t autofocus) {
 	data[0] = autofocus;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			UVC_CT_FOCUS_AUTO_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_FOCUS_AUTO_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data)))
 		return UVC_SUCCESS;
@@ -271,7 +306,10 @@ uvc_error_t uvc_get_focus_abs(uvc_device_handle_t *devh, short *focus,
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			UVC_CT_FOCUS_ABSOLUTE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_FOCUS_ABSOLUTE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data))) {
 		*focus = SW_TO_SHORT(data);
@@ -281,7 +319,6 @@ uvc_error_t uvc_get_focus_abs(uvc_device_handle_t *devh, short *focus,
 	}
 }
 
-// need to get
 uvc_error_t uvc_set_focus_abs(uvc_device_handle_t *devh, short focus) {
 	uint8_t data[2];
 	uvc_error_t ret;
@@ -289,7 +326,10 @@ uvc_error_t uvc_set_focus_abs(uvc_device_handle_t *devh, short focus) {
 	SHORT_TO_SW(focus, data);
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			UVC_CT_FOCUS_ABSOLUTE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_FOCUS_ABSOLUTE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data)))
 		return UVC_SUCCESS;
@@ -303,7 +343,10 @@ uvc_error_t uvc_get_focus_rel(uvc_device_handle_t *devh, short *focus,
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			UVC_CT_FOCUS_RELATIVE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_FOCUS_RELATIVE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data))) {
 		*focus = SW_TO_SHORT(data);
@@ -320,7 +363,10 @@ uvc_error_t uvc_set_focus_rel(uvc_device_handle_t *devh, short focus) {
 	SHORT_TO_SW(focus, data);
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			UVC_CT_FOCUS_RELATIVE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_FOCUS_RELATIVE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data)))
 		return UVC_SUCCESS;
@@ -334,7 +380,10 @@ uvc_error_t uvc_get_iris_abs(uvc_device_handle_t *devh, uint16_t *iris,
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			UVC_CT_FOCUS_ABSOLUTE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_FOCUS_ABSOLUTE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data))) {
 		*iris = SW_TO_SHORT(data);
@@ -351,7 +400,10 @@ uvc_error_t uvc_set_iris_abs(uvc_device_handle_t *devh, uint16_t iris) {
 	SHORT_TO_SW(iris, data);
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			UVC_CT_FOCUS_ABSOLUTE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_FOCUS_ABSOLUTE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data)))
 		return UVC_SUCCESS;
@@ -365,7 +417,10 @@ uvc_error_t uvc_get_iris_rel(uvc_device_handle_t *devh, int *iris,
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			UVC_CT_FOCUS_RELATIVE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_FOCUS_RELATIVE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data))) {
 		*iris = data[0];
@@ -382,7 +437,10 @@ uvc_error_t uvc_set_iris_rel(uvc_device_handle_t *devh, int iris) {
 	SHORT_TO_SW(iris, data);
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			UVC_CT_FOCUS_RELATIVE_CONTROL << 8, 1 << 8, data, sizeof(data), 0);
+			UVC_CT_FOCUS_RELATIVE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data)))
 		return UVC_SUCCESS;
@@ -398,7 +456,10 @@ uvc_error_t uvc_get_pantilt_abs(uvc_device_handle_t *devh, int *pan, int *tilt,
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			UVC_CT_PANTILT_ABSOLUTE_CONTROL << 8, 1 << 8, data, sizeof(data),
+			UVC_CT_PANTILT_ABSOLUTE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data),
 			0);
 
 	if (LIKELY(ret == sizeof(data))) {
@@ -418,8 +479,10 @@ uvc_error_t uvc_set_pantilt_abs(uvc_device_handle_t *devh, int pan, int tilt) {
 	INT_TO_DW(tilt, data + 4);
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			UVC_CT_PANTILT_ABSOLUTE_CONTROL << 8, 1 << 8, data, sizeof(data),
-			0);
+			UVC_CT_PANTILT_ABSOLUTE_CONTROL << 8,
+//			1 << 8/* = Header(01) & VideoControl interface ID (00) on original libuvc */,
+			UVC_VC_INPUT_TERMINAL << 8/* = Input terminal(02) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
 
 	if (LIKELY(ret == sizeof(data)))
 		return UVC_SUCCESS;
@@ -438,6 +501,655 @@ uvc_error_t uvc_set_pantilt_abs(uvc_device_handle_t *devh, int pan, int tilt) {
 /** @todo input_select */
 
 /***** PROCESSING UNIT CONTROLS *****/
+uvc_error_t uvc_get_backlight_compensation(uvc_device_handle_t *devh, short *comp,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_BACKLIGHT_COMPENSATION_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*comp = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_backlight_compensation(uvc_device_handle_t *devh, short comp) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(comp, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_BACKLIGHT_COMPENSATION_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_brightness(uvc_device_handle_t *devh, short *brightness,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_BRIGHTNESS_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*brightness = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_brightness(uvc_device_handle_t *devh, short brightness) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(brightness, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_BRIGHTNESS_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_contrast(uvc_device_handle_t *devh, uint16_t *contrast,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_CONTRAST_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*contrast = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_contrast(uvc_device_handle_t *devh, uint16_t contrast) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(contrast, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_CONTRAST_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_contrast_auto(uvc_device_handle_t *devh, uint8_t *autoContrast,
+		enum uvc_req_code req_code) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_CONTRAST_AUTO_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*autoContrast = data[0];
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_contrast_auto(uvc_device_handle_t *devh, uint8_t autoContrast) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	data[0] = autoContrast ? 1 : 0;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_CONTRAST_AUTO_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_gain(uvc_device_handle_t *devh, uint16_t *gain,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_GAIN_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*gain = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_gain(uvc_device_handle_t *devh, uint16_t gain) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(gain, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_GAIN_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_powerline_freqency(uvc_device_handle_t *devh, uint8_t *freq,
+		enum uvc_req_code req_code) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_POWER_LINE_FREQUENCY_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*freq = data[0];
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_powerline_freqency(uvc_device_handle_t *devh, uint8_t freq) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	data[0] = freq;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_POWER_LINE_FREQUENCY_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_hue(uvc_device_handle_t *devh, short *hue,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_HUE_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*hue = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_hue(uvc_device_handle_t *devh, short hue) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(hue, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_HUE_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_hue_auto(uvc_device_handle_t *devh, uint8_t *autoHue,
+		enum uvc_req_code req_code) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_HUE_AUTO_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*autoHue = data[0];
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_hue_auto(uvc_device_handle_t *devh, uint8_t autoHue) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	data[0] = autoHue ? 1 : 0;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_HUE_AUTO_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_saturation(uvc_device_handle_t *devh, uint16_t *saturation,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_SATURATION_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*saturation = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_saturation(uvc_device_handle_t *devh, uint16_t saturation) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(saturation, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_SATURATION_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_sharpness(uvc_device_handle_t *devh, uint16_t *sharpness,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_SHARPNESS_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*sharpness = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_sharpness(uvc_device_handle_t *devh, uint16_t sharpness) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(sharpness, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_SHARPNESS_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_gamma(uvc_device_handle_t *devh, uint16_t *gamma,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_GAMMA_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*gamma = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_gamma(uvc_device_handle_t *devh, uint16_t gamma) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(gamma, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_GAMMA_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_wb_temperature(uvc_device_handle_t *devh, uint16_t *wb_temperature,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_WHITE_BALANCE_TEMPERATURE_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*wb_temperature = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_wb_temperature(uvc_device_handle_t *devh, uint16_t wb_temperature) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(wb_temperature, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_WHITE_BALANCE_TEMPERATURE_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_wb_temp_auto(uvc_device_handle_t *devh, uint8_t *autoWbTemp,
+		enum uvc_req_code req_code) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_WHITE_BALANCE_TEMPERATURE_AUTO_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*autoWbTemp = data[0];
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_wb_temp_auto(uvc_device_handle_t *devh, uint8_t autoWbTemp) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	data[0] = autoWbTemp ? 1 : 0;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_WHITE_BALANCE_TEMPERATURE_AUTO_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_wb_compo(uvc_device_handle_t *devh, uint32_t *wb_compo,
+		enum uvc_req_code req_code) {
+	uint8_t data[4];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_WHITE_BALANCE_COMPONENT_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*wb_compo = DW_TO_INT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_wb_compo(uvc_device_handle_t *devh, uint32_t wb_compo) {
+	uint8_t data[4];
+	uvc_error_t ret;
+
+	INT_TO_DW(wb_compo, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_WHITE_BALANCE_COMPONENT_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_wb_compo_auto(uvc_device_handle_t *devh, uint8_t *autoWbCompo,
+		enum uvc_req_code req_code) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_WHITE_BALANCE_COMPONENT_AUTO_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*autoWbCompo = data[0];
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_wb_comp_auto(uvc_device_handle_t *devh, uint8_t autoWbCompo) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	data[0] = autoWbCompo ? 1 : 0;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_WHITE_BALANCE_COMPONENT_AUTO_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_digital_multiplier(uvc_device_handle_t *devh, uint16_t *multiplier,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_DIGITAL_MULTIPLIER_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*multiplier = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_digital_multiplier(uvc_device_handle_t *devh, uint16_t multiplier) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(multiplier, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_DIGITAL_MULTIPLIER_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_digital_mult_limit(uvc_device_handle_t *devh, uint16_t *limit,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_DIGITAL_MULTIPLIER_LIMIT_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*limit = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_digital_mult_limit(uvc_device_handle_t *devh, uint16_t limit) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(limit, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_DIGITAL_MULTIPLIER_LIMIT_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_analogvideo_standard(uvc_device_handle_t *devh, uint8_t *standard,
+		enum uvc_req_code req_code) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_ANALOG_VIDEO_STANDARD_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*standard = data[0];
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_get_analogvideo_lockstate(uvc_device_handle_t *devh, uint8_t *lock_state,
+		enum uvc_req_code req_code) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_PU_ANALOG_LOCK_STATUS_CONTROL << 8,
+			UVC_VC_PROCESSING_UNIT << 8/* = Processing Unit(05) & VideoControl interface ID (00) */,
+			data, sizeof(data), 0);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*lock_state = data[0];
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+	RETURN(-1, uvc_error_t);
+}
 
 /***** GENERIC CONTROLS *****/
 /**
