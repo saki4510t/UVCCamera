@@ -229,6 +229,8 @@ typedef struct uvc_input_terminal {
 	uint16_t wOcularFocalLength;
 	/** Camera controls (meaning of bits given in {uvc_ct_ctrl_selector}) */
 	uint64_t bmControls;
+	/** request code(wIndex) */
+	uint16_t request;
 } uvc_input_terminal_t;
 
 typedef struct uvc_output_terminal {
@@ -241,6 +243,8 @@ typedef struct uvc_output_terminal {
 	uint16_t bAssocTerminal;
 	uint8_t bSourceID;
 	uint8_t iTerminal;
+	/** request code(wIndex) */
+	uint16_t request;
 } uvc_output_terminal_t;
 
 /** Represents post-capture processing functions */
@@ -252,6 +256,8 @@ typedef struct uvc_processing_unit {
 	uint8_t bSourceID;
 	/** Processing controls (meaning of bits given in {uvc_pu_ctrl_selector}) */
 	uint64_t bmControls;
+	/** request code(wIndex) */
+	uint16_t request;
 } uvc_processing_unit_t;
 
 /** Custom processing or camera-control functions */
@@ -263,6 +269,8 @@ typedef struct uvc_extension_unit {
 	uint8_t guidExtensionCode[16];
 	/** Bitmap of available controls (manufacturer-dependent) */
 	uint64_t bmControls;
+	/** request code(wIndex) */
+	uint16_t request;
 } uvc_extension_unit_t;
 
 enum uvc_status_class {

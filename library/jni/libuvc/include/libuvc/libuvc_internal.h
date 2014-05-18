@@ -17,8 +17,10 @@
 
 /** Converts an unaligned four-byte little-endian integer into an int32 */
 #define DW_TO_INT(p) ((p)[0] | ((p)[1] << 8) | ((p)[2] << 16) | ((p)[3] << 24))
+/** Converts an unaligned four-byte little-endian integer into an signed int32 */
 /** Converts an unaligned two-byte little-endian integer into an int16 */
 #define SW_TO_SHORT(p) ((p)[0] | ((p)[1] << 8))
+/** Converts an unaligned two-byte little-endian integer into an int16 as a signed value */
 /** Converts an int16 into an unaligned two-byte little-endian integer */
 #define SHORT_TO_SW(s, p) \
   (p)[0] = (s); \

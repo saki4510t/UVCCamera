@@ -22,7 +22,7 @@
  */
 
 #include "config.h"
-#include <assert.h>		// XXX added asset for debugging
+#include <assert.h>		// XXX added assert for debugging
 
 #include <ctype.h>
 #include <dirent.h>
@@ -1659,7 +1659,7 @@ static int discard_urbs(struct usbi_transfer *itransfer, int first, int last_plu
 		if (0 == ioctl(dpriv->fd, IOCTL_USBFS_DISCARDURB, urb))
 			continue;
 
-		MARK("ioctl(dpriv->fd, IOCTL_USBFS_DISCARDURB, urb) failed");
+//		MARK("ioctl(dpriv->fd, IOCTL_USBFS_DISCARDURB, urb) failed");
 
 		if (EINVAL == errno) {
 			usbi_dbg("URB not found --> assuming ready to be reaped");
@@ -2287,7 +2287,7 @@ static int handle_iso_completion(struct usbi_transfer *itransfer,
 		case 0:
 			break;
 		case -ENOENT: /* cancelled */
-			MARK("urb_desc->status==ENOENT");
+//			MARK("urb_desc->status==ENOENT");
 		case -ECONNRESET:
 			break;
 		case -ENODEV:
@@ -2324,12 +2324,12 @@ static int handle_iso_completion(struct usbi_transfer *itransfer,
 
 	if (UNLIKELY(tpriv->reap_action != NORMAL)) { /* cancelled or submit_fail */
 		usbi_dbg("CANCEL: urb status %d", urb->status);
-		MARK("reap_action != NORMAL");
+//		MARK("reap_action != NORMAL");
 		if (tpriv->num_retired == num_urbs) {
 			usbi_dbg("CANCEL: last URB handled, reporting");
 			free_iso_urbs(tpriv);
 			if (tpriv->reap_action == CANCELLED) {
-				MARK("CANCELLED");
+//				MARK("CANCELLED");
 				usbi_mutex_unlock(&itransfer->lock);
 				return usbi_handle_transfer_cancellation(itransfer);
 			} else {

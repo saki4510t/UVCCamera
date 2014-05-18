@@ -35,8 +35,7 @@
 
 #include "threads_posix.h"
 
-int usbi_mutex_init_recursive(pthread_mutex_t *mutex, pthread_mutexattr_t *attr)
-{
+int usbi_mutex_init_recursive(pthread_mutex_t *mutex, pthread_mutexattr_t *attr) {
 	int err;
 	pthread_mutexattr_t stack_attr;
 	if (!attr) {
@@ -53,15 +52,13 @@ int usbi_mutex_init_recursive(pthread_mutex_t *mutex, pthread_mutexattr_t *attr)
 
 	err = pthread_mutex_init(mutex, attr);
 
-finish:
-	if (attr == &stack_attr)
+	finish: if (attr == &stack_attr)
 		pthread_mutexattr_destroy(&stack_attr);
 
 	return err;
 }
 
-int usbi_get_tid(void)
-{
+int usbi_get_tid(void) {
 	int ret = -1;
 #if defined(__ANDROID__)
 	ret = gettid();
@@ -69,7 +66,7 @@ int usbi_get_tid(void)
 	ret = syscall(SYS_gettid);
 #elif defined(__OpenBSD__)
 	/* The following only works with OpenBSD > 5.1 as it requires
-	   real thread support. For 5.1 and earlier, -1 is returned. */
+	 real thread support. For 5.1 and earlier, -1 is returned. */
 	ret = syscall(SYS_getthrid);
 #elif defined(__APPLE__)
 	ret = mach_thread_self();
@@ -77,6 +74,6 @@ int usbi_get_tid(void)
 #elif defined(__CYGWIN__)
 	ret = GetCurrentThreadId();
 #endif
-/* TODO: NetBSD thread ID support */
+	/* TODO: NetBSD thread ID support */
 	return ret;
 }

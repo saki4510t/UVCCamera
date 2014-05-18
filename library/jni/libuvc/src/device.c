@@ -800,10 +800,10 @@ uvc_error_t uvc_scan_control(uvc_device_t *dev, uvc_device_info_t *info) {
 	ret = UVC_SUCCESS;
 	if_desc = NULL;
 
-	for (interface_idx = 0; interface_idx < info->config->bNumInterfaces;
-			++interface_idx) {
+	for (interface_idx = 0; interface_idx < info->config->bNumInterfaces; ++interface_idx) {
 		if_desc = &info->config->interface[interface_idx].altsetting[0];
 
+		// select first found Video control
 		if (if_desc->bInterfaceClass == 14 && if_desc->bInterfaceSubClass == 1) // Video, Control
 			break;
 
@@ -905,7 +905,7 @@ uvc_error_t uvc_parse_vc_input_terminal(uvc_device_t *dev,
 	term->wObjectiveFocalLengthMin = SW_TO_SHORT(&block[8]);
 	term->wObjectiveFocalLengthMax = SW_TO_SHORT(&block[10]);
 	term->wOcularFocalLength = SW_TO_SHORT(&block[12]);
-
+	term->request = (term->bTerminalID << 8) | info->ctrl_if.bInterfaceNumber;
 	for (i = 14 + block[14]; i >= 15; --i)
 		term->bmControls = block[i] + (term->bmControls << 8);
 
@@ -939,6 +939,7 @@ uvc_error_t uvc_parse_vc_output_terminal(uvc_device_t *dev,
 	term->bAssocTerminal = block[6];
 	term->bSourceID = block[7];
 	term->iTerminal = block[8];
+	term->request = (term->bTerminalID << 8) | info->ctrl_if.bInterfaceNumber;
 	// TODO depending on the wTerminalType
 
 	DL_APPEND(info->ctrl_if.output_term_descs, term);
@@ -961,6 +962,7 @@ uvc_error_t uvc_parse_vc_processing_unit(uvc_device_t *dev,
 	unit = calloc(1, sizeof(*unit));
 	unit->bUnitID = block[3];
 	unit->bSourceID = block[4];
+	unit->request = (unit->bUnitID << 8) | info->ctrl_if.bInterfaceNumber;
 
 	for (i = 7 + block[7]; i >= 8; --i)
 		unit->bmControls = block[i] + (unit->bmControls << 8);
@@ -990,6 +992,7 @@ uvc_error_t uvc_parse_vc_extension_unit(uvc_device_t *dev,
 	num_in_pins = block[21];
 	size_of_controls = block[22 + num_in_pins];
 	start_of_controls = &block[23 + num_in_pins];
+	unit->request = (unit->bUnitID << 8) | info->ctrl_if.bInterfaceNumber;
 
 	for (i = size_of_controls - 1; i >= 0; --i)
 		unit->bmControls = start_of_controls[i] + (unit->bmControls << 8);

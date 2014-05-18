@@ -105,8 +105,7 @@ int API_EXPORTED libusb_control_transfer(libusb_device_handle *dev_handle,
 		return LIBUSB_ERROR_NO_MEM;
 	}
 
-	libusb_fill_control_setup(buffer, bmRequestType, bRequest, wValue, wIndex,
-		wLength);
+	libusb_fill_control_setup(buffer, bmRequestType, bRequest, wValue, wIndex, wLength);
 	if ((bmRequestType & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT)
 		memcpy(buffer + LIBUSB_CONTROL_SETUP_SIZE, data, wLength);
 
