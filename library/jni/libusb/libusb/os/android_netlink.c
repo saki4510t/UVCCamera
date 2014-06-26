@@ -289,7 +289,7 @@ static int linux_netlink_parse(char *buffer, size_t len, int *detached, const ch
 
 static int linux_netlink_read_message(void)
 {
-	unsigned char buffer[1024];
+	char buffer[1024];	// XXX changed from unsigned char to char because the first argument of linux_netlink_parse is char *
 	struct iovec iov = {.iov_base = buffer, .iov_len = sizeof(buffer)};
 	struct msghdr meh = { .msg_iov=&iov, .msg_iovlen=1,
 			     .msg_name=&snl, .msg_namelen=sizeof(snl) };
@@ -309,8 +309,7 @@ static int linux_netlink_read_message(void)
 
 	/* TODO -- authenticate this message is from the kernel or udevd */
 
-	r = linux_netlink_parse(buffer, len, &detached, &sys_name,
-				&busnum, &devaddr);
+	r = linux_netlink_parse(buffer, len, &detached, &sys_name, &busnum, &devaddr);
 	if (r)
 		return r;
 

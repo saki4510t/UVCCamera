@@ -384,6 +384,78 @@ found:
 	return uvc_probe_stream_ctrl(devh, ctrl);
 }
 
+uvc_error_t uvc_get_stream_ctrl_format_size_fps(uvc_device_handle_t *devh,
+		uvc_stream_ctrl_t *ctrl, enum uvc_frame_format cf, int width,
+		int height, int min_fps, int max_fps) {
+	uvc_streaming_interface_t *stream_if;
+	enum uvc_vs_desc_subtype format_class;
+
+	/* get the max values */
+	uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_MAX);
+
+	/* find a matching frame descriptor and interval */
+	DL_FOREACH(devh->info->stream_ifs, stream_if)
+	{
+		uvc_format_desc_t *format;
+
+		DL_FOREACH(stream_if->format_descs, format)
+		{
+			uvc_frame_desc_t *frame;
+
+			if (!_uvc_frame_format_matches_guid(cf, format->guidFormat))
+				continue;
+
+			DL_FOREACH(format->frame_descs, frame)
+			{
+				if (frame->wWidth != width || frame->wHeight != height)
+					continue;
+
+				uint32_t *interval;
+
+				if (frame->intervals) {
+					for (interval = frame->intervals; *interval; ++interval) {
+						uint32_t it = 10000000 / *interval;
+						if ((it >= (unsigned int) min_fps) && (it <= (unsigned int) max_fps)) {
+							ctrl->bmHint = (1 << 0); /* don't negotiate interval */
+							ctrl->bFormatIndex = format->bFormatIndex;
+							ctrl->bFrameIndex = frame->bFrameIndex;
+							ctrl->bInterfaceNumber = stream_if->bInterfaceNumber;
+							ctrl->dwFrameInterval = *interval;
+
+							goto found;
+						}
+					}
+				} else {
+					int32_t fps;
+					for (fps = max_fps; fps >= min_fps; fps++) {
+						uint32_t interval_100ns = 10000000 / fps;
+						uint32_t interval_offset = interval_100ns
+								- frame->dwMinFrameInterval;
+
+						if (interval_100ns >= frame->dwMinFrameInterval
+							&& interval_100ns <= frame->dwMaxFrameInterval
+							&& !(interval_offset
+								&& (interval_offset % frame->dwFrameIntervalStep) ) ) {
+							ctrl->bmHint = (1 << 0);
+							ctrl->bFormatIndex = format->bFormatIndex;
+							ctrl->bFrameIndex = frame->bFrameIndex;
+							ctrl->bInterfaceNumber = stream_if->bInterfaceNumber;
+							ctrl->dwFrameInterval = interval_100ns;
+
+							goto found;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return UVC_ERROR_INVALID_MODE;
+
+found:
+	return uvc_probe_stream_ctrl(devh, ctrl);
+}
+
 /** @internal
  * Negotiate streaming parameters with the device
  *
@@ -431,6 +503,15 @@ void _uvc_iso_delete_transfer(struct libusb_transfer *transfer) {
 	EXIT();
 }
 
+// Bit field values for BFH(bit field header) of stream header
+#define STREAM_HEADER_BFH_FID 0x01
+#define STREAM_HEADER_BFH_EOF 0x02
+#define STREAM_HEADER_BFH_PTS 0x04
+#define STREAM_HEADER_BFH_SCR 0x08
+#define STREAM_HEADER_BFH_RES 0x10
+#define STREAM_HEADER_BFH_STI 0x20
+#define STREAM_HEADER_BFH_ERR 0x40
+#define STREAM_HEADER_BFH_EOH 0x80
 /** @internal
  * @brief Isochronous transfer callback
  * 
@@ -491,16 +572,17 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 						header_len = pktbuf[0];
 					}
 				} else {
-					header_len = pktbuf[0];
+					header_len = pktbuf[0];	// Header length field of Stream Header
 				}
 
-				if (UNLIKELY(check_header && pktbuf[1] & 0x40)) {
+				if (UNLIKELY(check_header && (pktbuf[1] & STREAM_HEADER_BFH_ERR))) {
 					LOGV("bad packet"); // printf("bad packet\n");
 					continue;
 				}
 
 				/** @todo support sending the frame on EOF instead of on flip(FID) */
-				if (check_header && strmh->fid != (pktbuf[1] & 1)) {
+				if (check_header &&
+					(strmh->fid != (pktbuf[1] & STREAM_HEADER_BFH_FID))) {	// when FID is toggled
 					pthread_mutex_lock(&strmh->cb_mutex);
 					{
 						/* swap the buffers */
@@ -511,6 +593,8 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 						strmh->hold_last_scr = strmh->last_scr;
 						strmh->hold_pts = strmh->pts;
 						strmh->hold_seq = strmh->seq;
+						// signal to user callback runner/frame poller(uvc_stream_get_frame)
+						// to show that a new frame is available
 						pthread_cond_broadcast(&strmh->cb_cond);
 					}
 					pthread_mutex_unlock(&strmh->cb_mutex);
@@ -518,14 +602,14 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					strmh->got_bytes = 0;
 					strmh->last_scr = 0;
 					strmh->pts = 0;
-					strmh->fid = pktbuf[1] & 1;
+					strmh->fid = pktbuf[1] & STREAM_HEADER_BFH_FID;
 				}
 
-				if (check_header) {
-					if (pktbuf[1] & (1 << 2))
+				if (LIKELY(check_header)) {
+					if (pktbuf[1] & STREAM_HEADER_BFH_PTS)
 						strmh->pts = DW_TO_INT(pktbuf + 2);
 
-					if (pktbuf[1] & (1 << 3))
+					if (pktbuf[1] & STREAM_HEADER_BFH_SCR)
 						strmh->last_scr = DW_TO_INT(pktbuf + 6);
 
 #ifdef __ANDROID__	// XXX optimaization because this flag never become true on Android devices
@@ -535,7 +619,7 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					if (strmh->devh->is_isight)
 						continue; // don't look for data after an iSight header
 #endif
-					}
+				}
 
 				if (UNLIKELY(pkt->actual_length < header_len)) {
 					/* Bogus packet received */
@@ -930,10 +1014,10 @@ void *_uvc_user_caller(void *arg) {
 
 	uint32_t last_seq = 0;
 
-	do {
+	for (; 1 ;) {
 		pthread_mutex_lock(&strmh->cb_mutex);
 		{
-			while (strmh->running && last_seq == strmh->hold_seq) {
+			for (; strmh->running && last_seq == strmh->hold_seq ;) {
 				pthread_cond_wait(&strmh->cb_cond, &strmh->cb_mutex);
 			}
 
@@ -941,15 +1025,13 @@ void *_uvc_user_caller(void *arg) {
 				pthread_mutex_unlock(&strmh->cb_mutex);
 				break;
 			}
-
 			last_seq = strmh->hold_seq;
 			_uvc_populate_frame(strmh);
 		}
 		pthread_mutex_unlock(&strmh->cb_mutex);
 
 		strmh->user_cb(&strmh->frame, strmh->user_ptr);	// call user callback function
-	} while (1);
-//	MARK("finished");
+	}
 
 	return NULL ; // return value ignored
 }
@@ -975,6 +1057,7 @@ void _uvc_populate_frame(uvc_stream_handle_t *strmh) {
 
 	frame->width = frame_desc->wWidth;
 	frame->height = frame_desc->wHeight;
+	frame->actual_bytes = strmh->hold_bytes;	// XXX
 
 	switch (frame->frame_format) {
 	case UVC_FRAME_FORMAT_YUYV:
@@ -989,11 +1072,11 @@ void _uvc_populate_frame(uvc_stream_handle_t *strmh) {
 	}
 
 	/* copy the image data from the hold buffer to the frame (unnecessary extra buf?) */
-	if (frame->data_bytes < strmh->hold_bytes) {
-		frame->data = realloc(frame->data, strmh->hold_bytes);
+	if (UNLIKELY(frame->data_bytes < strmh->hold_bytes)) {
+		frame->data = realloc(frame->data, strmh->hold_bytes);	// TODO add error handling when failed realloc
 		frame->data_bytes = strmh->hold_bytes;
 	}
-	memcpy(frame->data, strmh->holdbuf, frame->data_bytes);
+	memcpy(frame->data, strmh->holdbuf, frame->actual_bytes/*frame->data_bytes*/);	// XXX
 
 	/** @todo set the frame time */
 }
@@ -1012,10 +1095,10 @@ uvc_error_t uvc_stream_get_frame(uvc_stream_handle_t *strmh,
 	struct timespec ts;
 	struct timeval tv;
 
-	if (!strmh->running)
+	if (UNLIKELY(!strmh->running))
 		return UVC_ERROR_INVALID_PARAM;
 
-	if (strmh->user_cb)
+	if (UNLIKELY(strmh->user_cb))
 		return UVC_ERROR_CALLBACK_EXISTS;
 
 	pthread_mutex_lock(&strmh->cb_mutex);
@@ -1047,7 +1130,7 @@ uvc_error_t uvc_stream_get_frame(uvc_stream_handle_t *strmh,
 				pthread_cond_timedwait(&strmh->cb_cond, &strmh->cb_mutex, &ts);
 			}
 
-			if (strmh->last_polled_seq < strmh->hold_seq) {
+			if (LIKELY(strmh->last_polled_seq < strmh->hold_seq)) {
 				_uvc_populate_frame(strmh);
 				*frame = &strmh->frame;
 				strmh->last_polled_seq = strmh->hold_seq;
@@ -1100,7 +1183,6 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
 
 	strmh->running = 0;
 
-//	MARK("cb_mutex:lock");
 	pthread_mutex_lock(&strmh->cb_mutex);
 	{
 		for (i = 0; i < ARRAYSIZE(strmh->transfers); i++) {
@@ -1120,29 +1202,24 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
 		}
 
 		/* Wait for transfers to complete/cancel */
-//		MARK("Wait for transfers to complete/cancel");
-		do {
+		for (; 1 ;) {
 			for (i = 0; i < ARRAYSIZE(strmh->transfers); i++) {
 				if (strmh->transfers[i] != NULL)
 					break;
 			}
 			if (i == ARRAYSIZE(strmh->transfers))
 				break;
-//			MARK("cb_cond:pthread_cond_wait");
 			pthread_cond_wait(&strmh->cb_cond, &strmh->cb_mutex);
-		} while (1);
+		}
 		// Kick the user thread awake
-//		MARK("cb_cond:pthread_cond_broadcast:Kick the user thread awake");
 		pthread_cond_broadcast(&strmh->cb_cond);
 	}
 	pthread_mutex_unlock(&strmh->cb_mutex);
-//	MARK("cb_mutex:unlocked");
 
 	/** @todo stop the actual stream, camera side? */
 
 	if (strmh->user_cb) {
 		/* wait for the thread to stop (triggered by LIBUSB_TRANSFER_CANCELLED transfer) */
-//		MARK("wait for the thread to stop");
 		pthread_join(strmh->cb_thread, NULL);
 	}
 
@@ -1158,12 +1235,10 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
  */
 void uvc_stream_close(uvc_stream_handle_t *strmh) {
 	UVC_ENTER();
-//	MARK("start");
 
 	if (strmh->running)
 		uvc_stream_stop(strmh);
 
-//	MARK("uvc_release_if");
 	uvc_release_if(strmh->devh, strmh->stream_if->bInterfaceNumber);
 
 	if (strmh->frame.data)
@@ -1178,6 +1253,5 @@ void uvc_stream_close(uvc_stream_handle_t *strmh) {
 	DL_DELETE(strmh->devh->streams, strmh);
 	free(strmh);
 
-//	MARK("finished");
 	UVC_EXIT_VOID();
 }

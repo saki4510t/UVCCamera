@@ -76,6 +76,11 @@
  */
 #include "libuvc/libuvc.h"
 #include "libuvc/libuvc_internal.h"
+#if defined(__ANDROID__)
+#include <unistd.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#endif	// defined(__ANDROID__)
 
 /** @internal
  * @brief Event handler thread
@@ -85,9 +90,17 @@
 void *_uvc_handle_events(void *arg) {
 	uvc_context_t *ctx = (uvc_context_t *) arg;
 
-	while (!ctx->kill_handler_thread)
+#if defined(__ANDROID__)
+	// try to increase thread priority
+	int prio = getpriority(PRIO_PROCESS, 0);
+	nice(-18);
+	if (UNLIKELY(getpriority(PRIO_PROCESS, 0) >= prio)) {
+		LOGW("could not change thread priority");
+	}
+#endif
+	for (; !ctx->kill_handler_thread ;)
 		libusb_handle_events(ctx->usb_ctx);
-	return NULL ;
+	return NULL;
 }
 
 /** @brief Initializes the UVC context

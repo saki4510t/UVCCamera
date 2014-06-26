@@ -55,7 +55,7 @@
 uvc_error_t uvc_ensure_frame_size(uvc_frame_t *frame, size_t need_bytes) {
 	if (frame->library_owns_data) {
 		if (!frame->data || frame->data_bytes != need_bytes) {
-			frame->data_bytes = need_bytes;
+			frame->actual_bytes = frame->data_bytes = need_bytes;	// XXX
 			frame->data = realloc(frame->data, frame->data_bytes);
 		}
 		if (UNLIKELY(!frame->data || !need_bytes))
@@ -86,7 +86,7 @@ uvc_frame_t *uvc_allocate_frame(size_t data_bytes) {
 
 	if (LIKELY(data_bytes > 0)) {
 		frame->library_owns_data = 1;
-		frame->data_bytes = data_bytes;
+		frame->actual_bytes = frame->data_bytes = data_bytes;	// XXX
 		frame->data = malloc(data_bytes);
 
 		if (UNLIKELY(!frame->data)) {
@@ -246,7 +246,7 @@ uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 			w = 0;
 			prgb = in->data + in->step * h;
 			prgbx = out->data + out->step * h;
-			while (LIKELY((prgbx <= prgbx_end) && (prgb <= prgb_end) && (w < ww))) {
+			for (; (prgbx <= prgbx_end) && (prgb <= prgb_end) && (w < ww) ;) {
 				RGB2RGBX_8(prgb, prgbx, 0, 0);
 
 				prgb += PIXEL8_RGB;
@@ -256,7 +256,7 @@ uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		while (LIKELY((prgbx <= prgbx_end) && (prgb <= prgb_end))) {
+		for (; (prgbx <= prgbx_end) && (prgb <= prgb_end) ;) {
 			RGB2RGBX_8(prgb, prgbx, 0, 0);
 
 			prgb += PIXEL8_RGB;
@@ -264,7 +264,7 @@ uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	}
 #else
-	while (LIKELY((prgbx <= prgbx_end) && (prgb <= prgb_end))) {
+	for (; (prgbx <= prgbx_end) && (prgb <= prgb_end) ;) {
 		RGB2RGBX_8(prgb, prgbx, 0, 0);
 
 		prgb += PIXEL8_RGB;
@@ -328,7 +328,7 @@ uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 			w = 0;
 			prgb = in->data + in->step * h;
 			prgb565 = out->data + out->step * h;
-			while (LIKELY((prgb565 <= prgb565_end) && (prgb <= prgb_end) && (w < ww))) {
+			for (; (prgb565 <= prgb565_end) && (prgb <= prgb_end) && (w < ww) ;) {
 				RGB2RGB565_8(prgb, prgb565, 0, 0);
 
 				prgb += PIXEL8_RGB;
@@ -338,7 +338,7 @@ uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		while (LIKELY((prgb565 <= prgb565_end) && (prgb <= prgb_end))) {
+		for (; (prgb565 <= prgb565_end) && (prgb <= prgb_end) ;) {
 			RGB2RGB565_8(prgb, prgb565, 0, 0);
 
 			prgb += PIXEL8_RGB;
@@ -346,7 +346,7 @@ uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	}
 #else
-	while (LIKELY((prgb565 <= prgb565_end) && (prgb <= prgb_end))) {
+	for (; (prgb565 <= prgb565_end) && (prgb <= prgb_end) ;) {
 		RGB2RGB565_8(prgb, prgb565, 0, 0);
 
 		prgb += PIXEL8_RGB;
@@ -430,7 +430,7 @@ uvc_error_t uvc_yuyv2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 			w = 0;
 			pyuv = in->data + in->step * h;
 			prgb = out->data + out->step * h;
-			while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end) && (w < ww))) {
+			for (; (prgb <= prgb_end) && (pyuv <= pyuv_end) && (w < ww) ;) {
 				IYUYV2RGB_8(pyuv, prgb, 0, 0);
 
 				prgb += PIXEL8_RGB;
@@ -440,7 +440,7 @@ uvc_error_t uvc_yuyv2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end))) {
+		for (; (prgb <= prgb_end) && (pyuv <= pyuv_end) ;) {
 			IYUYV2RGB_8(pyuv, prgb, 0, 0);
 
 			prgb += PIXEL8_RGB;
@@ -449,7 +449,7 @@ uvc_error_t uvc_yuyv2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 #else
 	// YUYV => RGB888
-	while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end))) {
+	for (; (prgb <= prgb_end) && (pyuv <= pyuv_end) ;) {
 		IYUYV2RGB_8(pyuv, prgb, 0, 0);
 
 		prgb += PIXEL8_RGB;
@@ -496,7 +496,7 @@ uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 			w = 0;
 			pyuv = in->data + in->step * h;
 			prgb565 = out->data + out->step * h;
-			while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end) && (w < ww))) {
+			for (; (prgb565 <= prgb565_end) && (pyuv <= pyuv_end) && (w < ww) ;) {
 				IYUYV2RGB_8(pyuv, tmp, 0, 0);
 				RGB2RGB565_8(tmp, prgb565, 0, 0);
 
@@ -507,7 +507,7 @@ uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end))) {
+		for (; (prgb565 <= prgb565_end) && (pyuv <= pyuv_end) ;) {
 			IYUYV2RGB_8(pyuv, tmp, 0, 0);
 			RGB2RGB565_8(tmp, prgb565, 0, 0);
 
@@ -517,7 +517,7 @@ uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 #else
 	// YUYV => RGB565
-	while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end))) {
+	for (; (prgb565 <= prgb565_end) && (pyuv <= pyuv_end) ;) {
 		IYUYV2RGB_8(pyuv, tmp, 0, 0);
 		RGB2RGB565_8(tmp, prgb565, 0, 0);
 
@@ -591,7 +591,7 @@ uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 			w = 0;
 			pyuv = in->data + in->step * h;
 			prgbx = out->data + out->step * h;
-			while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end) && (w < ww))) {
+			for (; (prgbx <= prgbx_end) && (pyuv <= pyuv_end) && (w < ww) ;) {
 				IYUYV2RGBX_8(pyuv, prgbx, 0, 0);
 
 				prgbx += PIXEL8_RGBX;
@@ -601,7 +601,7 @@ uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end))) {
+		for (; (prgbx <= prgbx_end) && (pyuv <= pyuv_end) ;) {
 			IYUYV2RGBX_8(pyuv, prgbx, 0, 0);
 
 			prgbx += PIXEL8_RGBX;
@@ -609,7 +609,7 @@ uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	}
 #else
-	while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end))) {
+	for (; (prgbx <= prgbx_end) && (pyuv <= pyuv_end) ;) {
 		IYUYV2RGBX_8(pyuv, prgbx, 0, 0);
 
 		prgbx += PIXEL8_RGBX;
@@ -681,7 +681,7 @@ uvc_error_t uvc_yuyv2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 			w = 0;
 			pyuv = in->data + in->step * h;
 			pbgr = out->data + out->step * h;
-			while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end) && (w < ww))) {
+			for (; (pbgr <= pbgr_end) && (pyuv <= pyuv_end) && (w < ww) ;) {
 				IYUYV2BGR_8(pyuv, pbgr, 0, 0);
 
 				pbgr += PIXEL8_BGR;
@@ -691,7 +691,7 @@ uvc_error_t uvc_yuyv2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end))) {
+		for (; (pbgr <= pbgr_end) && (pyuv <= pyuv_end) ;) {
 			IYUYV2BGR_8(pyuv, pbgr, 0, 0);
 
 			pbgr += PIXEL8_BGR;
@@ -699,7 +699,7 @@ uvc_error_t uvc_yuyv2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	}
 #else
-	while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end))) {
+	for (; (pbgr <= pbgr_end) && (pyuv <= pyuv_end) ;) {
 		IYUYV2BGR_8(pyuv, pbgr, 0, 0);
 
 		pbgr += PIXEL8_BGR;
@@ -770,7 +770,7 @@ uvc_error_t uvc_uyvy2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 			w = 0;
 			pyuv = in->data + in->step * h;
 			prgb = out->data + out->step * h;
-			while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end) && (w < ww))) {
+			for (; (prgb <= prgb_end) && (pyuv <= pyuv_end) && (w < ww) ;) {
 				IUYVY2RGB_8(pyuv, prgb, 0, 0);
 
 				prgb += PIXEL8_RGB;
@@ -780,7 +780,7 @@ uvc_error_t uvc_uyvy2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end))) {
+		for (; (prgb <= prgb_end) && (pyuv <= pyuv_end) ;) {
 			IUYVY2RGB_8(pyuv, prgb, 0, 0);
 
 			prgb += PIXEL8_RGB;
@@ -788,7 +788,7 @@ uvc_error_t uvc_uyvy2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	}
 #else
-	while (LIKELY((prgb <= prgb_end) && (pyuv <= pyuv_end))) {
+	for (; ((prgb <= prgb_end) && (pyuv <= pyuv_end) ;) {
 		IUYVY2RGB_8(pyuv, prgb, 0, 0);
 
 		prgb += PIXEL8_RGB;
@@ -836,7 +836,7 @@ uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 			w = 0;
 			pyuv = in->data + in->step * h;
 			prgb565 = out->data + out->step * h;
-			while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end) && (w < ww))) {
+			for (; (prgb565 <= prgb565_end) && (pyuv <= pyuv_end) && (w < ww) ;) {
 				IUYVY2RGB_8(pyuv, tmp, 0, 0);
 				RGB2RGB565_8(tmp, prgb565, 0, 0);
 
@@ -847,7 +847,7 @@ uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end))) {
+		for (; (prgb565 <= prgb565_end) && (pyuv <= pyuv_end) ;) {
 			IUYVY2RGB_8(pyuv, tmp, 0, 0);
 			RGB2RGB565_8(tmp, prgb565, 0, 0);
 
@@ -856,7 +856,7 @@ uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	}
 #else
-	while (LIKELY((prgb565 <= prgb565_end) && (pyuv <= pyuv_end))) {
+	for (; (prgb565 <= prgb565_end) && (pyuv <= pyuv_end) ;) {
 		IUYVY2RGB_8(pyuv, tmp, 0, 0);
 		RGB2RGB565_8(tmp, prgb565, 0, 0);
 
@@ -930,7 +930,7 @@ uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 			w = 0;
 			pyuv = in->data + in->step * h;
 			prgbx = out->data + out->step * h;
-			while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end) && (w < ww))) {
+			for (; (prgbx <= prgbx_end) && (pyuv <= pyuv_end) && (w < ww) ;) {
 				IUYVY2RGBX_8(pyuv, prgbx, 0, 0);
 
 				prgbx += PIXEL8_RGBX;
@@ -940,7 +940,7 @@ uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end))) {
+		for (; (prgbx <= prgbx_end) && (pyuv <= pyuv_end) ;) {
 			IUYVY2RGBX_8(pyuv, prgbx, 0, 0);
 
 			prgbx += PIXEL8_RGBX;
@@ -948,7 +948,7 @@ uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	}
 #else
-	while (LIKELY((prgbx <= prgbx_end) && (pyuv <= pyuv_end))) {
+	for (; (prgbx <= prgbx_end) && (pyuv <= pyuv_end) ;) {
 		IUYVY2RGBX_8(pyuv, prgbx, 0, 0);
 
 		prgbx += PIXEL8_RGBX;
@@ -1019,7 +1019,7 @@ uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 			w = 0;
 			pyuv = in->data + in->step * h;
 			pbgr = out->data + out->step * h;
-			while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end) && (w < ww))) {
+			for (; (pbgr <= pbgr_end) && (pyuv <= pyuv_end) && (w < ww) ;) {
 				IUYVY2BGR_8(pyuv, pbgr, 0, 0);
 
 				pbgr += PIXEL8_BGR;
@@ -1029,7 +1029,7 @@ uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end))) {
+		for (; (pbgr <= pbgr_end) && (pyuv <= pyuv_end) ;) {
 			IUYVY2BGR_8(pyuv, pbgr, 0, 0);
 
 			pbgr += PIXEL8_BGR;
@@ -1037,7 +1037,7 @@ uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	}
 #else
-	while (LIKELY((pbgr <= pbgr_end) && (pyuv <= pyuv_end))) {
+	for (; (pbgr <= pbgr_end) && (pyuv <= pyuv_end) ;) {
 		IUYVY2BGR_8(pyuv, pbgr, 0, 0);
 
 		pbgr += PIXEL8_BGR;

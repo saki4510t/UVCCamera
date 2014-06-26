@@ -115,6 +115,7 @@ uvc_error_t uvc_set_ae_mode(uvc_device_handle_t *devh, int mode) {
 		return ret;
 }
 
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_ae_priority(uvc_device_handle_t *devh, uint8_t *priority,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
@@ -152,6 +153,7 @@ uvc_error_t uvc_set_ae_priority(uvc_device_handle_t *devh, uint8_t priority) {
 		return ret;
 }
 
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_exposure_abs(uvc_device_handle_t *devh, int *time,
 		enum uvc_req_code req_code) {
 	uint8_t data[4];
@@ -226,6 +228,7 @@ uvc_error_t uvc_set_exposure_rel(uvc_device_handle_t *devh, int step) {
 		return ret;
 }
 
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_scanning_mode(uvc_device_handle_t *devh, int *step,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
@@ -263,6 +266,7 @@ uvc_error_t uvc_set_scanning_mode(uvc_device_handle_t *devh, int mode) {
 		return ret;
 }
 
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_autofocus(uvc_device_handle_t *devh, uint8_t *autofocus,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
@@ -300,6 +304,7 @@ uvc_error_t uvc_set_autofocus(uvc_device_handle_t *devh, uint8_t autofocus) {
 		return ret;
 }
 
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_focus_abs(uvc_device_handle_t *devh, short *focus,
 		enum uvc_req_code req_code) {
 	uint8_t data[2];
@@ -337,7 +342,7 @@ uvc_error_t uvc_set_focus_abs(uvc_device_handle_t *devh, short focus) {
 		return ret;
 }
 
-uvc_error_t uvc_get_focus_rel(uvc_device_handle_t *devh, short *focus,
+uvc_error_t uvc_get_focus_rel(uvc_device_handle_t *devh, int8_t *focus, uint8_t *speed,
 		enum uvc_req_code req_code) {
 	uint8_t data[2];
 	uvc_error_t ret;
@@ -349,18 +354,20 @@ uvc_error_t uvc_get_focus_rel(uvc_device_handle_t *devh, short *focus,
 			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
 
 	if (LIKELY(ret == sizeof(data))) {
-		*focus = SW_TO_SHORT(data);
+		*focus = data[0];
+		*speed = data[1];
 		return UVC_SUCCESS;
 	} else {
 		return ret;
 	}
 }
 
-uvc_error_t uvc_set_focus_rel(uvc_device_handle_t *devh, short focus) {
+uvc_error_t uvc_set_focus_rel(uvc_device_handle_t *devh, int8_t focus, uint8_t speed) {
 	uint8_t data[2];
 	uvc_error_t ret;
 
-	SHORT_TO_SW(focus, data);
+	data[0] = focus;
+	data[1] = speed;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
 			UVC_CT_FOCUS_RELATIVE_CONTROL << 8,
@@ -374,6 +381,7 @@ uvc_error_t uvc_set_focus_rel(uvc_device_handle_t *devh, short focus) {
 		return ret;
 }
 
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_iris_abs(uvc_device_handle_t *devh, uint16_t *iris,
 		enum uvc_req_code req_code) {
 	uint8_t data[2];
@@ -411,7 +419,7 @@ uvc_error_t uvc_set_iris_abs(uvc_device_handle_t *devh, uint16_t iris) {
 		return ret;
 }
 
-uvc_error_t uvc_get_iris_rel(uvc_device_handle_t *devh, int *iris,
+uvc_error_t uvc_get_iris_rel(uvc_device_handle_t *devh, uint8_t *iris,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
 	uvc_error_t ret;
@@ -430,11 +438,11 @@ uvc_error_t uvc_get_iris_rel(uvc_device_handle_t *devh, int *iris,
 	}
 }
 
-uvc_error_t uvc_set_iris_rel(uvc_device_handle_t *devh, int iris) {
+uvc_error_t uvc_set_iris_rel(uvc_device_handle_t *devh, uint8_t iris) {
 	uint8_t data[1];
 	uvc_error_t ret;
 
-	SHORT_TO_SW(iris, data);
+	data[0] = iris;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
 			UVC_CT_FOCUS_RELATIVE_CONTROL << 8,
@@ -448,8 +456,82 @@ uvc_error_t uvc_set_iris_rel(uvc_device_handle_t *devh, int iris) {
 		return ret;
 }
 
-/** @todo zoom_abs, zoom_rel */
+//----------------------------------------------------------------------
+uvc_error_t uvc_get_zoom_abs(uvc_device_handle_t *devh, uint16_t *zoom,
+		enum uvc_req_code req_code) {
+	uint8_t data[2];
+	uvc_error_t ret;
 
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_CT_ZOOM_ABSOLUTE_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*zoom = SW_TO_SHORT(data);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+}
+
+uvc_error_t uvc_set_zoom_abs(uvc_device_handle_t *devh, uint16_t zoom) {
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(zoom, data);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_CT_ZOOM_ABSOLUTE_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_zoom_rel(uvc_device_handle_t *devh, int8_t *zoom, uint8_t *isdigital, uint8_t *speed,
+		enum uvc_req_code req_code) {
+	uint8_t data[3];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_CT_ZOOM_RELATIVE_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*zoom = data[0];
+		*isdigital = data[1];
+		*speed = data[2];
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+}
+
+uvc_error_t uvc_set_zoom_rel(uvc_device_handle_t *devh, int8_t zoom, uint8_t isdigital, uint8_t speed) {
+	uint8_t data[3];
+	uvc_error_t ret;
+
+	data[0] = zoom;
+	data[1] = isdigital;
+	data[2] = speed;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_CT_ZOOM_RELATIVE_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_pantilt_abs(uvc_device_handle_t *devh, int *pan, int *tilt,
 		enum uvc_req_code req_code) {
 	uint8_t data[8];

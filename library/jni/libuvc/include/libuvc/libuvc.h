@@ -320,6 +320,9 @@ typedef struct uvc_frame {
 	void *data;
 	/** Size of image data buffer */
 	size_t data_bytes;
+	/** XXX Size of actual received data to confirm whether the received bytes is same
+	 * as expected on user function when some microframes dropped */
+	size_t actual_bytes;
 	/** Width of image in pixels */
 	uint32_t width;
 	/** Height of image in pixels */
@@ -412,6 +415,9 @@ const uvc_extension_unit_t *uvc_get_extension_units(uvc_device_handle_t *devh);
 uvc_error_t uvc_get_stream_ctrl_format_size(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl, enum uvc_frame_format format, int width,
 		int height, int fps);
+uvc_error_t uvc_get_stream_ctrl_format_size_fps(uvc_device_handle_t *devh,
+		uvc_stream_ctrl_t *ctrl, enum uvc_frame_format cf, int width,
+		int height, int min_fps, int max_fps);	// XXX added
 
 uvc_error_t uvc_probe_stream_ctrl(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl);
@@ -446,92 +452,129 @@ uvc_error_t uvc_get_power_mode(uvc_device_handle_t *devh,
 		enum uvc_device_power_mode *mode, enum uvc_req_code req_code);
 uvc_error_t uvc_set_power_mode(uvc_device_handle_t *devh,
 		enum uvc_device_power_mode mode);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_ae_mode(uvc_device_handle_t *devh, int *mode,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_ae_mode(uvc_device_handle_t *devh, int mode);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_ae_priority(uvc_device_handle_t *devh, uint8_t *priority,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_ae_priority(uvc_device_handle_t *devh, uint8_t priority);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_exposure_abs(uvc_device_handle_t *devh, int *time,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_exposure_abs(uvc_device_handle_t *devh, int time);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_exposure_rel(uvc_device_handle_t *devh, int *step,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_exposure_rel(uvc_device_handle_t *devh, int step);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_autofocus(uvc_device_handle_t *devh, uint8_t *autofocus,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_autofocus(uvc_device_handle_t *devh, uint8_t autofocus);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_scanning_mode(uvc_device_handle_t *devh, int *step,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_scanning_mode(uvc_device_handle_t *devh, int mode);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_focus_abs(uvc_device_handle_t *devh, short *focus,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_focus_abs(uvc_device_handle_t *devh, short focus);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_pantilt_abs(uvc_device_handle_t *devh, int *pan, int *tilt,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_pantilt_abs(uvc_device_handle_t *devh, int pan, int tilt);
-uvc_error_t uvc_get_focus_rel(uvc_device_handle_t *devh, short *focus,
+//----------------------------------------------------------------------
+uvc_error_t uvc_get_focus_rel(uvc_device_handle_t *devh, int8_t *focus, uint8_t *speed,
 		enum uvc_req_code req_code);
-uvc_error_t uvc_set_focus_rel(uvc_device_handle_t *devh, short focus);
+uvc_error_t uvc_set_focus_rel(uvc_device_handle_t *devh, int8_t focus, uint8_t speed);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_iris_abs(uvc_device_handle_t *devh, uint16_t *iris,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_iris_abs(uvc_device_handle_t *devh, uint16_t iris);
-uvc_error_t uvc_get_iris_rel(uvc_device_handle_t *devh, int *iris,
+//----------------------------------------------------------------------
+uvc_error_t uvc_get_iris_rel(uvc_device_handle_t *devh, uint8_t *iris,
 		enum uvc_req_code req_code);
-uvc_error_t uvc_set_iris_rel(uvc_device_handle_t *devh, int iris);
+uvc_error_t uvc_set_iris_rel(uvc_device_handle_t *devh, uint8_t iris);
+//----------------------------------------------------------------------
+uvc_error_t uvc_get_zoom_abs(uvc_device_handle_t *devh, uint16_t *zoom,
+		enum uvc_req_code req_code);
+uvc_error_t uvc_set_zoom_abs(uvc_device_handle_t *devh, uint16_t zoom);
+//----------------------------------------------------------------------
+uvc_error_t uvc_get_zoom_rel(uvc_device_handle_t *devh, int8_t *zoom, uint8_t *isdigital, uint8_t *speed,
+		enum uvc_req_code req_code);
+uvc_error_t uvc_set_zoom_rel(uvc_device_handle_t *devh, int8_t zoom, uint8_t isdigital, uint8_t speed);
 
 // Processing Unit Controls
 uvc_error_t uvc_get_backlight_compensation(uvc_device_handle_t *devh, short *comp,
 		enum uvc_req_code req_code);
+//----------------------------------------------------------------------
 uvc_error_t uvc_set_backlight_compensation(uvc_device_handle_t *devh, short comp);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_brightness(uvc_device_handle_t *devh, short *brightness,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_brightness(uvc_device_handle_t *devh, short brightness);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_contrast(uvc_device_handle_t *devh, uint16_t *contrast,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_contrast(uvc_device_handle_t *devh, uint16_t contrast);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_contrast_auto(uvc_device_handle_t *devh, uint8_t *autoContrast,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_contrast_auto(uvc_device_handle_t *devh, uint8_t autoContrast);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_gain(uvc_device_handle_t *devh, uint16_t *gain,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_gain(uvc_device_handle_t *devh, uint16_t gain);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_powerline_freqency(uvc_device_handle_t *devh, uint8_t *freq,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_powerline_freqency(uvc_device_handle_t *devh, uint8_t freq);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_hue(uvc_device_handle_t *devh, short *hue,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_hue(uvc_device_handle_t *devh, short hue);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_hue_auto(uvc_device_handle_t *devh, uint8_t *autoHue,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_hue_auto(uvc_device_handle_t *devh, uint8_t autoHue);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_saturation(uvc_device_handle_t *devh, uint16_t *saturation,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_saturation(uvc_device_handle_t *devh, uint16_t saturation);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_sharpness(uvc_device_handle_t *devh, uint16_t *sharpness,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_sharpness(uvc_device_handle_t *devh, uint16_t sharpness);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_gamma(uvc_device_handle_t *devh, uint16_t *gamma,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_gamma(uvc_device_handle_t *devh, uint16_t gamma);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_wb_temperature(uvc_device_handle_t *devh, uint16_t *wb_temperature,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_wb_temperature(uvc_device_handle_t *devh, uint16_t wb_temperature);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_wb_temp_auto(uvc_device_handle_t *devh, uint8_t *autoWbTemp,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_wb_temp_auto(uvc_device_handle_t *devh, uint8_t autoWbTemp);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_wb_compo(uvc_device_handle_t *devh, uint32_t *wb_compo,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_wb_compo(uvc_device_handle_t *devh, uint32_t wb_compo);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_wb_compo_auto(uvc_device_handle_t *devh, uint8_t *autoWbCompo,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_wb_comp_auto(uvc_device_handle_t *devh, uint8_t autoWbCompo);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_digital_multiplier(uvc_device_handle_t *devh, uint16_t *multiplier,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_digital_multiplier(uvc_device_handle_t *devh, uint16_t multiplier);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_digital_mult_limit(uvc_device_handle_t *devh, uint16_t *limit,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_digital_mult_limit(uvc_device_handle_t *devh, uint16_t limit);
+//----------------------------------------------------------------------
 uvc_error_t uvc_get_analogvideo_standard(uvc_device_handle_t *devh, uint8_t *standard,
 		enum uvc_req_code req_code);
 uvc_error_t uvc_get_analogvideo_lockstate(uvc_device_handle_t *devh, uint8_t *lock_state,
@@ -553,17 +596,18 @@ uvc_frame_t *uvc_allocate_frame(size_t data_bytes);
 void uvc_free_frame(uvc_frame_t *frame);
 
 uvc_error_t uvc_duplicate_frame(uvc_frame_t *in, uvc_frame_t *out);
-
+//----------------------------------------------------------------------
 uvc_error_t uvc_yuyv2rgb(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_uyvy2rgb(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_any2rgb(uvc_frame_t *in, uvc_frame_t *out);
-
+//----------------------------------------------------------------------
 uvc_error_t uvc_yuyv2bgr(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_any2bgr(uvc_frame_t *in, uvc_frame_t *out);
 
 #ifdef LIBUVC_HAS_JPEG
 uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out);
+uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out);
 #endif
 
 uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out);

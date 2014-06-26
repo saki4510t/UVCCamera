@@ -2122,6 +2122,7 @@ static void usbi_log_str(struct libusb_context *ctx,
 #elif defined(__ANDROID__)
 	int priority = ANDROID_LOG_UNKNOWN;
 	switch (level) {
+	case LIBUSB_LOG_LEVEL_NONE: break;	// XXX add to avoid warning when compiling with clang
 	case LIBUSB_LOG_LEVEL_INFO: priority = ANDROID_LOG_INFO; break;
 	case LIBUSB_LOG_LEVEL_WARNING: priority = ANDROID_LOG_WARN; break;
 	case LIBUSB_LOG_LEVEL_ERROR: priority = ANDROID_LOG_ERROR; break;

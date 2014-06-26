@@ -1441,29 +1441,33 @@ int API_EXPORTED libusb_submit_transfer(struct libusb_transfer *transfer) {
 	int updated_fds;
 
 	usbi_mutex_lock(&itransfer->lock);
-	itransfer->transferred = 0;
-	itransfer->flags = 0;
-	r = calculate_timeout(itransfer);
-	if (UNLIKELY(r < 0)) {
-		r = LIBUSB_ERROR_OTHER;
-		goto out;
-	}
+	{
+		itransfer->transferred = 0;
+		itransfer->flags = 0;
+		r = calculate_timeout(itransfer);
+		if (UNLIKELY(r < 0)) {
+			r = LIBUSB_ERROR_OTHER;
+			goto out;
+		}
 
-	usbi_mutex_lock(&ctx->flying_transfers_lock);
-	r = add_to_flying_list(itransfer);
-	if (r == LIBUSB_SUCCESS) {
-		r = usbi_backend->submit_transfer(itransfer);
-	}
-	if (r != LIBUSB_SUCCESS) {
-		list_del(&itransfer->list);
-		arm_timerfd_for_next_timeout(ctx);
-	}
-	usbi_mutex_unlock(&ctx->flying_transfers_lock);
+		usbi_mutex_lock(&ctx->flying_transfers_lock);
+		{
+			r = add_to_flying_list(itransfer);
+			if (LIKELY(r == LIBUSB_SUCCESS)) {
+				r = usbi_backend->submit_transfer(itransfer);
+			}
+			if (UNLIKELY(r != LIBUSB_SUCCESS)) {
+				list_del(&itransfer->list);
+				arm_timerfd_for_next_timeout(ctx);
+			}
+		}
+		usbi_mutex_unlock(&ctx->flying_transfers_lock);
 
-	/* keep a reference to this device */
-	libusb_ref_device(transfer->dev_handle->dev);
+		/* keep a reference to this device */
+		libusb_ref_device(transfer->dev_handle->dev);
 out:
-	updated_fds = (itransfer->flags & USBI_TRANSFER_UPDATED_FDS);
+		updated_fds = (itransfer->flags & USBI_TRANSFER_UPDATED_FDS);
+	}
 	usbi_mutex_unlock(&itransfer->lock);
 	if (updated_fds)
 		usbi_fd_notification(ctx);
@@ -1500,7 +1504,7 @@ int API_EXPORTED libusb_cancel_transfer(struct libusb_transfer *transfer) {
 			} else {
 				usbi_dbg("cancel transfer failed error %d", r);
 			}
-			if (r == LIBUSB_ERROR_NO_DEVICE)
+			if (UNLIKELY(r == LIBUSB_ERROR_NO_DEVICE))
 				itransfer->flags |= USBI_TRANSFER_DEVICE_DISAPPEARED;
 		}
 
@@ -1617,13 +1621,13 @@ int API_EXPORTED libusb_try_lock_events(libusb_context *ctx) {
 	usbi_mutex_lock(&ctx->pollfd_modify_lock);
 	ru = ctx->pollfd_modify;
 	usbi_mutex_unlock(&ctx->pollfd_modify_lock);
-	if (ru) {
+	if (UNLIKELY(ru)) {
 		usbi_dbg("someone else is modifying poll fds");
 		return 1;
 	}
 
 	r = usbi_mutex_trylock(&ctx->events_lock);
-	if (r)
+	if (UNLIKELY(r))
 		return 1;
 
 	ctx->event_handler_active = 1;
@@ -1938,7 +1942,7 @@ static int handle_events(struct libusb_context *ctx, struct timeval *tv) {
 	/* TODO: malloc when number of fd's changes, not on every poll */
 	if (nfds != 0)
 		fds = malloc(sizeof(*fds) * nfds);
-	if (!fds) {
+	if (UNLIKELY(!fds)) {
 		usbi_mutex_unlock(&ctx->pollfds_lock);
 		return LIBUSB_ERROR_NO_MEM;
 	}

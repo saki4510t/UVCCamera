@@ -737,8 +737,10 @@ void uvc_unref_device(uvc_device_t *dev) {
 	libusb_unref_device(dev->usb_dev);
 	dev->ref--;
 
-	if (dev->ref == 0)
+	if (dev->ref == 0) {
 		free(dev);
+		dev = NULL;
+	}
 
 	UVC_EXIT_VOID();
 }

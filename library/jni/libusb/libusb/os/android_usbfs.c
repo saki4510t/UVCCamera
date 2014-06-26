@@ -420,7 +420,7 @@ static int op_init(struct libusb_context *ctx) {
 	if (-1 == sysfs_has_descriptors) {
 		/* sysfs descriptors has all descriptors since Linux 2.6.26 */
 		sysfs_has_descriptors = kernel_version_ge(2, 6, 26);
-		if (-1 == sysfs_has_descriptors) {
+		if (UNLIKELY(-1 == sysfs_has_descriptors)) {
 			usbi_err(ctx, "error checking for sysfs descriptors");
 			return LIBUSB_ERROR_OTHER;
 		}
@@ -429,7 +429,7 @@ static int op_init(struct libusb_context *ctx) {
 	if (-1 == sysfs_can_relate_devices) {
 		/* sysfs has busnum since Linux 2.6.22 */
 		sysfs_can_relate_devices = kernel_version_ge(2, 6, 22);
-		if (-1 == sysfs_can_relate_devices) {
+		if (UNLIKELY(-1 == sysfs_can_relate_devices)) {
 			usbi_err(ctx, "error checking for sysfs busnum");
 			return LIBUSB_ERROR_OTHER;
 		}
@@ -1193,7 +1193,7 @@ static int usbfs_get_device_list(struct libusb_context *ctx) {
 			}
 		} else {
 			busnum = atoi(entry->d_name);
-			if (busnum == 0) {
+			if (UNLIKELY(busnum == 0)) {
 				usbi_dbg("unknown dir entry %s", entry->d_name);
 				continue;
 			}
@@ -2013,10 +2013,10 @@ static int submit_control_transfer(struct usbi_transfer *itransfer) {
 	struct usbfs_urb *urb;
 	int r;
 
-	if (tpriv->urbs)
+	if (UNLIKELY(tpriv->urbs))
 		return LIBUSB_ERROR_BUSY;
 
-	if (transfer->length - LIBUSB_CONTROL_SETUP_SIZE > MAX_CTRL_BUFFER_LENGTH)
+	if (UNLIKELY(transfer->length - LIBUSB_CONTROL_SETUP_SIZE > MAX_CTRL_BUFFER_LENGTH))
 		return LIBUSB_ERROR_INVALID_PARAM;
 
 	urb = calloc(1, sizeof(struct usbfs_urb));

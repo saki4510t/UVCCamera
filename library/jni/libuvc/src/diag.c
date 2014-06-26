@@ -70,7 +70,7 @@ static const _uvc_error_msg_t uvc_error_msgs[] = {
 };
 
 #ifdef __ANDROID__
-#define FPRINTF(stream, ...) LOGI(__VA_ARGS__)
+#define FPRINTF(stream, ...) MARK(__VA_ARGS__)
 #define FPRINTF_ERR(stream, ...) LOGW(__VA_ARGS__)
 #else
 #define FPRINTF(stream, ...) fprintf(stream, __VA_ARGS__)

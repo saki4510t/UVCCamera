@@ -11,6 +11,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <signal.h>
+#include "utilbase.h"
 #include "utlist.h"
 
 //#define UVC_DEBUGGING
@@ -54,7 +55,6 @@
 #ifdef UVC_DEBUGGING
 #include <libgen.h>
 #ifdef __ANDROID__	// add for android saki@sereneginat
-	#include "utilbase.h"
 	#define UVC_DEBUG(...) LOGD(__VA_ARGS__)
 	#define UVC_ENTER() LOGD("[%s:%d] begin %s", basename(__FILE__), __LINE__, __FUNCTION__)
 	#define UVC_EXIT(code) LOGD("[%s:%d] end %s (%d)", basename(__FILE__), __LINE__, __FUNCTION__, code)
