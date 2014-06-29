@@ -86,6 +86,10 @@
  *
  * The following code provides an example of the usage of the hotplug interface:
 \code
+#include <stdio.h>
+#include <stdlib.h>
+#include <libusb.h>
+
 static int count = 0;
 
 int hotplug_callback(struct libusb_context *ctx, struct libusb_device *dev,

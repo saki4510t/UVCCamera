@@ -177,7 +177,6 @@
 
 #ifndef		LOG_ASSERT
 #define		LOG_ASSERT(cond, ...) LOG_FATAL_IF(!(cond), ## __VA_ARGS__)
-//#define LOG_ASSERT(cond) LOG_FATAL_IF(!(cond), "Assertion failed: " #cond)
 #endif
 
 #ifdef LOG_NDEBUG

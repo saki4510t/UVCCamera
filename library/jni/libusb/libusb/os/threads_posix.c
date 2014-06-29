@@ -52,7 +52,8 @@ int usbi_mutex_init_recursive(pthread_mutex_t *mutex, pthread_mutexattr_t *attr)
 
 	err = pthread_mutex_init(mutex, attr);
 
-	finish: if (attr == &stack_attr)
+finish:
+	if (attr == &stack_attr)
 		pthread_mutexattr_destroy(&stack_attr);
 
 	return err;

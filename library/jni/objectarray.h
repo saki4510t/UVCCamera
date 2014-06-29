@@ -25,6 +25,8 @@
 #ifndef OBJECTARRAY_H_
 #define OBJECTARRAY_H_
 
+#include "utilbase.h"
+
 template <class T>
 class ObjectArray {
 private:
@@ -44,9 +46,7 @@ public:
 	void size(int new_size) {
 		if (new_size != capacity()) {
 			T *new_elements = new T[new_size];
-			if (!new_elements) {
-				LOGE("out of memory");
-			}
+			LOG_ASSERT(new_elements, "out of memory:size=%d,capacity=%d", new_size, m_max_size);
 			int n = (new_size < capacity()) ? new_size : capacity();
 			for (int i = 0; i < n; i++) {
 				new_elements[i] = m_elements[i];
@@ -59,12 +59,13 @@ public:
 	}
 
 	inline int size() const { return m_size; }
+	inline bool isEmpty() const { return (m_size < 1); }
 	inline int capacity() const { return m_max_size; }
 	inline T &operator[](int index) { return m_elements[index]; }
 	inline const T &operator[](int index) const { return m_elements[index]; }
 	int put(T object) {
 		if (object) {
-			if (size() >= capacity()) {
+			if UNLIKELY(size() >= capacity()) {
 				size(capacity() ? capacity() * 2 : 2);
 			}
 			m_elements[m_size++] = object;
@@ -88,6 +89,12 @@ public:
 		}
 	}
 
+	T last() {
+		if (m_size > 0) {
+			return m_elements[--m_size];
+		}
+		return NULL;
+	}
 	int getIndex(const T object) {
 		int result = -1;
 		for (int i = 0; i < size(); i++) {

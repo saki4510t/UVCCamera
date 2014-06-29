@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset:8 ; indent-tabs-mode:t -*- */
 /*
- * Android usbfs backend for libusb
+ * non-rooted Android usbfs backend for libusb
  * Copyright (C) 2007-2009 Daniel Drake <dsd@gentoo.org>
  * Copyright (c) 2001 Johannes Erdfelt <johannes@erdfelt.com>
  * Copyright (c) 2013 Nathan Hjelm <hjelmn@mac.com>
@@ -23,7 +23,7 @@
 #include "config.h"
 #include "libusb.h"
 #include "libusbi.h"
-#include "android_usbfs.h"	// linux_usbfs.h
+#include "android_usbfs.h"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -211,7 +211,7 @@ static int linux_netlink_parse(char *buffer, size_t len, int *detached, const ch
 	if (0 == strcmp(tmp, "remove")) {
 		*detached = 1;
 	} else if (0 == strcmp(tmp, "add")) {
-		//
+		// pass through
 	} else if (0 != strcmp(tmp, "change")) {
 		usbi_dbg("unknown device action [%s]", tmp);
 		return -1;

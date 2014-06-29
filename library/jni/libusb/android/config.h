@@ -1,7 +1,4 @@
 /*
- * modified saki t_saki@sereneginat.com for non-rooted Android device support
- * Copyright (C) 2014
- *
  * Android build config for libusb
  * Copyright © 2012-2013 RealVNC Ltd. <toby.gray@realvnc.com>
  *

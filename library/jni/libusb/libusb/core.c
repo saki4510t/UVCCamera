@@ -523,7 +523,7 @@ struct libusb_device *usbi_alloc_device(struct libusb_context *ctx,
 	r = usbi_mutex_init(&dev->lock, NULL);
 	if (UNLIKELY(r)) {
 		free(dev);
-		return NULL ;
+		return NULL;
 	}
 
 	dev->ctx = ctx;
@@ -549,7 +549,9 @@ void usbi_connect_device(struct libusb_device *dev) {
 	dev->attached = 1;
 
 	usbi_mutex_lock(&dev->ctx->usb_devs_lock);
-	list_add(&dev->list, &dev->ctx->usb_devs);
+	{
+		list_add(&dev->list, &dev->ctx->usb_devs);
+	}
 	usbi_mutex_unlock(&dev->ctx->usb_devs_lock);
 
 	/* Signal that an event has occurred for this device if we support hotplug AND
@@ -574,11 +576,15 @@ void usbi_disconnect_device(struct libusb_device *dev) {
 	message.event = LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT;
 	message.device = dev;
 	usbi_mutex_lock(&dev->lock);
-	dev->attached = 0;
+	{
+		dev->attached = 0;
+	}
 	usbi_mutex_unlock(&dev->lock);
 
 	usbi_mutex_lock(&ctx->usb_devs_lock);
-	list_del(&dev->list);
+	{
+		list_del(&dev->list);
+	}
 	usbi_mutex_unlock(&ctx->usb_devs_lock);
 
 	/* Signal that an event has occurred for this device if we support hotplug AND
@@ -680,13 +686,15 @@ ssize_t API_EXPORTED libusb_get_device_list(libusb_context *ctx,
 			usbi_backend->hotplug_poll();
 
 		usbi_mutex_lock(&ctx->usb_devs_lock);
-		list_for_each_entry(dev, &ctx->usb_devs, list, struct libusb_device)
 		{
-			discdevs = discovered_devs_append(discdevs, dev);
+			list_for_each_entry(dev, &ctx->usb_devs, list, struct libusb_device)
+			{
+				discdevs = discovered_devs_append(discdevs, dev);
 
-			if (UNLIKELY(!discdevs)) {
-				r = LIBUSB_ERROR_NO_MEM;
-				break;
+				if (UNLIKELY(!discdevs)) {
+					r = LIBUSB_ERROR_NO_MEM;
+					break;
+				}
 			}
 		}
 		usbi_mutex_unlock(&ctx->usb_devs_lock);
@@ -830,22 +838,22 @@ int API_EXPORTED libusb_get_port_numbers(libusb_device *dev,
 		uint8_t* port_numbers, int port_numbers_len) {
 
 	int i = port_numbers_len;
+	struct libusb_context *ctx = DEVICE_CTX(dev);
 
-	while (dev) {
-		// HCDs can be listed as devices and would have port #0
-		// TODO: see how the other backends want to implement HCDs as parents
-		if (dev->port_number == 0)
-			break;
-		i--;
-		if (i < 0) {
-			usbi_warn(DEVICE_CTX(dev),
-				"port numbers array too small");
+	if (port_numbers_len <= 0)
+		return LIBUSB_ERROR_INVALID_PARAM;
+
+	// HCDs can be listed as devices with port #0
+	while((dev) && (dev->port_number != 0)) {
+		if (--i < 0) {
+			usbi_warn(ctx, "port numbers array is too small");
 			return LIBUSB_ERROR_OVERFLOW;
 		}
 		port_numbers[i] = dev->port_number;
 		dev = dev->parent_dev;
 	}
-	memmove(port_numbers, &port_numbers[i], port_numbers_len - i);
+	if (i < port_numbers_len)
+		memmove(port_numbers, &port_numbers[i], port_numbers_len - i);
 	return port_numbers_len - i;
 }
 
@@ -954,10 +962,14 @@ int API_EXPORTED libusb_get_max_packet_size(libusb_device *dev,
 	}
 
 	ep = find_endpoint(config, endpoint);
-	if (UNLIKELY(!ep))
-		return LIBUSB_ERROR_NOT_FOUND;
+	if (UNLIKELY(!ep)) {
+		r = LIBUSB_ERROR_NOT_FOUND;
+		goto out;
+	}
 
 	r = ep->wMaxPacketSize;
+
+out:
 	libusb_free_config_descriptor(config);
 	return r;
 }
@@ -1005,17 +1017,21 @@ int API_EXPORTED libusb_get_max_iso_packet_size(libusb_device *dev,
 	}
 
 	ep = find_endpoint(config, endpoint);
-	if (UNLIKELY(!ep))
-		return LIBUSB_ERROR_NOT_FOUND;
+	if (UNLIKELY(!ep)) {
+		r = LIBUSB_ERROR_NOT_FOUND;
+		goto out;
+	}
 
 	val = ep->wMaxPacketSize;
 	ep_type = (enum libusb_transfer_type) (ep->bmAttributes & 0x3);
-	libusb_free_config_descriptor(config);
 
 	r = val & 0x07ff;
 	if (ep_type == LIBUSB_TRANSFER_TYPE_ISOCHRONOUS
 			|| ep_type == LIBUSB_TRANSFER_TYPE_INTERRUPT)
 		r *= (1 + ((val >> 11) & 3));
+
+out:
+	libusb_free_config_descriptor(config);
 	return r;
 }
 
@@ -1028,7 +1044,9 @@ DEFAULT_VISIBILITY
 libusb_device * LIBUSB_CALL libusb_ref_device(libusb_device *dev) {
 
 	usbi_mutex_lock(&dev->lock);
-	dev->refcnt++;
+	{
+		dev->refcnt++;
+	}
 	usbi_mutex_unlock(&dev->lock);
 	return dev;
 }
@@ -1046,7 +1064,9 @@ void API_EXPORTED libusb_unref_device(libusb_device *dev) {
 		return;
 
 	usbi_mutex_lock(&dev->lock);
-	refcnt = --dev->refcnt;
+	{
+		refcnt = --dev->refcnt;
+	}
 	usbi_mutex_unlock(&dev->lock);
 
 	if (refcnt == 0) {
@@ -1081,7 +1101,9 @@ void usbi_fd_notification(struct libusb_context *ctx) {
 
 	/* record that we are messing with poll fds */
 	usbi_mutex_lock(&ctx->pollfd_modify_lock);
-	ctx->pollfd_modify++;
+	{
+		ctx->pollfd_modify++;
+	}
 	usbi_mutex_unlock(&ctx->pollfd_modify_lock);
 
 	/* write some data on control pipe to interrupt event handlers */
@@ -1089,24 +1111,28 @@ void usbi_fd_notification(struct libusb_context *ctx) {
 	if (UNLIKELY(r <= 0)) {
 		usbi_warn(ctx, "internal signalling write failed");
 		usbi_mutex_lock(&ctx->pollfd_modify_lock);
-		ctx->pollfd_modify--;
+		{
+			ctx->pollfd_modify--;
+		}
 		usbi_mutex_unlock(&ctx->pollfd_modify_lock);
 		return;
 	}
 
 	/* take event handling lock */
 	libusb_lock_events(ctx);
+	{
+		/* read the dummy data */
+		r = usbi_read(ctx->ctrl_pipe[0], &dummy, sizeof(dummy));
+		if (UNLIKELY(r <= 0))
+			usbi_warn(ctx, "internal signalling read failed");
 
-	/* read the dummy data */
-	r = usbi_read(ctx->ctrl_pipe[0], &dummy, sizeof(dummy));
-	if (UNLIKELY(r <= 0))
-		usbi_warn(ctx, "internal signalling read failed");
-
-	/* we're done with modifying poll fds */
-	usbi_mutex_lock(&ctx->pollfd_modify_lock);
-	ctx->pollfd_modify--;
-	usbi_mutex_unlock(&ctx->pollfd_modify_lock);
-
+		/* we're done with modifying poll fds */
+		usbi_mutex_lock(&ctx->pollfd_modify_lock);
+		{
+			ctx->pollfd_modify--;
+		}
+		usbi_mutex_unlock(&ctx->pollfd_modify_lock);
+	}
 	/* Release event handling lock and wake up event waiters */
 	libusb_unlock_events(ctx);
 }
@@ -1167,7 +1193,9 @@ int API_EXPORTED libusb_open(libusb_device *dev, libusb_device_handle **handle) 
 	}
 
 	usbi_mutex_lock(&ctx->open_devs_lock);
-	list_add(&_handle->list, &ctx->open_devs);
+	{
+		list_add(&_handle->list, &ctx->open_devs);
+	}
 	usbi_mutex_unlock(&ctx->open_devs_lock);
 	*handle = _handle;
 
@@ -1246,54 +1274,59 @@ static void do_close(struct libusb_context *ctx,
 	struct usbi_transfer *tmp;
 
 	libusb_lock_events(ctx);
-
-	/* remove any transfers in flight that are for this device */
-	usbi_mutex_lock(&ctx->flying_transfers_lock);
-
-	/* safe iteration because transfers may be being deleted */
-	list_for_each_entry_safe(itransfer, tmp, &ctx->flying_transfers, list, struct usbi_transfer)
 	{
-		struct libusb_transfer *transfer =
-			USBI_TRANSFER_TO_LIBUSB_TRANSFER(itransfer);
+		/* remove any transfers in flight that are for this device */
+		usbi_mutex_lock(&ctx->flying_transfers_lock);
+		{
+			/* safe iteration because transfers may be being deleted */
+			list_for_each_entry_safe(itransfer, tmp, &ctx->flying_transfers, list, struct usbi_transfer)
+			{
+				struct libusb_transfer *transfer =
+					USBI_TRANSFER_TO_LIBUSB_TRANSFER(itransfer);
 
-		if (transfer->dev_handle != dev_handle)
-			continue;
+				if (transfer->dev_handle != dev_handle)
+					continue;
 
-		if (!(itransfer->flags & USBI_TRANSFER_DEVICE_DISAPPEARED)) {
-			usbi_err(ctx,
-				"Device handle closed while transfer was still being processed, but the device is still connected as far as we know");
+				if (!(itransfer->flags & USBI_TRANSFER_DEVICE_DISAPPEARED)) {
+					usbi_err(ctx,
+						"Device handle closed while transfer was still being processed, but the device is still connected as far as we know");
 
-			if (itransfer->flags & USBI_TRANSFER_CANCELLING)
-				usbi_warn(ctx,
-					"A cancellation for an in-flight transfer hasn't completed but closing the device handle");
-			else
-				usbi_err(ctx,
-					"A cancellation hasn't even been scheduled on the transfer for which the device is closing");
+					if (itransfer->flags & USBI_TRANSFER_CANCELLING)
+						usbi_warn(ctx,
+							"A cancellation for an in-flight transfer hasn't completed but closing the device handle");
+					else
+						usbi_err(ctx,
+							"A cancellation hasn't even been scheduled on the transfer for which the device is closing");
+				}
+
+				/* remove from the list of in-flight transfers and make sure
+				 * we don't accidentally use the device handle in the future
+				 * (or that such accesses will be easily caught and identified as a crash)
+				 */
+				usbi_mutex_lock(&itransfer->lock);
+				{
+					list_del(&itransfer->list);
+					transfer->dev_handle = NULL;
+				}
+				usbi_mutex_unlock(&itransfer->lock);
+
+				/* it is up to the user to free up the actual transfer struct.  this is
+				 * just making sure that we don't attempt to process the transfer after
+				 * the device handle is invalid
+				 */
+				usbi_dbg(
+						"Removed transfer %p from the in-flight list because device handle %p closed",
+						transfer, dev_handle);
+			}
 		}
-
-		/* remove from the list of in-flight transfers and make sure
-		 * we don't accidentally use the device handle in the future
-		 * (or that such accesses will be easily caught and identified as a crash)
-		 */
-		usbi_mutex_lock(&itransfer->lock);
-		list_del(&itransfer->list);
-		transfer->dev_handle = NULL;
-		usbi_mutex_unlock(&itransfer->lock);
-
-		/* it is up to the user to free up the actual transfer struct.  this is
-		 * just making sure that we don't attempt to process the transfer after
-		 * the device handle is invalid
-		 */
-		usbi_dbg(
-				"Removed transfer %p from the in-flight list because device handle %p closed",
-				transfer, dev_handle);
+		usbi_mutex_unlock(&ctx->flying_transfers_lock);
 	}
-	usbi_mutex_unlock(&ctx->flying_transfers_lock);
-
 	libusb_unlock_events(ctx);
 
 	usbi_mutex_lock(&ctx->open_devs_lock);
-	list_del(&dev_handle->list);
+	{
+		list_del(&dev_handle->list);
+	}
 	usbi_mutex_unlock(&ctx->open_devs_lock);
 
 	usbi_backend->close(dev_handle);
@@ -1333,7 +1366,9 @@ void API_EXPORTED libusb_close(libusb_device_handle *dev_handle) {
 
 	/* record that we are messing with poll fds */
 	usbi_mutex_lock(&ctx->pollfd_modify_lock);
-	ctx->pollfd_modify++;
+	{
+		ctx->pollfd_modify++;
+	}
 	usbi_mutex_unlock(&ctx->pollfd_modify_lock);
 
 	/* write some data on control pipe to interrupt event handlers */
@@ -1342,28 +1377,33 @@ void API_EXPORTED libusb_close(libusb_device_handle *dev_handle) {
 		usbi_warn(ctx, "internal signalling write failed, closing anyway");
 		do_close(ctx, dev_handle);
 		usbi_mutex_lock(&ctx->pollfd_modify_lock);
-		ctx->pollfd_modify--;
+		{
+			ctx->pollfd_modify--;
+		}
 		usbi_mutex_unlock(&ctx->pollfd_modify_lock);
 		return;
 	}
 
 	/* take event handling lock */
 	libusb_lock_events(ctx);	// XXX crash
+	{
+		/* read the dummy data */
+		r = usbi_read(ctx->ctrl_pipe[0], &dummy, sizeof(dummy));	// XXX crash
+		if (UNLIKELY(r <= 0)) {
+			usbi_warn(ctx, "internal signalling read failed, closing anyway");
+		}
 
-	/* read the dummy data */
-	r = usbi_read(ctx->ctrl_pipe[0], &dummy, sizeof(dummy));	// XXX crash
-	if (UNLIKELY(r <= 0)) {
-		usbi_warn(ctx, "internal signalling read failed, closing anyway");
+		/* Close the device */
+		do_close(ctx, dev_handle);	// XXX this function internally call libusb_lock_events/libusb_unlock_events
+									// while libusb_lock_events is already called and will hang-up on some OS?
+
+		/* we're done with modifying poll fds */
+		usbi_mutex_lock(&ctx->pollfd_modify_lock);
+		{
+			ctx->pollfd_modify--;
+		}
+		usbi_mutex_unlock(&ctx->pollfd_modify_lock);
 	}
-
-	/* Close the device */
-	do_close(ctx, dev_handle);
-
-	/* we're done with modifying poll fds */
-	usbi_mutex_lock(&ctx->pollfd_modify_lock);
-	ctx->pollfd_modify--;
-	usbi_mutex_unlock(&ctx->pollfd_modify_lock);
-
 	/* Release event handling lock and wake up event waiters */
 	libusb_unlock_events(ctx);
 }
@@ -1525,13 +1565,14 @@ int API_EXPORTED libusb_claim_interface(libusb_device_handle *dev,
 		return LIBUSB_ERROR_NO_DEVICE;
 
 	usbi_mutex_lock(&dev->lock);
-	if (dev->claimed_interfaces & (1 << interface_number))
-		goto out;
+	{
+		if (dev->claimed_interfaces & (1 << interface_number))
+			goto out;
 
-	r = usbi_backend->claim_interface(dev, interface_number);
-	if (r == 0)
-		dev->claimed_interfaces |= 1 << interface_number;
-
+		r = usbi_backend->claim_interface(dev, interface_number);
+		if (r == 0)
+			dev->claimed_interfaces |= 1 << interface_number;
+	}
 out:
 	usbi_mutex_unlock(&dev->lock);
 	return r;
@@ -1566,15 +1607,16 @@ int API_EXPORTED libusb_release_interface(libusb_device_handle *dev,
 		return LIBUSB_ERROR_INVALID_PARAM;
 
 	usbi_mutex_lock(&dev->lock);
-	if (UNLIKELY(!(dev->claimed_interfaces & (1 << interface_number)))) {
-		r = LIBUSB_ERROR_NOT_FOUND;
-		goto out;
+	{
+		if (UNLIKELY(!(dev->claimed_interfaces & (1 << interface_number)))) {
+			r = LIBUSB_ERROR_NOT_FOUND;
+			goto out;
+		}
+
+		r = usbi_backend->release_interface(dev, interface_number);
+		if (r == 0)
+			dev->claimed_interfaces &= ~(1 << interface_number);
 	}
-
-	r = usbi_backend->release_interface(dev, interface_number);
-	if (r == 0)
-		dev->claimed_interfaces &= ~(1 << interface_number);
-
 out:
 	usbi_mutex_unlock(&dev->lock);
 	return r;
@@ -1609,14 +1651,16 @@ int API_EXPORTED libusb_set_interface_alt_setting(libusb_device_handle *dev,
 		return LIBUSB_ERROR_INVALID_PARAM;
 
 	usbi_mutex_lock(&dev->lock);
-	if (UNLIKELY(!dev->dev->attached)) {
-		usbi_mutex_unlock(&dev->lock);
-		return LIBUSB_ERROR_NO_DEVICE;
-	}
+	{
+		if (UNLIKELY(!dev->dev->attached)) {
+			usbi_mutex_unlock(&dev->lock);
+			return LIBUSB_ERROR_NO_DEVICE;
+		}
 
-	if (UNLIKELY(!(dev->claimed_interfaces & (1 << interface_number)))) {
-		usbi_mutex_unlock(&dev->lock);
-		return LIBUSB_ERROR_NOT_FOUND;
+		if (UNLIKELY(!(dev->claimed_interfaces & (1 << interface_number)))) {
+			usbi_mutex_unlock(&dev->lock);
+			return LIBUSB_ERROR_NOT_FOUND;
+		}
 	}
 	usbi_mutex_unlock(&dev->lock);
 
@@ -1676,6 +1720,69 @@ int API_EXPORTED libusb_reset_device(libusb_device_handle *dev) {
 		return LIBUSB_ERROR_NO_DEVICE;
 
 	return usbi_backend->reset_device(dev);
+}
+
+/** \ingroup asyncio
+ * Allocate up to num_streams usb bulk streams on the specified endpoints. This
+ * function takes an array of endpoints rather then a single endpoint because
+ * some protocols require that endpoints are setup with similar stream ids.
+ * All endpoints passed in must belong to the same interface.
+ *
+ * Note this function may return less streams then requested. Also note that the
+ * same number of streams are allocated for each endpoint in the endpoint array.
+ *
+ * Stream id 0 is reserved, and should not be used to communicate with devices.
+ * If libusb_alloc_streams() returns with a value of N, you may use stream ids
+ * 1 to N.
+ *
+ * Since version 1.0.19, \ref LIBUSB_API_VERSION >= 0x01000103
+ *
+ * \param dev a device handle
+ * \param num_streams number of streams to try to allocate
+ * \param endpoints array of endpoints to allocate streams on
+ * \param num_endpoints length of the endpoints array
+ * \returns number of streams allocated, or a LIBUSB_ERROR code on failure
+ */
+int API_EXPORTED libusb_alloc_streams(libusb_device_handle *dev,
+	uint32_t num_streams, unsigned char *endpoints, int num_endpoints)
+{
+	usbi_dbg("streams %u eps %d", (unsigned) num_streams, num_endpoints);
+
+	if (!dev->dev->attached)
+		return LIBUSB_ERROR_NO_DEVICE;
+
+	if (usbi_backend->alloc_streams)
+		return usbi_backend->alloc_streams(dev, num_streams, endpoints,
+						   num_endpoints);
+	else
+		return LIBUSB_ERROR_NOT_SUPPORTED;
+}
+
+/** \ingroup asyncio
+ * Free usb bulk streams allocated with libusb_alloc_streams().
+ *
+ * Note streams are automatically free-ed when releasing an interface.
+ *
+ * Since version 1.0.19, \ref LIBUSB_API_VERSION >= 0x01000103
+ *
+ * \param dev a device handle
+ * \param endpoints array of endpoints to free streams on
+ * \param num_endpoints length of the endpoints array
+ * \returns LIBUSB_SUCCESS, or a LIBUSB_ERROR code on failure
+ */
+int API_EXPORTED libusb_free_streams(libusb_device_handle *dev,
+	unsigned char *endpoints, int num_endpoints)
+{
+	usbi_dbg("eps %d", num_endpoints);
+
+	if (!dev->dev->attached)
+		return LIBUSB_ERROR_NO_DEVICE;
+
+	if (usbi_backend->free_streams)
+		return usbi_backend->free_streams(dev, endpoints,
+						  num_endpoints);
+	else
+		return LIBUSB_ERROR_NOT_SUPPORTED;
 }
 
 /** \ingroup dev
@@ -1864,69 +1971,71 @@ int API_EXPORTED libusb_init(libusb_context **context) {
 	int r = 0;
 
 	usbi_mutex_static_lock(&default_context_lock);
+	{
+		if (!timestamp_origin.tv_sec) {
+			usbi_gettimeofday(&timestamp_origin, NULL);
+		}
 
-	if (!timestamp_origin.tv_sec) {
-		usbi_gettimeofday(&timestamp_origin, NULL);
-	}
+		if (!context && usbi_default_context) {
+			usbi_dbg("reusing default context");
+			default_context_refcnt++;
+			usbi_mutex_static_unlock(&default_context_lock);
+			return 0;
+		}
 
-	if (!context && usbi_default_context) {
-		usbi_dbg("reusing default context");
-		default_context_refcnt++;
-		usbi_mutex_static_unlock(&default_context_lock);
-		return 0;
-	}
-
-	ctx = calloc(1, sizeof(*ctx));
-	if (UNLIKELY(!ctx)) {
-		r = LIBUSB_ERROR_NO_MEM;
-		goto err_unlock;
-	}
+		ctx = calloc(1, sizeof(*ctx));
+		if (UNLIKELY(!ctx)) {
+			r = LIBUSB_ERROR_NO_MEM;
+			goto err_unlock;
+		}
 
 #ifdef ENABLE_DEBUG_LOGGING
-	ctx->debug = LIBUSB_LOG_LEVEL_DEBUG;
+		ctx->debug = LIBUSB_LOG_LEVEL_DEBUG;
 #endif
 
-	if (UNLIKELY(dbg)) {
-		ctx->debug = atoi(dbg);
-		if (ctx->debug)
-			ctx->debug_fixed = 1;
+		if (UNLIKELY(dbg)) {
+			ctx->debug = atoi(dbg);
+			if (ctx->debug)
+				ctx->debug_fixed = 1;
+		}
+
+		/* default context should be initialized before calling usbi_dbg */
+		if (!usbi_default_context) {
+			usbi_default_context = ctx;
+			default_context_refcnt++;
+			usbi_dbg("created default context");
+		}
+
+		usbi_dbg("libusb v%d.%d.%d.%d", libusb_version_internal.major, libusb_version_internal.minor,
+			libusb_version_internal.micro, libusb_version_internal.nano);
+
+		usbi_mutex_init(&ctx->usb_devs_lock, NULL);
+		usbi_mutex_init(&ctx->open_devs_lock, NULL);
+		usbi_mutex_init(&ctx->hotplug_cbs_lock, NULL);
+		list_init(&ctx->usb_devs);
+		list_init(&ctx->open_devs);
+		list_init(&ctx->hotplug_cbs);
+
+		usbi_mutex_static_lock(&active_contexts_lock);
+		{
+			if (first_init) {
+				first_init = 0;
+				list_init(&active_contexts_list);
+			}
+			list_add(&ctx->list, &active_contexts_list);
+		}
+		usbi_mutex_static_unlock(&active_contexts_lock);
+
+		if (usbi_backend->init) {
+			r = usbi_backend->init(ctx);
+			if (UNLIKELY(r))
+				goto err_free_ctx;
+		}
+
+		r = usbi_io_init(ctx);
+		if (UNLIKELY(r < 0))
+			goto err_backend_exit;
 	}
-
-	/* default context should be initialized before calling usbi_dbg */
-	if (!usbi_default_context) {
-		usbi_default_context = ctx;
-		default_context_refcnt++;
-		usbi_dbg("created default context");
-	}
-
-	usbi_dbg("libusb v%d.%d.%d.%d", libusb_version_internal.major, libusb_version_internal.minor,
-		libusb_version_internal.micro, libusb_version_internal.nano);
-
-	usbi_mutex_init(&ctx->usb_devs_lock, NULL);
-	usbi_mutex_init(&ctx->open_devs_lock, NULL);
-	usbi_mutex_init(&ctx->hotplug_cbs_lock, NULL);
-	list_init(&ctx->usb_devs);
-	list_init(&ctx->open_devs);
-	list_init(&ctx->hotplug_cbs);
-
-	usbi_mutex_static_lock(&active_contexts_lock);
-	if (first_init) {
-		first_init = 0;
-		list_init(&active_contexts_list);
-	}
-	list_add(&ctx->list, &active_contexts_list);
-	usbi_mutex_static_unlock(&active_contexts_lock);
-
-	if (usbi_backend->init) {
-		r = usbi_backend->init(ctx);
-		if (UNLIKELY(r))
-			goto err_free_ctx;
-	}
-
-	r = usbi_io_init(ctx);
-	if (UNLIKELY(r < 0))
-		goto err_backend_exit;
-
 	usbi_mutex_static_unlock(&default_context_lock);
 
 	if (context)
@@ -1942,14 +2051,18 @@ err_free_ctx:
 		usbi_default_context = NULL;
 
 	usbi_mutex_static_lock(&active_contexts_lock);
-	list_del(&ctx->list);
+	{
+		list_del(&ctx->list);
+	}
 	usbi_mutex_static_unlock(&active_contexts_lock);
 
 	usbi_mutex_lock(&ctx->usb_devs_lock);
-	list_for_each_entry_safe(dev, next, &ctx->usb_devs, list, struct libusb_device)
 	{
-		list_del(&dev->list);
-		libusb_unref_device(dev);
+		list_for_each_entry_safe(dev, next, &ctx->usb_devs, list, struct libusb_device)
+		{
+			list_del(&dev->list);
+			libusb_unref_device(dev);
+		}
 	}
 	usbi_mutex_unlock(&ctx->usb_devs_lock);
 
@@ -1991,7 +2104,9 @@ void API_EXPORTED libusb_exit(struct libusb_context *ctx) {
 	usbi_mutex_static_unlock(&default_context_lock);
 
 	usbi_mutex_static_lock(&active_contexts_lock);
-	list_del(&ctx->list);
+	{
+		list_del(&ctx->list);
+	}
 	usbi_mutex_static_unlock(&active_contexts_lock);
 
 	if (libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG)) {
@@ -2010,10 +2125,12 @@ void API_EXPORTED libusb_exit(struct libusb_context *ctx) {
 			libusb_handle_events_timeout(ctx, &tv);
 
 		usbi_mutex_lock(&ctx->usb_devs_lock);
-		list_for_each_entry_safe(dev, next, &ctx->usb_devs, list, struct libusb_device)
 		{
-			list_del(&dev->list);
-			libusb_unref_device(dev);
+			list_for_each_entry_safe(dev, next, &ctx->usb_devs, list, struct libusb_device)
+			{
+				list_del(&dev->list);
+				libusb_unref_device(dev);
+			}
 		}
 		usbi_mutex_unlock(&ctx->usb_devs_lock);
 	}
@@ -2132,10 +2249,10 @@ static void usbi_log_str(struct libusb_context *ctx,
 #elif defined(HAVE_SYSLOG_FUNC)
 	int syslog_level = LOG_INFO;
 	switch (level) {
-		case LIBUSB_LOG_LEVEL_INFO: syslog_level = LOG_INFO; break;
-		case LIBUSB_LOG_LEVEL_WARNING: syslog_level = LOG_WARNING; break;
-		case LIBUSB_LOG_LEVEL_ERROR: syslog_level = LOG_ERR; break;
-		case LIBUSB_LOG_LEVEL_DEBUG: syslog_level = LOG_DEBUG; break;
+	case LIBUSB_LOG_LEVEL_INFO: syslog_level = LOG_INFO; break;
+	case LIBUSB_LOG_LEVEL_WARNING: syslog_level = LOG_WARNING; break;
+	case LIBUSB_LOG_LEVEL_ERROR: syslog_level = LOG_ERR; break;
+	case LIBUSB_LOG_LEVEL_DEBUG: syslog_level = LOG_DEBUG; break;
 	}
 	syslog(syslog_level, "%s", str);
 #else /* All of gcc, Clang, XCode seem to use #warning */
