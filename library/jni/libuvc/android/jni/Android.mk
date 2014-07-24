@@ -38,7 +38,7 @@ include $(LIBUVC_ROOT)/../libjpeg/android/jni/Android.mk
 include $(LIBUVC_ROOT)/../libusb/android/jni/Android.mk
 
 ######################################################################
-# libuvc_static.a (static library with static link to libjpeg.so, libusb1.0.so)
+# libuvc_static.a (static library with static link to libjpeg, libusb1.0)
 ######################################################################
 include $(CLEAR_VARS)
 

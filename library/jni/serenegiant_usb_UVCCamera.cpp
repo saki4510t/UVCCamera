@@ -152,6 +152,19 @@ static jint nativeSetPreviewDisplay(JNIEnv *env, jobject thiz,
 	RETURN(result, jint);
 }
 
+static jint nativeSetCaptureDisplay(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jobject jSurface) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		ANativeWindow *capture_window = jSurface ? ANativeWindow_fromSurface(env, jSurface) : NULL;
+		result = camera->setCaptureDisplay(capture_window);
+	}
+	RETURN(result, jint);
+}
+
 //**********************************************************************
 //
 //**********************************************************************
@@ -180,6 +193,8 @@ static JNINativeMethod methods[] = {
 	{ "nativeStartPreview",		"(J)I", (void *) nativeStartPreview },
 	{ "nativeStopPreview",		"(J)I", (void *) nativeStopPreview },
 	{ "nativeSetPreviewDisplay","(JLandroid/view/Surface;)I", (void *) nativeSetPreviewDisplay },
+
+	{ "nativeSetCaptureDisplay","(JLandroid/view/Surface;)I", (void *) nativeSetCaptureDisplay },
 };
 
 int register_uvccamera(JNIEnv *env) {

@@ -64,13 +64,13 @@ include $(BUILD_STATIC_LIBRARY)
 ######################################################################
 # libusb.so
 ######################################################################
-include $(CLEAR_VARS)
-LOCAL_MODULE_TAGS := optional
-LOCAL_EXPORT_LDLIBS += -llog
-LOCAL_EXPORT_C_INCLUDES := \
-	$(LIBUSB_ROOT)/libusb
-
-LOCAL_WHOLE_STATIC_LIBRARIES = libusb1.0_static
-
-LOCAL_MODULE := libusb1.0
-include $(BUILD_SHARED_LIBRARY)
+#include $(CLEAR_VARS)
+#LOCAL_MODULE_TAGS := optional
+#LOCAL_EXPORT_LDLIBS += -llog
+#LOCAL_EXPORT_C_INCLUDES := \
+#	$(LIBUSB_ROOT)/libusb
+#
+#LOCAL_WHOLE_STATIC_LIBRARIES = libusb1.0_static
+#
+#LOCAL_MODULE := libusb1.0
+#include $(BUILD_SHARED_LIBRARY)

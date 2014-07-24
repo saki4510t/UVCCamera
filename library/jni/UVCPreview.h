@@ -41,7 +41,6 @@ typedef uvc_error_t (*convFunc_t)(uvc_frame_t *in, uvc_frame_t *out);
 class UVCPreview {
 private:
 	uvc_device_handle_t *mDeviceHandle;
-	pthread_mutex_t window_mutex;
 	ANativeWindow *mPreviewWindow;
 	volatile bool mIsRunning;
 	int requestWidth, requestHeight, requestFps;
@@ -53,6 +52,14 @@ private:
 	ObjectArray<uvc_frame_t *> previewFrames;
 	int previewFormat;
 	size_t previewBytes;
+//
+	volatile bool mIsCapturing;
+	ANativeWindow *mCaptureWindow;
+	pthread_t capture_thread;
+	pthread_mutex_t capture_mutex;
+	pthread_cond_t capture_sync;
+	uvc_frame_t *captureQueu;			// 最新の1フレームだけを保持可能に変更
+//
 	void clearDisplay();
 	static void uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args);
 	void addPreviewFrame(uvc_frame_t *frame);
@@ -61,7 +68,14 @@ private:
 	static void *preview_thread_func(void *vptr_args);
 	int prepare_preview(uvc_stream_ctrl_t *ctrl);
 	void do_preview(uvc_stream_ctrl_t *ctrl);
-	void draw_frame_one(uvc_frame_t *frame, ANativeWindow **window, convFunc_t func, int pixelBytes);
+	uvc_frame_t *draw_preview_one(uvc_frame_t *frame, ANativeWindow **window, convFunc_t func, int pixelBytes);
+//
+	void addCaptureFrame(uvc_frame_t *frame);
+	uvc_frame_t *waitCaptureFrame();
+	void clearCaptureFrame();
+	static void *capture_thread_func(void *vptr_args);
+	void do_capture();
+	void do_capture_surface();
 public:
 	UVCPreview(uvc_device_handle_t *devh);
 	~UVCPreview();
@@ -71,6 +85,8 @@ public:
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int startPreview();
 	int stopPreview();
+	inline const bool isCapturing() const;
+	int setCaptureDisplay(ANativeWindow *capture_window);
 };
 
 #endif /* UVCPREVIEW_H_ */

@@ -141,4 +141,26 @@ public class UVCCamera {
     private static final native int nativeStartPreview(long id_camera);
     private static final native int nativeStopPreview(long id_camera);
     private static final native int nativeSetPreviewDisplay(long id_camera, Surface surface);
+
+//**********************************************************************
+    /**
+     * start movie capturing(this should call while previewing)
+     * @param surface
+     */
+    public void startCapture(Surface surface) {
+    	if (mCtrlBlock != null && surface != null) {
+    		nativeSetCaptureDisplay(mNativePtr, surface);
+    	} else
+    		throw new NullPointerException("startCapture");
+    }
+    
+    /**
+     * stop movie capturing
+     */
+    public void stopCapture() {
+    	if (mCtrlBlock != null) {
+    		nativeSetCaptureDisplay(mNativePtr, null);
+    	}
+    }
+    private static final native int nativeSetCaptureDisplay(long id_camera, Surface surface);
 }

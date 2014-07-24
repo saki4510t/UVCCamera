@@ -57,6 +57,7 @@ public class MainActivity extends Activity {
 	private UVCCameraTextureView mUVCCameraView;
 	// for open&start / stop&close camera preview
 	private ImageButton mCameraButton;
+	private Surface mPreviewSurface;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -122,7 +123,15 @@ public class MainActivity extends Activity {
 				@Override
 				public void run() {
 					mUVCCamera.open(ctrlBlock);
-					mUVCCamera.setPreviewTexture(mUVCCameraView.getSurfaceTexture());
+//					mUVCCamera.setPreviewTexture(mUVCCameraView.getSurfaceTexture());
+					if (mPreviewSurface != null) {
+						mPreviewSurface.release();
+						mPreviewSurface = null;
+					}
+					final SurfaceTexture st = mUVCCameraView.getSurfaceTexture(); 
+					if (st != null)
+						mPreviewSurface = new Surface(st);
+					mUVCCamera.setPreviewDisplay(mPreviewSurface);
 					mUVCCamera.startPreview();
 				}
 			});
@@ -133,6 +142,10 @@ public class MainActivity extends Activity {
 			// XXX you should check whether the comming device equal to camera device that currently using
 			if (mUVCCamera != null) {
 				mUVCCamera.close();
+				if (mPreviewSurface != null) {
+					mPreviewSurface.release();
+					mPreviewSurface = null;
+				}
 			}
 		}
 

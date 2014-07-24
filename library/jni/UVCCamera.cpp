@@ -32,7 +32,7 @@
 #include "UVCCamera.h"
 #include "libuvc_internal.h"
 
-#define	LOCAL_DEBUG 1
+#define	LOCAL_DEBUG 0
 
 //**********************************************************************
 //
@@ -101,10 +101,11 @@ int UVCCamera::release() {
 
 int UVCCamera::setPreviewDisplay(ANativeWindow *preview_window) {
 	ENTER();
+	int result = EXIT_FAILURE;
 	if (mPreview) {
-		mPreview->setPreviewDisplay(preview_window);
+		result = mPreview->setPreviewDisplay(preview_window);
 	}
-	RETURN(0, int);
+	RETURN(result, int);
 }
 
 int UVCCamera::startPreview() {
@@ -125,3 +126,11 @@ int UVCCamera::stopPreview() {
 	RETURN(0, int);
 }
 
+int UVCCamera::setCaptureDisplay(ANativeWindow *capture_window) {
+	ENTER();
+	int result = EXIT_FAILURE;
+	if (mPreview) {
+		result = mPreview->setCaptureDisplay(capture_window);
+	}
+	RETURN(result, int);
+}

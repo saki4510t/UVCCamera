@@ -78,13 +78,13 @@ include $(BUILD_STATIC_LIBRARY)
 ######################################################################
 # libjpeg.so
 ######################################################################
-include $(CLEAR_VARS)
-LOCAL_MODULE_TAGS := optional
-LOCAL_EXPORT_LDLIBS += -llog
-LOCAL_EXPORT_C_INCLUDES := \
-	$(JPEG_ROOT)/
-
-LOCAL_WHOLE_STATIC_LIBRARIES = libjpeg_static
-
-LOCAL_MODULE := jpeg
-include $(BUILD_SHARED_LIBRARY)
+#include $(CLEAR_VARS)
+#LOCAL_MODULE_TAGS := optional
+#LOCAL_EXPORT_LDLIBS += -llog
+#LOCAL_EXPORT_C_INCLUDES := \
+#	$(JPEG_ROOT)/
+#
+#LOCAL_WHOLE_STATIC_LIBRARIES = libjpeg_static
+#
+#LOCAL_MODULE := jpeg
+#include $(BUILD_SHARED_LIBRARY)

@@ -46,6 +46,7 @@ public:
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int startPreview();
 	int stopPreview();
+	int setCaptureDisplay(ANativeWindow *capture_window);
 };
 
 #endif /* UVCCAMERA_H_ */

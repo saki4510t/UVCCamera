@@ -41,8 +41,17 @@ separate shared libraries but some compile/link error may occur(we have not conf
 =========
 How to use
 See sample project and/or our web site(but sorry web site is Japanese only).
-This library works at least Android 3.1 or later(API >= 12), but Android 4.0(API >= 14)
+This library works on at least Android 3.1 or later(API >= 12), but Android 4.0(API >= 14)
 or later is better. USB host function must be required.
 If you want to try on Android 3.1, you will need some modification(need to remove 
 setPreviewTexture method in UVCCamera.java etc.), but we have not confirm whether the sample
 project run on Android 3.1 yet.
+
+Add some modification to the library and new sample project named "USBCameraTest2".
+This new sample project demonstrate how to capture movie using frame data from UVC camera
+with MediaCodec and MediaMuxer.
+New sample requires Android 4.2(API>=18).
+This limitation does not come from the library itself but from the limitation of 
+MediaMuxer and MediaCodec#createInputSurface.
+The library still works on at least Android 3.1 or later(API >= 12) and recommended
+Android 4.0 or later (API >= 14).
