@@ -1,4 +1,4 @@
-package com.serenegiant.usbcameratest;
+package com.serenegiant.usbcameratest3;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
@@ -28,15 +28,18 @@ import java.util.List;
 
 import com.serenegiant.usb.DeviceFilter;
 import com.serenegiant.usb.USBMonitor;
+import com.serenegiant.usbcameratest.R;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.DialogFragment;
+import android.app.Fragment;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -64,6 +67,22 @@ public class CameraDialog extends DialogFragment {
     	return dialog;
 	}
 
+	/**
+	 * ヘルパーメソッド
+	 * @param parent Fragment
+	 * @return
+	 */
+	public static CameraDialog showDialog(Fragment parent) {
+		CameraDialog dialog = newInstance();
+		dialog.setTargetFragment(parent, 1);
+		try {
+			dialog.show(parent.getFragmentManager(), TAG);
+		} catch (IllegalStateException e) {
+			dialog = null;
+		}
+    	return dialog;
+	}
+
 	public static CameraDialog newInstance(/* add parameters here if you need */) {
 		final CameraDialog dialog = new CameraDialog();
 		final Bundle args = new Bundle();
@@ -83,14 +102,16 @@ public class CameraDialog extends DialogFragment {
 	@Override
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
-       if (mUSBMonitor == null)
+		if (mUSBMonitor == null)
         try {
     		mUSBMonitor = ((MainActivity)activity).getUSBMonitor();
         } catch (ClassCastException e) {
+        	Log.w(TAG, "onAttach:", e);
     	} catch (NullPointerException e) {
+        	Log.w(TAG, "onAttach:", e);
         }
 		if (mUSBMonitor == null) {
-        	throw new ClassCastException(activity.toString() + " must implement #getUSBController");
+        	throw new ClassCastException(activity.toString() + " must implement #getUSBMonitor");
 		}
 	}
 

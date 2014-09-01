@@ -34,8 +34,10 @@ import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.widget.UVCCameraTextureView;
 
 import android.app.Activity;
+import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
+import android.view.Surface;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ImageButton;
@@ -160,7 +162,7 @@ public class MainActivity extends Activity {
 	 * to access from CameraDialog
 	 * @return
 	 */
-	public USBMonitor getUSBController() {
+	public USBMonitor getUSBMonitor() {
 		return mUSBMonitor;
 	}
 

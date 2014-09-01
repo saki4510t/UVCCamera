@@ -206,7 +206,7 @@ public class MainActivity extends Activity {
 	 * to access from CameraDialog
 	 * @return
 	 */
-	public USBMonitor getUSBController() {
+	public USBMonitor getUSBMonitor() {
 		return mUSBMonitor;
 	}
 
