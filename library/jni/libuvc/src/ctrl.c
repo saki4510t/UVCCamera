@@ -32,7 +32,11 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 /**
- * @defgroup ctrl Video capture and processing control
+ * @defgroup ctrl Video capture and processing controls
+ * @brief Functions for manipulating device settings and stream parameters
+ *
+ * The `uvc_get_*` and `uvc_set_*` functions are used to read and write the settings associated
+ * with the device's input, processing and output units.
  */
 
 #include "libuvc/libuvc.h"
@@ -43,14 +47,100 @@ static const int REQ_TYPE_GET = 0xa1;
 
 #define CTRL_TIMEOUT_MILLIS 0
 
+/***** GENERIC CONTROLS *****/
+/**
+ * @brief Get the length of a control on a terminal or unit.
+ * 
+ * @param devh UVC device handle
+ * @param unit Unit or Terminal ID; obtain this from the uvc_extension_unit_t describing the extension unit
+ * @param ctrl Vendor-specific control number to query
+ * @return On success, the length of the control as reported by the device. Otherwise,
+ *   a uvc_error_t error describing the error encountered.
+ * @ingroup ctrl
+ */
+int uvc_get_ctrl_len(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl) {
+	unsigned char buf[2];
+
+	int ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, UVC_GET_LEN,
+			ctrl << 8,
+			unit << 8,	// FIXME this will work wrong, invalid wIndex value
+			buf, 2, CTRL_TIMEOUT_MILLIS);
+
+	if (UNLIKELY(ret < 0))
+		return ret;
+	else
+		return (unsigned short) SW_TO_SHORT(buf);
+}
+
+/**
+ * @brief Perform a GET_* request from an extension unit.
+ * 
+ * @param devh UVC device handle
+ * @param unit Unit ID; obtain this from the uvc_extension_unit_t describing the extension unit
+ * @param ctrl Control number to query
+ * @param data Data buffer to be filled by the device
+ * @param len Size of data buffer
+ * @param req_code GET_* request to execute
+ * @return On success, the number of bytes actually transferred. Otherwise,
+ *   a uvc_error_t error describing the error encountered.
+ * @ingroup ctrl
+ */
+int uvc_get_ctrl(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl,
+		void *data, int len, enum uvc_req_code req_code) {
+	return libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			ctrl << 8,
+			unit << 8,	// FIXME this will work wrong, invalid wIndex value
+			data, len, CTRL_TIMEOUT_MILLIS);
+}
+
+/**
+ * @brief Perform a SET_CUR request to a terminal or unit.
+ * 
+ * @param devh UVC device handle
+ * @param unit Unit or Terminal ID
+ * @param ctrl Control number to set
+ * @param data Data buffer to be sent to the device
+ * @param len Size of data buffer
+ * @return On success, the number of bytes actually transferred. Otherwise,
+ *   a uvc_error_t error describing the error encountered.
+ * @ingroup ctrl
+ */
+int uvc_set_ctrl(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl,
+		void *data, int len) {
+	return libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			ctrl << 8,
+			unit << 8,	// FIXME this will work wrong, invalid wIndex value
+			data, len, CTRL_TIMEOUT_MILLIS);
+}
+
+/***** INTERFACE CONTROLS *****/
+/** Request Error Code Control (UVC 1.5, 4.2.1.2) */ // XXX added saki
+uvc_error_t uvc_get_error_code(uvc_device_handle_t *devh,
+		enum uvc_error_code_control *error_code, enum uvc_req_code req_code) {
+	uint8_t error_char = 0;
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_VC_REQUEST_ERROR_CODE_CONTROL << 8,
+			devh->info->ctrl_if.bInterfaceNumber,	// XXX saki
+			&error_char, sizeof(error_char), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == 1)) {
+		*error_code = error_char;
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+}
+
 uvc_error_t uvc_get_power_mode(uvc_device_handle_t *devh,
 		enum uvc_device_power_mode *mode, enum uvc_req_code req_code) {
-	uint8_t mode_char;
+	uint8_t mode_char = 0;
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
 			UVC_VC_VIDEO_POWER_MODE_CONTROL << 8,
-			0,	// FIXME this will work wrong, invalid wIndex value
+			devh->info->ctrl_if.bInterfaceNumber,	// XXX saki
 			&mode_char, sizeof(mode_char), CTRL_TIMEOUT_MILLIS);
 
 	if (LIKELY(ret == 1)) {
@@ -68,7 +158,7 @@ uvc_error_t uvc_set_power_mode(uvc_device_handle_t *devh,
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
 			UVC_VC_VIDEO_POWER_MODE_CONTROL << 8,
-			0,	// FIXME this will work wrong, invalid wIndex value
+			devh->info->ctrl_if.bInterfaceNumber,	// XXX saki
 			&mode_char, sizeof(mode_char), CTRL_TIMEOUT_MILLIS);
 
 	if (LIKELY(ret == 1))
@@ -1230,67 +1320,4 @@ uvc_error_t uvc_get_analogvideo_lockstate(uvc_device_handle_t *devh, uint8_t *lo
 		return ret;
 	}
 	RETURN(-1, uvc_error_t);
-}
-
-/***** GENERIC CONTROLS *****/
-/**
- * @brief Get the length of a control on a terminal or unit.
- * 
- * @param devh UVC device handle
- * @param unit Unit or Terminal ID; obtain this from the uvc_extension_unit_t describing the extension unit
- * @param ctrl Vendor-specific control number to query
- * @return On success, the length of the control as reported by the device. Otherwise,
- *   a uvc_error_t error describing the error encountered.
- */
-int uvc_get_ctrl_len(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl) {
-	unsigned char buf[2];
-
-	int ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, UVC_GET_LEN,
-			ctrl << 8,
-			unit << 8,	// FIXME this will work wrong, invalid wIndex value
-			buf, 2, CTRL_TIMEOUT_MILLIS);
-
-	if (UNLIKELY(ret < 0))
-		return ret;
-	else
-		return (unsigned short) SW_TO_SHORT(buf);
-}
-
-/**
- * @brief Perform a GET_* request from an extension unit.
- * 
- * @param devh UVC device handle
- * @param unit Unit ID; obtain this from the uvc_extension_unit_t describing the extension unit
- * @param ctrl Control number to query
- * @param data Data buffer to be filled by the device
- * @param len Size of data buffer
- * @param req_code GET_* request to execute
- * @return On success, the number of bytes actually transferred. Otherwise,
- *   a uvc_error_t error describing the error encountered.
- */
-int uvc_get_ctrl(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl,
-		void *data, int len, enum uvc_req_code req_code) {
-	return libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
-			ctrl << 8,
-			unit << 8,	// FIXME this will work wrong, invalid wIndex value
-			data, len, CTRL_TIMEOUT_MILLIS);
-}
-
-/**
- * @brief Perform a SET_CUR request to a terminal or unit.
- * 
- * @param devh UVC device handle
- * @param unit Unit or Terminal ID
- * @param ctrl Control number to set
- * @param data Data buffer to be sent to the device
- * @param len Size of data buffer
- * @return On success, the number of bytes actually transferred. Otherwise,
- *   a uvc_error_t error describing the error encountered.
- */
-int uvc_set_ctrl(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl,
-		void *data, int len) {
-	return libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
-			ctrl << 8,
-			unit << 8,	// FIXME this will work wrong, invalid wIndex value
-			data, len, CTRL_TIMEOUT_MILLIS);
 }

@@ -39,6 +39,7 @@
  *********************************************************************/
 /**
  * @defgroup streaming Streaming control functions
+ * @brief Tools for creating, managing and consuming video streams
  */
 
 #include <assert.h>		// XXX add assert for debugging
@@ -93,7 +94,7 @@ struct format_table_entry *_get_format_entry(enum uvc_frame_format format) {
 	FMT(UVC_FRAME_FORMAT_MJPEG, {'M', 'J', 'P', 'G'})
 
 	default:
-		return NULL ;
+		return NULL;
 	}
 
 #undef ABS_FMT
@@ -144,13 +145,16 @@ static enum uvc_frame_format uvc_frame_format_for_guid(uint8_t guid[16]) {
  */
 uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl, uint8_t probe, enum uvc_req_code req) {
-	uint8_t buf[34];
+	uint8_t buf[48];	// XXX support UVC 1.1 & 1.5
 	size_t len;
 	uvc_error_t err;
 
-	memset(&buf, 0, sizeof(buf));	// bzero(buf, sizeof(buf));	// bzero is deprecated
+	memset(buf, 0, sizeof(buf));	// bzero(buf, sizeof(buf));	// bzero is deprecated
 
-	if (devh->info->ctrl_if.bcdUVC >= 0x0110)
+	const uint16_t bcdUVC = devh->info->ctrl_if.bcdUVC;
+	if (bcdUVC >= 0x0150)
+		len = 48;
+	else if (bcdUVC >= 0x0110)
 		len = 34;
 	else
 		len = 26;
@@ -169,9 +173,22 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 		INT_TO_DW(ctrl->dwMaxVideoFrameSize, buf + 18);
 		INT_TO_DW(ctrl->dwMaxPayloadTransferSize, buf + 22);
 
-		if (UNLIKELY(len == 34)) {
-			/** @todo support UVC 1.1 */
-			return UVC_ERROR_NOT_SUPPORTED;
+		if (len > 26) {	// len == 34
+			// XXX add to support UVC 1.1
+			INT_TO_DW(ctrl->dwClockFrequency, buf + 26);
+			buf[30] = ctrl->bmFramingInfo;
+			buf[31] = ctrl->bPreferedVersion;
+			buf[32] = ctrl->bMinVersion;
+			buf[33] = ctrl->bMaxVersion;
+			if (len == 48) {
+				// XXX add to support UVC1.5
+				buf[34] = ctrl->bUsage;
+				buf[35] = ctrl->bBitDepthLuma;
+				buf[36] = ctrl->bmSettings;
+				buf[37] = ctrl->bMaxNumberOfRefFramesPlus1;
+				SHORT_TO_SW(ctrl->bmRateControlModes, buf + 38);
+				LONG_TO_QW(ctrl->bmLayoutPerStream, buf + 40);
+			}
 		}
 	}
 
@@ -182,6 +199,11 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 			ctrl->bInterfaceNumber, buf, len, 0);
 
 	if (UNLIKELY(err <= 0)) {
+		// when libusb_control_transfer returned error or transfer bytes was zero.
+		if (!err) {
+			UVC_DEBUG("libusb_control_transfer transfered zero length data");
+			err = LIBUSB_ERROR_OTHER;
+		}
 		return err;
 	}
 
@@ -199,18 +221,31 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 		ctrl->dwMaxVideoFrameSize = DW_TO_INT(buf + 18);
 		ctrl->dwMaxPayloadTransferSize = DW_TO_INT(buf + 22);
 
-		if (UNLIKELY(len == 34)) {
-			/** @todo support UVC 1.1 */
-			return UVC_ERROR_NOT_SUPPORTED;
+		if (len > 26) {	// len == 34
+			// XXX add to support UVC 1.1
+			ctrl->dwClockFrequency = DW_TO_INT(buf + 26);
+			ctrl->bmFramingInfo = buf[30];
+			ctrl->bPreferedVersion = buf[31];
+			ctrl->bMinVersion = buf[32];
+			ctrl->bMaxVersion = buf[33];
+			if (len >= 48) {
+				// XXX add to support UVC1.5
+				ctrl->bUsage = buf[34];
+				ctrl->bBitDepthLuma = buf[35];
+				ctrl->bmSettings = buf[36];
+				ctrl->bMaxNumberOfRefFramesPlus1 = buf[37];
+				ctrl->bmRateControlModes = SW_TO_SHORT(buf + 38);
+				ctrl->bmLayoutPerStream = QW_TO_LONG(buf + 40);
+			}
 		}
 
 		/* fix up block for cameras that fail to set dwMax* */
 		if (ctrl->dwMaxVideoFrameSize == 0) {
-			uvc_frame_desc_t *frame = uvc_find_frame_desc(devh,
+			uvc_frame_desc_t *frame_desc = uvc_find_frame_desc(devh,
 					ctrl->bFormatIndex, ctrl->bFrameIndex);
 
-			if (frame) {
-				ctrl->dwMaxVideoFrameSize = frame->dwMaxVideoFrameBufferSize;
+			if (frame_desc) {
+				ctrl->dwMaxVideoFrameSize = frame_desc->dwMaxVideoFrameBufferSize;
 			}
 		}
 	}
@@ -237,7 +272,7 @@ uvc_error_t uvc_stream_ctrl(uvc_stream_handle_t *strmh, uvc_stream_ctrl_t *ctrl)
 	if (UNLIKELY(strmh->running))
 		return UVC_ERROR_BUSY;
 
-	ret = uvc_query_stream_ctrl(strmh->devh, ctrl, 0, UVC_SET_CUR);
+	ret = uvc_query_stream_ctrl(strmh->devh, ctrl, 0, UVC_SET_CUR);	// commit query
 	if (UNLIKELY(ret != UVC_SUCCESS))
 		return ret;
 
@@ -303,7 +338,7 @@ uvc_frame_desc_t *uvc_find_frame_desc(uvc_device_handle_t *devh,
 			return frame;
 	}
 
-	return NULL ;
+	return NULL;
 }
 
 /** Get a negotiated streaming control block for some common parameters.
@@ -323,7 +358,21 @@ uvc_error_t uvc_get_stream_ctrl_format_size(uvc_device_handle_t *devh,
 	enum uvc_vs_desc_subtype format_class;
 
 	/* get the max values */
-	uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_MAX);
+	// XXX calling uvc_query_stream_ctrl at this point almost allways fails
+	uvc_error_t result = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_MAX);	// probe query
+#if 1
+	// These code need when using some conbination of device and cameras like Nexus5 + Logitech C270
+	// otherwise hang-up on next call of uvc_query_stream_ctrl in uvc_probe_stream_ctrl
+	// I assume that some waitting is required dor such combination  XXX saki
+	if UNLIKELY(result) {
+		enum uvc_error_code_control error_code;
+		uvc_get_error_code(devh, &error_code, UVC_GET_CUR);
+		// result is UVC_ERROR_IO(-1) or UVC_ERROR_PIPE(-9), the error code will be zero
+		LOGE("uvc_query_stream_ctrl:ret=%d,err_code=%d", result, error_code);
+		uvc_print_format_descriptor(devh->info->stream_ifs->format_descs, NULL);
+//		return result;
+	}
+#endif
 
 	/* find a matching frame descriptor and interval */
 	DL_FOREACH(devh->info->stream_ifs, stream_if)
@@ -365,7 +414,7 @@ uvc_error_t uvc_get_stream_ctrl_format_size(uvc_device_handle_t *devh,
 						&& interval_100ns <= frame->dwMaxFrameInterval
 						&& !(interval_offset
 							&& (interval_offset % frame->dwFrameIntervalStep) ) ) {
-						ctrl->bmHint = (1 << 0);
+						ctrl->bmHint = (1 << 0); /* don't negotiate interval */
 						ctrl->bFormatIndex = format->bFormatIndex;
 						ctrl->bFrameIndex = frame->bFrameIndex;
 						ctrl->bInterfaceNumber = stream_if->bInterfaceNumber;
@@ -387,11 +436,26 @@ found:
 uvc_error_t uvc_get_stream_ctrl_format_size_fps(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl, enum uvc_frame_format cf, int width,
 		int height, int min_fps, int max_fps) {
+
 	uvc_streaming_interface_t *stream_if;
 	enum uvc_vs_desc_subtype format_class;
 
 	/* get the max values */
-	uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_MAX);
+	// XXX calling uvc_query_stream_ctrl at this point almost allways fails
+	uvc_error_t result = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_MAX);	// probe query
+#if 1
+	// These code need when using some conbination of device and cameras like Nexus5 + Logitech C270
+	// otherwise hang-up on next call of uvc_query_stream_ctrl in uvc_probe_stream_ctrl
+	// I assume that some waitting is required dor such combination  XXX saki
+	if UNLIKELY(result) {
+		enum uvc_error_code_control error_code;
+		uvc_get_error_code(devh, &error_code, UVC_GET_CUR);
+		// result is UVC_ERROR_IO(-1) or UVC_ERROR_PIPE(-9), the error code will be zero
+		LOGE("uvc_query_stream_ctrl:ret=%d,err_code=%d", result, error_code);
+		uvc_print_format_descriptor(devh->info->stream_ifs->format_descs, NULL);
+//		return result;
+	}
+#endif
 
 	/* find a matching frame descriptor and interval */
 	DL_FOREACH(devh->info->stream_ifs, stream_if)
@@ -415,7 +479,7 @@ uvc_error_t uvc_get_stream_ctrl_format_size_fps(uvc_device_handle_t *devh,
 				if (frame->intervals) {
 					for (interval = frame->intervals; *interval; ++interval) {
 						uint32_t it = 10000000 / *interval;
-						if ((it >= (unsigned int) min_fps) && (it <= (unsigned int) max_fps)) {
+						if ((it >= (uint32_t) min_fps) && (it <= (uint32_t) max_fps)) {
 							ctrl->bmHint = (1 << 0); /* don't negotiate interval */
 							ctrl->bFormatIndex = format->bFormatIndex;
 							ctrl->bFrameIndex = frame->bFrameIndex;
@@ -436,7 +500,7 @@ uvc_error_t uvc_get_stream_ctrl_format_size_fps(uvc_device_handle_t *devh,
 							&& interval_100ns <= frame->dwMaxFrameInterval
 							&& !(interval_offset
 								&& (interval_offset % frame->dwFrameIntervalStep) ) ) {
-							ctrl->bmHint = (1 << 0);
+							ctrl->bmHint = (1 << 0); /* don't negotiate interval */
 							ctrl->bFormatIndex = format->bFormatIndex;
 							ctrl->bFrameIndex = frame->bFrameIndex;
 							ctrl->bInterfaceNumber = stream_if->bInterfaceNumber;
@@ -464,24 +528,67 @@ found:
  */
 uvc_error_t uvc_probe_stream_ctrl(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl) {
+	uvc_error_t err;
 
-	uvc_claim_if(devh, ctrl->bInterfaceNumber);
+	err = uvc_claim_if(devh, ctrl->bInterfaceNumber);
+	if UNLIKELY(err) {
+		LOGE("uvc_claim_if:err=%d", err);
+		return err;
+	}
 
-	uvc_query_stream_ctrl(devh, ctrl, 1, UVC_SET_CUR);
+	err = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_SET_CUR);	// probe query
+	if UNLIKELY(err) {
+		LOGE("uvc_query_stream_ctrl(UVC_SET_CUR):err=%d", err);
+		return err;
+	}
 
-	uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_CUR);
+	err = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_CUR);	// probe query
+	if UNLIKELY(err) {
+		LOGE("uvc_query_stream_ctrl(UVC_GET_CUR):err=%d", err);
+		return err;
+	}
 
 	/** @todo make sure that worked */
 	return UVC_SUCCESS;
 }
 
+/** @internal
+ * @brief Swap the working buffer with the presented buffer and notify consumers
+ */
+void _uvc_swap_buffers(uvc_stream_handle_t *strmh) {
+	uint8_t *tmp_buf;
+
+	pthread_mutex_lock(&strmh->cb_mutex);
+
+	/* swap the buffers */
+	tmp_buf = strmh->holdbuf;
+	strmh->hold_bfh_err = strmh->bfh_err;	// XXX
+	strmh->hold_bytes = strmh->got_bytes;
+	strmh->holdbuf = strmh->outbuf;
+	strmh->outbuf = tmp_buf;
+	strmh->hold_last_scr = strmh->last_scr;
+	strmh->hold_pts = strmh->pts;
+	strmh->hold_seq = strmh->seq;
+
+	pthread_cond_broadcast(&strmh->cb_cond);
+	pthread_mutex_unlock(&strmh->cb_mutex);
+
+	strmh->seq++;
+	strmh->got_bytes = 0;
+	strmh->last_scr = 0;
+	strmh->pts = 0;
+	strmh->bfh_err = 0;	// XXX
+}
+
 void _uvc_iso_delete_transfer(struct libusb_transfer *transfer) {
 	ENTER();
 
+//	MARK("");
 	uvc_stream_handle_t *strmh = transfer->user_data;
+	if UNLIKELY(!strmh) EXIT();		// XXX
 	int i;
 
-	pthread_mutex_lock(&strmh->cb_mutex);
+	pthread_mutex_lock(&strmh->cb_mutex);	// XXX crash while calling uvc_stop_streaming
 	{
 		// Mark transfer as deleted.
 		for (i = 0; i < ARRAYSIZE(strmh->transfers); i++) {
@@ -503,15 +610,16 @@ void _uvc_iso_delete_transfer(struct libusb_transfer *transfer) {
 	EXIT();
 }
 
+#define USE_EOF
 // Bit field values for BFH(bit field header) of stream header
-#define STREAM_HEADER_BFH_FID 0x01
-#define STREAM_HEADER_BFH_EOF 0x02
-#define STREAM_HEADER_BFH_PTS 0x04
-#define STREAM_HEADER_BFH_SCR 0x08
-#define STREAM_HEADER_BFH_RES 0x10
-#define STREAM_HEADER_BFH_STI 0x20
-#define STREAM_HEADER_BFH_ERR 0x40
-#define STREAM_HEADER_BFH_EOH 0x80
+#define STREAM_HEADER_BFH_FID 0x01	// Frame Identifier
+#define STREAM_HEADER_BFH_EOF 0x02	// End of Frame
+#define STREAM_HEADER_BFH_PTS 0x04	// Presentation Time Stamp
+#define STREAM_HEADER_BFH_SCR 0x08	// Source Clock Reference
+#define STREAM_HEADER_BFH_RES 0x10	// Reserved.
+#define STREAM_HEADER_BFH_STI 0x20	// Still Image
+#define STREAM_HEADER_BFH_ERR 0x40	// Error Bit
+#define STREAM_HEADER_BFH_EOH 0x80	// End of Header
 /** @internal
  * @brief Isochronous transfer callback
  * 
@@ -529,40 +637,49 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 	uint8_t check_header;
 	size_t header_len;	// XXX unsigned int header_len
 	struct libusb_iso_packet_descriptor *pkt;
-	uint8_t *tmp_buf;
+
 	static const uint8_t isight_tag[] = {
 		0x11, 0x22, 0x33, 0x44, 0xde, 0xad,
 		0xbe, 0xef, 0xde, 0xad, 0xfa, 0xce };
 
 	strmh = transfer->user_data;
-
+#ifndef NDEBUG
+	static int cnt = 0;
+	if ((++cnt % 1000) == 0)
+		MARK("cnt=%d", cnt);
+#endif
 	switch (transfer->status) {
 	case LIBUSB_TRANSFER_COMPLETED:
+		if UNLIKELY(!transfer->num_iso_packets)
+			MARK("num_iso_packets is zero");
 		for (packet_id = 0; packet_id < transfer->num_iso_packets; ++packet_id) {
 			check_header = 1;
 
 			pkt = transfer->iso_packet_desc + packet_id;
 
-			if (UNLIKELY(pkt->status != 0)) {
-				LOGV("bad packet (transfer): %d\n", pkt->status); // printf("bad packet (transfer): %d\n", pkt->status);
+			if UNLIKELY(pkt->status != 0) {
+				MARK("bad packet:status=%d,actual_length=%d", pkt->status, pkt->actual_length);
+				strmh->bfh_err |= STREAM_HEADER_BFH_ERR;
 				continue;
 			}
 
-			if (UNLIKELY(pkt->actual_length == 0)) {
+			if UNLIKELY(!pkt->actual_length) {	// 転送したバイト数が0・・・ってどういうこと?
+//				MARK("zero packet (transfer):");
+//				strmh->bfh_err |= STREAM_HEADER_BFH_ERR;	// don't set this flag here
 				continue;
 			}
-
 			// XXX accessing to pktbuf could lead to crash on the original implementation
 			// because the substances of pktbuf will be deleted in uvc_stream_stop.
 			pktbuf = libusb_get_iso_packet_buffer_simple(transfer, packet_id);
-			if (LIKELY(pktbuf)) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null
+			if LIKELY(pktbuf) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null
 //				assert(pktbuf < transfer->buffer + transfer->length - 1);	// XXX
 #ifdef __ANDROID__
 				// XXX optimaization because this flag never become true on Android devices
-				if (UNLIKELY(strmh->devh->is_isight)) {
+				if (UNLIKELY(strmh->devh->is_isight))
 #else
-				if (strmh->devh->is_isight) {
+				if (strmh->devh->is_isight)
 #endif
+				{
 					if (pkt->actual_length < 30
 						|| (memcmp(isight_tag, pktbuf + 2, sizeof(isight_tag))
 							&& memcmp(isight_tag, pktbuf + 3, sizeof(isight_tag)))) {
@@ -575,37 +692,26 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					header_len = pktbuf[0];	// Header length field of Stream Header
 				}
 
-				if (UNLIKELY(check_header && (pktbuf[1] & STREAM_HEADER_BFH_ERR))) {
-					LOGV("bad packet"); // printf("bad packet\n");
-					continue;
-				}
-
-				/** @todo support sending the frame on EOF instead of on flip(FID) */
-				if (check_header &&
-					(strmh->fid != (pktbuf[1] & STREAM_HEADER_BFH_FID))) {	// when FID is toggled
-					pthread_mutex_lock(&strmh->cb_mutex);
-					{
-						/* swap the buffers */
-						tmp_buf = strmh->holdbuf;
-						strmh->hold_bytes = strmh->got_bytes;
-						strmh->holdbuf = strmh->outbuf;
-						strmh->outbuf = tmp_buf;
-						strmh->hold_last_scr = strmh->last_scr;
-						strmh->hold_pts = strmh->pts;
-						strmh->hold_seq = strmh->seq;
-						// signal to user callback runner/frame poller(uvc_stream_get_frame)
-						// to show that a new frame is available
-						pthread_cond_broadcast(&strmh->cb_cond);
+				if LIKELY(check_header) {
+					if UNLIKELY(pktbuf[1] & STREAM_HEADER_BFH_ERR) {
+						strmh->bfh_err |= STREAM_HEADER_BFH_ERR;
+						MARK("bad packet");
+						continue;
 					}
-					pthread_mutex_unlock(&strmh->cb_mutex);
-					strmh->seq++;
-					strmh->got_bytes = 0;
-					strmh->last_scr = 0;
-					strmh->pts = 0;
+#ifdef USE_EOF
+					if ((strmh->fid != (pktbuf[1] & STREAM_HEADER_BFH_FID)) && strmh->got_bytes) {	// got_bytesを取ると殆ど画面更新されない
+					/* The frame ID bit was flipped, but we have image data sitting
+		             around from prior transfers. This means the camera didn't send
+        		     an EOF for the last transfer of the previous frame or some frames losted. */
+						_uvc_swap_buffers(strmh);
+					}
 					strmh->fid = pktbuf[1] & STREAM_HEADER_BFH_FID;
-				}
-
-				if (LIKELY(check_header)) {
+#else
+					if (strmh->fid != (pktbuf[1] & STREAM_HEADER_BFH_FID)) {	// when FID is toggled
+						_uvc_swap_buffers(strmh);
+						strmh->fid = pktbuf[1] & STREAM_HEADER_BFH_FID;
+					}
+#endif
 					if (pktbuf[1] & STREAM_HEADER_BFH_PTS)
 						strmh->pts = DW_TO_INT(pktbuf + 2);
 
@@ -616,25 +722,25 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					if (UNLIKELY(strmh->devh->is_isight))
 						continue; // don't look for data after an iSight header
 #else
-					if (strmh->devh->is_isight)
+					if (strmh->devh->is_isight) {
+						MARK("is_isight");
 						continue; // don't look for data after an iSight header
+					}
 #endif
-				}
+				} // if LIKELY(check_header)
 
-				if (UNLIKELY(pkt->actual_length < header_len)) {
+				if UNLIKELY(pkt->actual_length < header_len) {
 					/* Bogus packet received */
-					LOGV("bogus packet: actual_len=%d, header_len=%zd",
-						pkt->actual_length, header_len);
-					//printf("bogus packet: actual_len=%d, header_len=%zd\n",
-					//		pkt->actual_length, header_len);
+					strmh->bfh_err |= STREAM_HEADER_BFH_ERR;
+					MARK("bogus packet: actual_len=%d, header_len=%zd", pkt->actual_length, header_len);
 					continue;
 				}
 
-				// XXX this implementation could lead to trouble because unsigned values
+				// XXX original implementation could lead to trouble because unsigned values
 				// and there calculated value never become minus.
 				// therefor changed to "if (pkt->actual_length > header_len)"
-				// if (pkt->actual_length - header_len > 0) {
-				if (LIKELY(pkt->actual_length > header_len)) {
+				// from "if (pkt->actual_length - header_len > 0)"
+				if LIKELY(pkt->actual_length > header_len) {
 					const size_t odd_bytes = pkt->actual_length - header_len;
 					assert(strmh->got_bytes + odd_bytes < strmh->size_buf);
 					assert(strmh->outbuf);
@@ -642,22 +748,32 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					memcpy(strmh->outbuf + strmh->got_bytes, pktbuf + header_len, odd_bytes);
 					strmh->got_bytes += odd_bytes;
 				}
-//				strmh->got_bytes += pkt->actual_length - header_len;	// XXX move to upper
+#ifdef USE_EOF
+				if ((pktbuf[1] & STREAM_HEADER_BFH_EOF) && strmh->got_bytes != 0) {
+					/* The EOF bit is set, so publish the complete frame */
+					_uvc_swap_buffers(strmh);
+				}
+#endif
+			} else {	// if (LIKELY(pktbuf))
+				strmh->bfh_err |= STREAM_HEADER_BFH_ERR;
+				MARK("libusb_get_iso_packet_buffer_simple returned null");
+				continue;
 			}
-		}
+		}	// for
 		break;
+	case LIBUSB_TRANSFER_NO_DEVICE:
+		strmh->running = 0;	// this needs for unexpected disconnect of cable otherwise hangup
 	case LIBUSB_TRANSFER_CANCELLED:
 	case LIBUSB_TRANSFER_ERROR:
-	case LIBUSB_TRANSFER_NO_DEVICE:
-	{
 		UVC_DEBUG("not retrying transfer, status = %d", transfer->status);
-		strmh->running = 0;
+//		MARK("not retrying transfer, status = %d", transfer->status);
+		_uvc_iso_delete_transfer(transfer);
 		break;
-	}
 	case LIBUSB_TRANSFER_TIMED_OUT:
 	case LIBUSB_TRANSFER_STALL:
 	case LIBUSB_TRANSFER_OVERFLOW:
 		UVC_DEBUG("retrying transfer, status = %d", transfer->status);
+//		MARK("retrying transfer, status = %d", transfer->status);
 		break;
 	}
 
@@ -677,11 +793,12 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
  * @param ctrl Control block, processed using {uvc_probe_stream_ctrl} or
  *             {uvc_get_stream_ctrl_format_size}
  * @param cb   User callback function. See {uvc_frame_callback_t} for restrictions.
- * @param isochronous Whether to use isochronous transfers rather than bulk ones
+ * @param flags Stream setup flags, currently undefined. Set this to zero. The lower bit
+ * is reserved for backward compatibility.
  */
 uvc_error_t uvc_start_streaming(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl, uvc_frame_callback_t *cb, void *user_ptr,
-		uint8_t isochronous) {
+		uint8_t flags) {
 	uvc_error_t ret;
 	uvc_stream_handle_t *strmh;
 
@@ -689,7 +806,7 @@ uvc_error_t uvc_start_streaming(uvc_device_handle_t *devh,
 	if (UNLIKELY(ret != UVC_SUCCESS))
 		return ret;
 
-	ret = uvc_stream_start(strmh, cb, user_ptr, isochronous);
+	ret = uvc_stream_start(strmh, cb, user_ptr, flags);
 	if (UNLIKELY(ret != UVC_SUCCESS)) {
 		uvc_stream_close(strmh);
 		return ret;
@@ -700,6 +817,11 @@ uvc_error_t uvc_start_streaming(uvc_device_handle_t *devh,
 
 /** Begin streaming video from the camera into the callback function.
  * @ingroup streaming
+ *
+ * @deprecated The stream type (bulk vs. isochronous) will be determined by the
+ * type of interface associated with the uvc_stream_ctrl_t parameter, regardless
+ * of whether the caller requests isochronous streaming. Please switch to
+ * uvc_start_streaming().
  *
  * @param devh UVC device
  * @param ctrl Control block, processed using {uvc_probe_stream_ctrl} or
@@ -721,7 +843,7 @@ static uvc_stream_handle_t *_uvc_get_stream_by_interface(
 			return strmh;
 	}
 
-	return NULL ;
+	return NULL;
 }
 
 static uvc_streaming_interface_t *_uvc_get_stream_if(uvc_device_handle_t *devh,
@@ -734,7 +856,7 @@ static uvc_streaming_interface_t *_uvc_get_stream_if(uvc_device_handle_t *devh,
 			return stream_if;
 	}
 
-	return NULL ;
+	return NULL;
 }
 
 #define STREAM_BUF_SIZE		8 * 1024 * 1024	// XXX
@@ -810,13 +932,15 @@ fail:
  *
  * @param strmh UVC stream
  * @param cb   User callback function. See {uvc_frame_callback_t} for restrictions.
- * @param isochronous Whether to use isochronous transfers rather than bulk ones
+ * @param flags Stream setup flags, currently undefined. Set this to zero. The lower bit
+ * is reserved for backward compatibility.
  */
 uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
-		uvc_frame_callback_t *cb, void *user_ptr, uint8_t isochronous) {
+		uvc_frame_callback_t *cb, void *user_ptr, uint8_t flags) {
 	/* USB interface we'll be using */
 	const struct libusb_interface *interface;
 	int interface_id;
+	char isochronous;
 	uvc_frame_desc_t *frame_desc;
 	uvc_format_desc_t *format_desc;
 	uvc_stream_ctrl_t *ctrl;
@@ -836,6 +960,7 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 	strmh->fid = 0;
 	strmh->pts = 0;
 	strmh->last_scr = 0;
+	strmh->bfh_err = 0;	// XXX
 
 	frame_desc = uvc_find_frame_desc_stream(strmh, ctrl->bFormatIndex, ctrl->bFrameIndex);
 	if (UNLIKELY(!frame_desc)) {
@@ -849,11 +974,17 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 		ret = UVC_ERROR_NOT_SUPPORTED;
 		goto fail;
 	}
+	const uint32_t dwMaxVideoFrameSize = ctrl->dwMaxVideoFrameSize <= frame_desc->dwMaxVideoFrameBufferSize
+		? ctrl->dwMaxVideoFrameSize : frame_desc->dwMaxVideoFrameBufferSize;
 
 	// Get the interface that provides the chosen format and frame configuration
 	interface_id = strmh->stream_if->bInterfaceNumber;
 	interface = &strmh->devh->info->config->interface[interface_id];
 
+	/* A VS interface uses isochronous transfers if it has multiple altsettings.
+	 * (UVC 1.5: 2.4.3. VideoStreaming Interface, on page 19) */
+	isochronous = (interface->num_altsetting > 1) || flags;
+	MARK("isochronous=%d", isochronous);
 	if (isochronous) {
 		/* For isochronous streaming, we choose an appropriate altsetting for the endpoint
 		 * and set up several transfers */
@@ -874,18 +1005,17 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 		struct libusb_transfer *transfer;
 		int transfer_id;
 
-		/* If the interface doesn't support isochronous mode, give up */
-		if (UNLIKELY(interface->num_altsetting == 0) ){
-			ret = UVC_ERROR_INVALID_DEVICE;
+		config_bytes_per_packet = strmh->cur_ctrl.dwMaxPayloadTransferSize;
+		if (UNLIKELY(!config_bytes_per_packet)) {	// XXX added to privent zero divided exception at the following code
+			ret = UVC_ERROR_IO;
 			goto fail;
 		}
-
-		config_bytes_per_packet = strmh->cur_ctrl.dwMaxPayloadTransferSize;
 
 		/* Go through the altsettings and find one whose packets are at least
 		 * as big as our format's maximum per-packet usage. Assume that the
 		 * packet sizes are increasing. */
-		for (alt_idx = 0; alt_idx < interface->num_altsetting; alt_idx++) {
+		const int num_alt = interface->num_altsetting - 1;
+		for (alt_idx = 0; alt_idx <= num_alt ; alt_idx++) {
 			altsetting = interface->altsetting + alt_idx;
 			endpoint_bytes_per_packet = 0;
 
@@ -897,27 +1027,36 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 						== format_desc->parent->bEndpointAddress) {
 					endpoint_bytes_per_packet = endpoint->wMaxPacketSize;
 					// wMaxPacketSize: [unused:2 (multiplier-1):3 size:11]
+					// bit10…0:		maximum packet size
+					// bit12…11:	the number of additional transaction opportunities per microframe for high-speed
+					//				00 = None (1 transaction per microframe)
+					//				01 = 1 additional (2 per microframe)
+					//				10 = 2 additional (3 per microframe)
+					//				11 = Reserved
 					endpoint_bytes_per_packet
 						= (endpoint_bytes_per_packet & 0x07ff)
 							* (((endpoint_bytes_per_packet >> 11) & 3) + 1);
 					break;
 				}
 			}
+			// XXX config_bytes_per_packet should not be zero otherwise zero divided exception occur
+			if (LIKELY(endpoint_bytes_per_packet)) {
 
-			if (endpoint_bytes_per_packet >= config_bytes_per_packet) {
-				/* Transfers will be at most one frame long: Divide the maximum frame size
-				 * by the size of the endpoint and round up */
-				packets_per_transfer = (ctrl->dwMaxVideoFrameSize
-						+ endpoint_bytes_per_packet - 1)
-						/ endpoint_bytes_per_packet;
+				if ( (endpoint_bytes_per_packet >= config_bytes_per_packet)
+					|| (alt_idx == num_alt) ) {	// XXX always match to last altsetting for buggy device
+					/* Transfers will be at most one frame long: Divide the maximum frame size
+					 * by the size of the endpoint and round up */
+					packets_per_transfer = (dwMaxVideoFrameSize
+							+ endpoint_bytes_per_packet - 1)
+							/ endpoint_bytes_per_packet;		// XXX cashed by zero divided exception occured
 
-				/* But keep a reasonable limit: Otherwise we start dropping data */
-				if (packets_per_transfer > 32)
-					packets_per_transfer = 32;
+					/* But keep a reasonable limit: Otherwise we start dropping data */
+					if (packets_per_transfer > 32)
+						packets_per_transfer = 32;
 
-				total_transfer_size = packets_per_transfer
-						* endpoint_bytes_per_packet;
-				break;
+					total_transfer_size = packets_per_transfer * endpoint_bytes_per_packet;
+					break;
+				}
 			}
 		}
 
@@ -936,8 +1075,7 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 		}
 
 		/* Set up the transfers */
-		for (transfer_id = 0; transfer_id < ARRAYSIZE(strmh->transfers);
-				++transfer_id) {
+		for (transfer_id = 0; transfer_id < ARRAYSIZE(strmh->transfers); ++transfer_id) {
 			transfer = libusb_alloc_transfer(packets_per_transfer);
 			strmh->transfers[transfer_id] = transfer;
 			strmh->transfer_bufs[transfer_id] = malloc(total_transfer_size);
@@ -967,8 +1105,7 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 	if (isochronous) {
 		int transfer_id;
 
-		for (transfer_id = 0; transfer_id < ARRAYSIZE(strmh->transfers);
-				transfer_id++) {
+		for (transfer_id = 0; transfer_id < ARRAYSIZE(strmh->transfers); transfer_id++) {
 			ret = libusb_submit_transfer(strmh->transfers[transfer_id]);
 			if (UNLIKELY(ret != UVC_SUCCESS)) {
 				UVC_DEBUG("libusb_submit_transfer failed");
@@ -995,9 +1132,13 @@ fail:
 /** Begin streaming video from the stream into the callback function.
  * @ingroup streaming
  *
+ * @deprecated The stream type (bulk vs. isochronous) will be determined by the
+ * type of interface associated with the uvc_stream_ctrl_t parameter, regardless
+ * of whether the caller requests isochronous streaming. Please switch to
+ * uvc_stream_start().
+ *
  * @param strmh UVC stream
  * @param cb   User callback function. See {uvc_frame_callback_t} for restrictions.
- * @param isochronous Whether to use isochronous transfers rather than bulk ones
  */
 uvc_error_t uvc_stream_start_iso(uvc_stream_handle_t *strmh,
 		uvc_frame_callback_t *cb, void *user_ptr) {
@@ -1025,15 +1166,18 @@ void *_uvc_user_caller(void *arg) {
 				pthread_mutex_unlock(&strmh->cb_mutex);
 				break;
 			}
+
 			last_seq = strmh->hold_seq;
-			_uvc_populate_frame(strmh);
+			if LIKELY(!strmh->hold_bfh_err)	// XXX
+				_uvc_populate_frame(strmh);
 		}
 		pthread_mutex_unlock(&strmh->cb_mutex);
 
-		strmh->user_cb(&strmh->frame, strmh->user_ptr);	// call user callback function
+		if LIKELY(!strmh->hold_bfh_err)	// XXX
+			strmh->user_cb(&strmh->frame, strmh->user_ptr);	// call user callback function
 	}
 
-	return NULL ; // return value ignored
+	return NULL; // return value ignored
 }
 
 /** @internal
@@ -1057,7 +1201,8 @@ void _uvc_populate_frame(uvc_stream_handle_t *strmh) {
 
 	frame->width = frame_desc->wWidth;
 	frame->height = frame_desc->wHeight;
-	frame->actual_bytes = strmh->hold_bytes;	// XXX
+	// XXX set actual_bytes to zero when erro bits is on
+	frame->actual_bytes = LIKELY(!strmh->hold_bfh_err) ? strmh->hold_bytes : 0;
 
 	switch (frame->frame_format) {
 	case UVC_FRAME_FORMAT_YUYV:
@@ -1076,7 +1221,7 @@ void _uvc_populate_frame(uvc_stream_handle_t *strmh) {
 		frame->data = realloc(frame->data, strmh->hold_bytes);	// TODO add error handling when failed realloc
 		frame->data_bytes = strmh->hold_bytes;
 	}
-	memcpy(frame->data, strmh->holdbuf, frame->actual_bytes/*frame->data_bytes*/);	// XXX
+	memcpy(frame->data, strmh->holdbuf, strmh->hold_bytes/*frame->data_bytes*/);	// XXX
 
 	/** @todo set the frame time */
 }

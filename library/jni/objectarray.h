@@ -47,7 +47,7 @@ public:
 		if (new_size != capacity()) {
 			T *new_elements = new T[new_size];
 			LOG_ASSERT(new_elements, "out of memory:size=%d,capacity=%d", new_size, m_max_size);
-			int n = (new_size < capacity()) ? new_size : capacity();
+			const int n = (new_size < capacity()) ? new_size : capacity();
 			for (int i = 0; i < n; i++) {
 				new_elements[i] = m_elements[i];
 			}
@@ -64,7 +64,7 @@ public:
 	inline T &operator[](int index) { return m_elements[index]; }
 	inline const T &operator[](int index) const { return m_elements[index]; }
 	int put(T object) {
-		if (object) {
+		if LIKELY(object) {
 			if UNLIKELY(size() >= capacity()) {
 				size(capacity() ? capacity() * 2 : 2);
 			}
@@ -72,6 +72,9 @@ public:
 		}
 		return m_size;
 	}
+	/**
+	 * remove T which posisioned on index
+	 */
 	T remove(int index) {
 		T obj = m_elements[index];
 		for (int i = index; i < m_size - 1; i++) {
@@ -80,6 +83,9 @@ public:
 		m_size--;
 		return obj;
 	}
+	/**
+	 * search the T object and remove if exist
+	 */
 	void removeObject(T object) {
 		for (int i = 0; i < size(); i++) {
 			if (m_elements[i] == object) {
@@ -88,13 +94,20 @@ public:
 			}
 		}
 	}
-
-	T last() {
-		if (m_size > 0) {
+	/**
+	 * get last T and remove from this array ¥
+	 * this is faster than remove(size()-1)
+	 */
+	inline T last() {
+		if LIKELY(m_size > 0)
 			return m_elements[--m_size];
-		}
-		return NULL;
+		else
+			return NULL;
 	}
+	/**
+	 * search the T object and return it's index
+	 * if the T is not in this array, return -1
+	 */
 	int getIndex(const T object) {
 		int result = -1;
 		for (int i = 0; i < size(); i++) {
@@ -106,7 +119,10 @@ public:
 		return result;
 	}
 
-	void clear() {
+	/**
+	 * clear the T array but never delete actual T instance
+	 */
+	inline void clear() {
 		size(min_size);
 		m_size = 0;
 	}

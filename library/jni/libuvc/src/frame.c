@@ -46,6 +46,7 @@
  *********************************************************************/
 /**
  * @defgroup frame Frame processing
+ * @brief Tools for managing frame buffers and converting between image formats
  */
 #include "libuvc/libuvc.h"
 #include "libuvc/libuvc_internal.h"
@@ -53,8 +54,8 @@
 #define USE_STRIDE 1
 /** @internal */
 uvc_error_t uvc_ensure_frame_size(uvc_frame_t *frame, size_t need_bytes) {
-	if (frame->library_owns_data) {
-		if (!frame->data || frame->data_bytes != need_bytes) {
+	if LIKELY(frame->library_owns_data) {
+		if UNLIKELY(!frame->data || frame->data_bytes != need_bytes) {
 			frame->actual_bytes = frame->data_bytes = need_bytes;	// XXX
 			frame->data = realloc(frame->data, frame->data_bytes);
 		}
@@ -75,13 +76,16 @@ uvc_error_t uvc_ensure_frame_size(uvc_frame_t *frame, size_t need_bytes) {
  * @return New frame, or NULL on error
  */
 uvc_frame_t *uvc_allocate_frame(size_t data_bytes) {
-	uvc_frame_t *frame = malloc(sizeof(*frame));
+	uvc_frame_t *frame = malloc(sizeof(*frame));	// FIXME using buffer pool is better performance(5-30%) than directory use malloc everytime.
 
 	if (UNLIKELY(!frame))
 		return NULL;
 
+#ifndef __ANDROID__
+	// XXX in many case, it is not neccesary to clear because all fields are set before use
+	// therefore we remove this to improve performace, but be care not to faoget to set fields before use
 	memset(frame, 0, sizeof(*frame));	// bzero(frame, sizeof(*frame)); // bzero is deprecated
-
+#endif
 //	frame->library_owns_data = 1;	// XXX moved to lower
 
 	if (LIKELY(data_bytes > 0)) {
@@ -135,15 +139,22 @@ uvc_error_t uvc_duplicate_frame(uvc_frame_t *in, uvc_frame_t *out) {
 
 #if USE_STRIDE
 	if (in->step && out->step) {
+		const int istep = in->step;
+		const int ostep = out->step;
 		const int hh = in->height < out->height ? in->height : out->height;
-		const int rowbytes = in->step < out->step ? in->step : out->step;
-		void *ip = in->data;
-		void *op = out->data;
+		const int rowbytes = istep < ostep ? istep : ostep;
+		register void *ip = in->data;
+		register void *op = out->data;
 		int h;
-		for (h = 0; h < hh; h++) {
+		for (h = 0; h < hh; h += 4) {
 			memcpy(op, ip, rowbytes);
-			ip += in->step;
-			op += out->step;
+			ip += istep; op += ostep;
+			memcpy(op, ip, rowbytes);
+			ip += istep; op += ostep;
+			memcpy(op, ip, rowbytes);
+			ip += istep; op += ostep;
+			memcpy(op, ip, rowbytes);
+			ip += istep; op += ostep;
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...

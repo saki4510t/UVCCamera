@@ -1,3 +1,7 @@
+/**
+ * add macro for non rooted android device
+ * Copyright(c) 2014 saki saki@serenegiant.com
+ */
 /* -*- Mode: C; indent-tabs-mode:t ; c-basic-offset:8 -*- */
 /*
  * add some functions for no-rooted Android
@@ -613,7 +617,7 @@ int usbi_sanitize_device(struct libusb_device *dev) {
 		return r;
 
 	num_configurations = dev->device_descriptor.bNumConfigurations;
-	if (num_configurations > USB_MAXCONFIG) {
+	if UNLIKELY(num_configurations > USB_MAXCONFIG) {
 		usbi_err(DEVICE_CTX(dev), "too many configurations");
 		return LIBUSB_ERROR_IO;
 	} else if (0 == num_configurations)
@@ -840,11 +844,11 @@ int API_EXPORTED libusb_get_port_numbers(libusb_device *dev,
 	int i = port_numbers_len;
 	struct libusb_context *ctx = DEVICE_CTX(dev);
 
-	if (port_numbers_len <= 0)
+	if UNLIKELY(port_numbers_len <= 0)
 		return LIBUSB_ERROR_INVALID_PARAM;
 
 	// HCDs can be listed as devices with port #0
-	while((dev) && (dev->port_number != 0)) {
+	while ((dev) && (dev->port_number != 0)) {
 		if (--i < 0) {
 			usbi_warn(ctx, "port numbers array is too small");
 			return LIBUSB_ERROR_OVERFLOW;
@@ -1162,7 +1166,7 @@ int API_EXPORTED libusb_open(libusb_device *dev, libusb_device_handle **handle) 
 	struct libusb_device_handle *_handle;
 	size_t priv_size = usbi_backend->device_handle_priv_size;
 	int r;
-	usbi_dbg("open %d.%d", dev->bus_number, dev->device_address);
+	usbi_dbg("open (bus/addr)=(%d.%d)", dev->bus_number, dev->device_address);
 
 	if (UNLIKELY(!dev->attached)) {
 		return LIBUSB_ERROR_NO_DEVICE;
@@ -1748,10 +1752,10 @@ int API_EXPORTED libusb_alloc_streams(libusb_device_handle *dev,
 {
 	usbi_dbg("streams %u eps %d", (unsigned) num_streams, num_endpoints);
 
-	if (!dev->dev->attached)
+	if UNLIKELY(!dev->dev->attached)
 		return LIBUSB_ERROR_NO_DEVICE;
 
-	if (usbi_backend->alloc_streams)
+	if LIKELY(usbi_backend->alloc_streams)
 		return usbi_backend->alloc_streams(dev, num_streams, endpoints,
 						   num_endpoints);
 	else
@@ -1775,10 +1779,10 @@ int API_EXPORTED libusb_free_streams(libusb_device_handle *dev,
 {
 	usbi_dbg("eps %d", num_endpoints);
 
-	if (!dev->dev->attached)
+	if UNLIKELY(!dev->dev->attached)
 		return LIBUSB_ERROR_NO_DEVICE;
 
-	if (usbi_backend->free_streams)
+	if LIKELY(usbi_backend->free_streams)
 		return usbi_backend->free_streams(dev, endpoints,
 						  num_endpoints);
 	else
@@ -1810,7 +1814,7 @@ int API_EXPORTED libusb_kernel_driver_active(libusb_device_handle *dev,
 	if (UNLIKELY(!dev->dev->attached))
 		return LIBUSB_ERROR_NO_DEVICE;
 
-	if (usbi_backend->kernel_driver_active)
+	if LIKELY(usbi_backend->kernel_driver_active)
 		return usbi_backend->kernel_driver_active(dev, interface_number);
 	else
 		return LIBUSB_ERROR_NOT_SUPPORTED;
@@ -2269,7 +2273,9 @@ static void usbi_log_str(struct libusb_context *ctx,
 void usbi_log_v(struct libusb_context *ctx, enum libusb_log_level level,
 	const char *function, const char *format, va_list args) {
 
+#ifndef __ANDROID__
 	const char *prefix = "";
+#endif
 	char buf[USBI_MAX_LOG_LEN];
 	struct timeval now;
 	int global_debug, header_len, text_len;
@@ -2289,7 +2295,11 @@ void usbi_log_v(struct libusb_context *ctx, enum libusb_log_level level,
 		if (dbg)
 			ctx_level = atoi(dbg);
 	}
+#ifdef __ANDROID__
+	global_debug = 0;
+#else
 	global_debug = (ctx_level == LIBUSB_LOG_LEVEL_DEBUG);
+#endif
 	if (!ctx_level)
 		return;
 	if (level == LIBUSB_LOG_LEVEL_WARNING && ctx_level < LIBUSB_LOG_LEVEL_WARNING)
@@ -2312,7 +2322,7 @@ void usbi_log_v(struct libusb_context *ctx, enum libusb_log_level level,
 	}
 	now.tv_sec -= timestamp_origin.tv_sec;
 	now.tv_usec -= timestamp_origin.tv_usec;
-
+#ifndef __ANDROID__
 	switch (level) {
 	case LIBUSB_LOG_LEVEL_INFO:
 		prefix = "info";
@@ -2332,15 +2342,19 @@ void usbi_log_v(struct libusb_context *ctx, enum libusb_log_level level,
 		prefix = "unknown";
 		break;
 	}
-
+#endif
+#ifdef __ANDROID__
+	header_len = snprintf(buf, sizeof(buf), "[%s] ", function);
+#else
 	if (global_debug) {
 		header_len = snprintf(buf, sizeof(buf),
 			"[%2d.%06d] [%08x] libusb: %s [%s] ", (int) now.tv_sec,
 			(int) now.tv_usec, usbi_get_tid(), prefix, function);
 	} else {
 		header_len = snprintf(buf, sizeof(buf),
-			"libusb: %s [%s] ", prefix, function);
+			"libusb:%s [%s] ", prefix, function);
 	}
+#endif
 
 	if (header_len < 0 || header_len >= sizeof(buf)) {
 		/* Somehow snprintf failed to write to the buffer,

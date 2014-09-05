@@ -49,6 +49,22 @@ typedef enum uvc_error {
 	UVC_ERROR_OTHER = -99
 } uvc_error_t;
 
+/**
+ * Table 4-7 Request Error Code Control
+ */
+enum uvc_error_code_control {
+	UVC_ERROR_CODECTRL_NO_ERROR = 0x00,
+	UVC_ERROR_CODECTRL_NOT_READY = 0x01,
+	UVC_ERROR_CODECTRL_WRONG_STATE = 0x02,
+	UVC_ERROR_CODECTRL_POWER = 0x03,
+	UVC_ERROR_CODECTRL_OUT_OF_RANGE = 0x04,
+	UVC_ERROR_CODECTRL_INVALID_UINT = 0x05,
+	UVC_ERROR_CODECTRL_INVALID_CONTROL = 0x06,
+	UVC_ERROR_CODECTRL_INVALID_REQUEST = 0x07,
+	UVC_ERROR_CODECTRL_INVALID_VALUE = 0x08,
+	UVC_ERROR_CODECTRL_UNKNOWN = 0xff
+};
+
 /** Color coding of stream, transport-independent
  * @ingroup streaming
  */
@@ -217,6 +233,9 @@ typedef struct uvc_stream_handle uvc_stream_handle_t;
 struct uvc_frame_desc;
 typedef struct uvc_frame_desc uvc_frame_desc_t;
 
+struct uvc_format_desc;
+typedef struct uvc_format_desc uvc_format_desc_t;
+
 /** Representation of the interface that brings data into the UVC device */
 typedef struct uvc_input_terminal {
 	struct uvc_input_terminal *prev, *next;
@@ -367,7 +386,20 @@ typedef struct uvc_stream_ctrl {
 	uint16_t wDelay;
 	uint32_t dwMaxVideoFrameSize;
 	uint32_t dwMaxPayloadTransferSize;
-	/** @todo add UVC 1.1 parameters */
+	/** XXX add UVC 1.1 parameters */
+	uint32_t dwClockFrequency;
+	uint8_t bmFramingInfo;
+	uint8_t bPreferedVersion;
+	uint8_t bMinVersion;
+	uint8_t bMaxVersion;
+	/** XXX add UVC 1.5 parameters */
+	uint8_t bUsage;
+	uint8_t bBitDepthLuma;
+	uint8_t bmSettings;
+	uint8_t bMaxNumberOfRefFramesPlus1;
+	uint16_t bmRateControlModes;
+	uint64_t bmLayoutPerStream;
+	//
 	uint8_t bInterfaceNumber;
 } uvc_stream_ctrl_t;
 
@@ -395,6 +427,8 @@ uvc_error_t uvc_get_device_with_fd(uvc_context_t *ctx, uvc_device_t **dev,
 
 uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh);
 void uvc_close(uvc_device_handle_t *devh);
+// XXX
+uvc_error_t uvc_set_reset_altsetting(uvc_device_handle_t *devh, uint8_t reset_on_release_if);
 
 uvc_device_t *uvc_get_device(uvc_device_handle_t *devh);
 libusb_device_handle *uvc_get_libusb_handle(uvc_device_handle_t *devh);
@@ -448,6 +482,8 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh);
 void uvc_stream_close(uvc_stream_handle_t *strmh);
 
 // Camera Controls
+uvc_error_t uvc_get_error_code(uvc_device_handle_t *devh,
+		enum uvc_error_code_control *error_code, enum uvc_req_code req_code);	// XXX added saki
 uvc_error_t uvc_get_power_mode(uvc_device_handle_t *devh,
 		enum uvc_device_power_mode *mode, enum uvc_req_code req_code);
 uvc_error_t uvc_set_power_mode(uvc_device_handle_t *devh,
@@ -619,6 +655,20 @@ uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_any2rgbx(uvc_frame_t *in, uvc_frame_t *out);
+
+//**********************************************************************
+// added for diagonostic
+// t_saki@serenegiant.com
+void uvc_print_format_descriptor(uvc_format_desc_t *format_descriptors, FILE *stream);
+void uvc_print_device_descriptor(uvc_device_handle_t *devh, FILE *stream);
+void uvc_print_configuration_descriptor(uvc_device_handle_t *devh, FILE *stream);
+void uvc_print_interface_descriptor(
+	const struct libusb_interface *interface, const int num_interface,
+	const char *prefix, FILE *stream);
+void uvc_print_endpoint_descriptor(
+	const struct libusb_endpoint_descriptor *endpoint, const int num_endpoint,
+	const char *prefix, FILE *stream);
+
 
 #ifdef __cplusplus
 }

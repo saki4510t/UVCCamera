@@ -264,20 +264,44 @@ enum libusb_descriptor_type {
 	/** Endpoint descriptor. See libusb_endpoint_descriptor. */
 	LIBUSB_DT_ENDPOINT = 0x05,
 
+	/** XXX */
+	LIBUSB_DT_DEVICE_QUALIFIER = 0x06,				// deprecated on USB3.0
+
+	/** XXX */
+	LIBUSB_DT_OTHER_SPEED_CONFIGURATION = 0x07,		// deprecated on USB3.0
+
+	/** XXX */
+	LIBUSB_DT_INTERFACE_POWER = 0x08,
+
+	/** XXX */
+	LIBUSB_DT_OTG = 0x09,
+
+	/** XXX */
+	LIBUSB_DT_DEBUG = 0x0a,
+
+	/** XXX Interface Association descriptor(IAD) See libusb_association_descriptor */
+	LIBUSB_DT_ASSOCIATION = 0x0b,
+
 	/** BOS descriptor */
 	LIBUSB_DT_BOS = 0x0f,
 
 	/** Device Capability descriptor */
 	LIBUSB_DT_DEVICE_CAPABILITY = 0x10,
-
+// Class specified descriptors
 	/** HID descriptor */
 	LIBUSB_DT_HID = 0x21,
 
 	/** HID report descriptor */
-	LIBUSB_DT_REPORT = 0x22,
+	LIBUSB_DT_HID_REPORT = 0x22,
 
 	/** Physical descriptor */
-	LIBUSB_DT_PHYSICAL = 0x23,
+	LIBUSB_DT_HID_PHYSICAL = 0x23,
+
+	/* Class specific interface descriptor */
+	LIBUSB_DT_CS_INTERFACE = 0x24,
+
+	/* Class specific endpoint descriptor */
+	LIBUSB_DT_CS_ENDPOINT = 0x25,
 
 	/** Hub descriptor */
 	LIBUSB_DT_HUB = 0x29,
@@ -286,24 +310,28 @@ enum libusb_descriptor_type {
 	LIBUSB_DT_SUPERSPEED_HUB = 0x2a,
 
 	/** SuperSpeed Endpoint Companion descriptor */
-	LIBUSB_DT_SS_ENDPOINT_COMPANION = 0x30
+	LIBUSB_DT_SS_ENDPOINT_COMPANION = 0x30		// defined on USB 3.0
 };
 
 /* Descriptor sizes per descriptor type */
-#define LIBUSB_DT_DEVICE_SIZE			18
-#define LIBUSB_DT_CONFIG_SIZE			9
-#define LIBUSB_DT_INTERFACE_SIZE		9
-#define LIBUSB_DT_ENDPOINT_SIZE			7
-#define LIBUSB_DT_ENDPOINT_AUDIO_SIZE		9	/* Audio extension */
-#define LIBUSB_DT_HUB_NONVAR_SIZE		7
+#define LIBUSB_DT_HEADER_SIZE					2	// XXX
+#define LIBUSB_DT_DEVICE_SIZE					18
+#define LIBUSB_DT_CONFIG_SIZE					9
+#define LIBUSB_DT_INTERFACE_SIZE				9
+#define LIBUSB_DT_ENDPOINT_SIZE					7
+#define LIBUSB_DT_ENDPOINT_AUDIO_SIZE			9	/* Audio extension */
+#define LIBUSB_DT_HUB_NONVAR_SIZE				7
 #define LIBUSB_DT_SS_ENDPOINT_COMPANION_SIZE	6
-#define LIBUSB_DT_BOS_SIZE			5
-#define LIBUSB_DT_DEVICE_CAPABILITY_SIZE	3
+#define LIBUSB_DT_BOS_SIZE						5
+#define LIBUSB_DT_DEVICE_CAPABILITY_SIZE		3
+#define LIBUSB_DT_QUALIFER_SIZE					10	// XXX
+#define LIBUSB_DT_OTHER_SPEED_SIZE				9	// XXX
+#define LIBUSB_DT_ASSOCIATION_SIZE				8	// XXX add to support IAD
 
 /* BOS descriptor sizes */
-#define LIBUSB_BT_USB_2_0_EXTENSION_SIZE	7
+#define LIBUSB_BT_USB_2_0_EXTENSION_SIZE		7
 #define LIBUSB_BT_SS_USB_DEVICE_CAPABILITY_SIZE	10
-#define LIBUSB_BT_CONTAINER_ID_SIZE		20
+#define LIBUSB_BT_CONTAINER_ID_SIZE				20
 
 /* We unwrap the BOS => define its max size */
 #define LIBUSB_DT_BOS_MAX_SIZE		((LIBUSB_DT_BOS_SIZE)     +\
@@ -639,6 +667,27 @@ struct libusb_interface {
 };
 
 /** \ingroup desc
+ * A structure representing the Interface Association descriptor(IAD).
+ */
+struct libusb_association_descriptor {	// XXX added to support composit device
+	uint8_t 	bLength;			// Size of this descriptor (in bytes)
+	uint8_t 	bDescriptorType;	// Descriptor type(LIBUSB_DT_ASSOCIATION)
+	uint8_t 	bFirstInterface;	// First interface number of the set of interfaces that follow this descriptor.
+	uint8_t 	bInterfaceCount;	// The Number of interfaces follow this descriptor that are considered "associated".
+	uint8_t 	bFunctionClass;		// bInterfaceClass used for this associated interfaces
+	uint8_t 	bFunctionSubClass;	// bInterfaceSubClass used for the associated interfaces
+	uint8_t 	bFunctionProtocol;	// bInterfaceProtocol used for the associated interfaces
+	uint8_t 	iFunction;			// Index of string descriptor describing the associated interfaces.
+
+	/** Extra descriptors. If libusb encounters unknown configuration
+	 * descriptors, it will store them here, should you wish to parse them. */
+	const unsigned char *extra;
+
+	/** Length of the extra descriptors, in bytes. */
+	int extra_length;
+};
+
+/** \ingroup desc
  * A structure representing the standard USB configuration descriptor. This
  * descriptor is documented in section 9.6.3 of the USB 3.0 specification.
  * All multiple-byte fields are represented in host-endian format.
@@ -675,6 +724,12 @@ struct libusb_config_descriptor {
 	/** Array of interfaces supported by this configuration. The length of
 	 * this array is determined by the bNumInterfaces field. */
 	const struct libusb_interface *interface;
+
+	/** Single link list of interface association descriptors related to this configuration.
+	 * The length of this list is determined by the num_associations field. */
+	struct libusb_association_descriptor *association_descriptor;
+	uint8_t num_associations;
+	uint8_t selected_iad;
 
 	/** Extra descriptors. If libusb encounters unknown configuration
 	 * descriptors, it will store them here, should you wish to parse them. */
@@ -1321,6 +1376,8 @@ void LIBUSB_CALL libusb_unref_device(libusb_device *dev);
 libusb_device *libusb_find_device(libusb_context *ctx,
 	const int vid, const int pid, const char *sn, int fd);	// XXX add for mainly non-rooted Android
 
+int LIBUSB_CALL libusb_get_raw_descriptor(libusb_device *dev,
+		unsigned char **buffer, int *descriptors_len, int *host_endian);
 int LIBUSB_CALL libusb_get_configuration(libusb_device_handle *dev,
 	int *config);
 int LIBUSB_CALL libusb_get_device_descriptor(libusb_device *dev,

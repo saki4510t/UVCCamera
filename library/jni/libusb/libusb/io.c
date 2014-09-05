@@ -1,3 +1,7 @@
+/**
+ * modified mainly to improve performace 
+ * Copyright(c) saki saki@serenegiant.com
+ */
 /* -*- Mode: C; indent-tabs-mode:t ; c-basic-offset:8 -*- */
 /*
  * I/O functions for libusb
@@ -1495,14 +1499,14 @@ int API_EXPORTED libusb_cancel_transfer(struct libusb_transfer *transfer) {
 	usbi_mutex_lock(&itransfer->lock);
 	{
 		r = usbi_backend->cancel_transfer(itransfer);
-		if (UNLIKELY(r < 0)) {
+		if UNLIKELY(r < 0) {
 			if (r != LIBUSB_ERROR_NOT_FOUND &&
 			    r != LIBUSB_ERROR_NO_DEVICE) {
 				usbi_err(TRANSFER_CTX(transfer), "cancel transfer failed error %d", r);
 			} else {
 				usbi_dbg("cancel transfer failed error %d", r);
 			}
-			if (UNLIKELY(r == LIBUSB_ERROR_NO_DEVICE))
+			if (r == LIBUSB_ERROR_NO_DEVICE)
 				itransfer->flags |= USBI_TRANSFER_DEVICE_DISAPPEARED;
 		}
 
@@ -1587,17 +1591,18 @@ int usbi_handle_transfer_completion(struct usbi_transfer *itransfer,
 		int rqlen = transfer->length;
 		if (transfer->type == LIBUSB_TRANSFER_TYPE_CONTROL)
 			rqlen -= LIBUSB_CONTROL_SETUP_SIZE;
-		if (rqlen != itransfer->transferred) {
+		if (rqlen != itransfer->transferred) {	// XXX itransfer->transferred is almost always zero on iso transfer mode...
 			usbi_dbg("interpreting short transfer as error");
+			LOGI("interpreting short transfer as error:rqlen=%d,transferred=%d", rqlen, itransfer->transferred);
 			status = LIBUSB_TRANSFER_ERROR;
 		}
 	}
 
 	flags = transfer->flags;
 	transfer->status = status;
-	transfer->actual_length = itransfer->transferred;
+	transfer->actual_length = itransfer->transferred;	// XXX therefore transfer->actual_length is also almost always zero on iso transfer mode
 	usbi_dbg("transfer %p has callback %p", transfer, transfer->callback);
-	if (transfer->callback)
+	if LIKELY(transfer->callback)
 		transfer->callback(transfer);
 	/* transfer might have been freed by the above call, do not use from
 	 * this point. */

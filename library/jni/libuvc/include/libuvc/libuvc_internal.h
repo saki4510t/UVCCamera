@@ -16,6 +16,11 @@
 
 //#define UVC_DEBUGGING
 
+/** Converts an unaligned 8-byte little-endian integer into an int64 */
+#define QW_TO_LONG(p) \
+ ((p)[0] | ((p)[1] << 8) | ((p)[2] << 16) | ((p)[3] << 24) \
+  | ((uint64_t)(p)[4] << 32) | ((uint64_t)(p)[5] << 40) \
+  | ((uint64_t)(p)[6] << 48) | ((uint64_t)(p)[7] << 56))
 /** Converts an unaligned four-byte little-endian integer into an int32 */
 #define DW_TO_INT(p) ((p)[0] | ((p)[1] << 8) | ((p)[2] << 16) | ((p)[3] << 24))
 /** Converts an unaligned four-byte little-endian integer into an signed int32 */
@@ -32,6 +37,17 @@
   (p)[1] = (i) >> 8; \
   (p)[2] = (i) >> 16; \
   (p)[3] = (i) >> 24;
+/** Converts an int64 into an unaligned 8-byte little-endian integer */
+#define LONG_TO_QW(i, p) \
+  (p)[0] = (i); \
+  (p)[1] = (i) >> 8; \
+  (p)[2] = (i) >> 16; \
+  (p)[3] = (i) >> 24; \
+  (p)[4] = (i) >> 32; \
+  (p)[5] = (i) >> 40; \
+  (p)[6] = (i) >> 48; \
+  (p)[7] = (i) >> 56;
+
 
 /** Selects the nth item in a doubly linked list. n=-1 selects the last item. */
 #define DL_NTH(head, out, n) \
@@ -315,9 +331,9 @@ struct uvc_stream_handle {
   uint8_t running;
   /** Current control block */
   struct uvc_stream_ctrl cur_ctrl;
-
   /* listeners may only access hold*, and only when holding a 
    * lock on cb_mutex (probably signaled with cb_cond) */
+  uint8_t bfh_err, hold_bfh_err;	// XXX added to keep STREAM_HEADER_BFH_ERR
   uint8_t fid;
   uint32_t seq, hold_seq;
   uint32_t pts, hold_pts;
@@ -356,6 +372,7 @@ struct uvc_device_handle {
   uvc_stream_handle_t *streams;
   /** Whether the camera is an iSight that sends one header per frame */
   uint8_t is_isight;
+  uint8_t reset_on_release_if;	// XXX whether interface alt setting needs to reset to 0.
 };
 
 /** Context within which we communicate with devices */

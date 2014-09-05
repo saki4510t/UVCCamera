@@ -40,10 +40,13 @@
  *********************************************************************/
 /**
  * @defgroup device Device handling and enumeration
+ * @brief Support for finding, inspecting and opening UVC devices
  */
 
 #include "libuvc/libuvc.h"
 #include "libuvc/libuvc_internal.h"
+
+#define UVC_DETACH_ATTACH 0	// set this 1 attach/detach kernel driver by libuvc, set this 0 automatically attach/detach by libusb
 
 int uvc_already_open(uvc_context_t *ctx, struct libusb_device *usb_dev);
 void uvc_free_devh(uvc_device_handle_t *devh);
@@ -139,9 +142,7 @@ uvc_error_t uvc_find_device(uvc_context_t *ctx, uvc_device_t **dev, int vid,
 			continue;
 
 		if ((!vid || desc->idVendor == vid) && (!pid || desc->idProduct == pid)
-				&& (!sn
-						|| (desc->serialNumber
-								&& !strcmp(desc->serialNumber, sn))))
+				&& (!sn || (desc->serialNumber && !strcmp(desc->serialNumber, sn))))
 			found_dev = 1;
 
 		uvc_free_device_descriptor(desc);
@@ -233,15 +234,15 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 	internal_devh = calloc(1, sizeof(*internal_devh));
 	internal_devh->dev = dev;
 	internal_devh->usb_devh = usb_devh;
-
+	internal_devh->reset_on_release_if = 0;	// XXX
 	ret = uvc_get_device_info(dev, &(internal_devh->info));
 
 	if (UNLIKELY(ret != UVC_SUCCESS))
-		goto fail;
-
-	/* Automatically attach/detach kernel driver on supported platforms */
+		goto fail2;	// uvc_claim_if was not called yet and we don't need to call uvc_release_if
+#if !UVC_DETACH_ATTACH
+	/* enable automatic attach/detach kernel driver on supported platforms in libusb */
 	libusb_set_auto_detach_kernel_driver(usb_devh, 1);
-
+#endif
 	UVC_DEBUG("claiming control interface %d",
 			internal_devh->info->ctrl_if.bInterfaceNumber);
 	ret = uvc_claim_if(internal_devh,
@@ -250,8 +251,7 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 		goto fail;
 
 	libusb_get_device_descriptor(dev->usb_dev, &desc);
-	internal_devh->is_isight = (desc.idVendor == 0x05ac
-			&& desc.idProduct == 0x8501);
+	internal_devh->is_isight = (desc.idVendor == 0x05ac && desc.idProduct == 0x8501);
 
 	if (internal_devh->info->ctrl_if.bEndpointAddress) {
 		internal_devh->status_xfer = libusb_alloc_transfer(0);
@@ -268,10 +268,11 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 		UVC_DEBUG("libusb_submit_transfer() = %d", ret);
 
 		if (UNLIKELY(ret)) {
-			fprintf(stderr,
-					"uvc: device has a status interrupt endpoint, but unable to read from it\n");
+			LOGE("device has a status interrupt endpoint, but unable to read from it");
 			goto fail;
 		}
+	} else {
+		LOGE("internal_devh->info->ctrl_if.bEndpointAddress is null");
 	}
 
 	if (dev->ctx->own_usb_ctx && dev->ctx->open_devices == NULL) {
@@ -287,7 +288,12 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 	return ret;
 
 fail:
-	uvc_release_if(internal_devh, internal_devh->info->ctrl_if.bInterfaceNumber);
+	uvc_release_if(internal_devh, internal_devh->info->ctrl_if.bInterfaceNumber);	// XXX crash, assume when uvc_get_device_info failed.
+fail2:
+#if !UVC_DETACH_ATTACH
+	/* disable automatic attach/detach kernel driver on supported platforms in libusb */
+	libusb_set_auto_detach_kernel_driver(usb_devh, 0);
+#endif
 	libusb_close(usb_devh);
 	uvc_unref_device(dev);
 	uvc_free_devh(internal_devh);
@@ -317,15 +323,18 @@ uvc_error_t uvc_get_device_info(uvc_device_t *dev, uvc_device_info_t **info) {
 		UVC_EXIT(UVC_ERROR_NO_MEM);
 		return UVC_ERROR_NO_MEM;
 	}
-
 	if (libusb_get_config_descriptor(dev->usb_dev, 0, &(internal_info->config)) != 0) {
+//	if (libusb_get_active_config_descriptor(dev->usb_dev, &(internal_info->config)) != 0) {
+		// XXX assume libusb_get_active_config_descriptor　is better
+		// but some buggy device will return error when get active congig.
+		// so we will use libusb_get_config_descriptor...
 		free(internal_info);
 		UVC_EXIT(UVC_ERROR_IO);
 		return UVC_ERROR_IO;
 	}
 
-	ret = uvc_scan_control(dev, internal_info);
-	if (UNLIKELY(ret != UVC_SUCCESS)) {
+	ret = uvc_scan_control(dev, internal_info);	// XXX ViewっとめがねはここでVideoControlを見つけれないlibusb_get_config_descriptorで読めてないみたい
+	if UNLIKELY(ret) {
 		uvc_free_device_info(internal_info);
 		UVC_EXIT(ret);
 		return ret;
@@ -433,7 +442,7 @@ uvc_error_t uvc_get_device_descriptor(uvc_device_t *dev,
 
 	ret = libusb_get_device_descriptor(dev->usb_dev, &usb_desc);
 
-	if (UNLIKELY(ret != UVC_SUCCESS)) {
+	if UNLIKELY(ret) {
 		UVC_EXIT(ret);
 		return ret;
 	}
@@ -680,7 +689,7 @@ const uvc_input_terminal_t *uvc_get_input_terminals(uvc_device_handle_t *devh) {
  * @param devh Device handle to an open UVC device
  */
 const uvc_output_terminal_t *uvc_get_output_terminals(uvc_device_handle_t *devh) {
-	return devh->info->ctrl_if.output_term_descs ; /* @todo */
+	return devh->info->ctrl_if.output_term_descs ;
 }
 
 /**
@@ -756,10 +765,23 @@ uvc_error_t uvc_claim_if(uvc_device_handle_t *devh, int idx) {
 	int ret;
 
 	UVC_ENTER();
-
+#if !UVC_DETACH_ATTACH
+	// libusb automatically attach/detach kernel driver on supported platforms
 	UVC_DEBUG("claiming interface %d", idx);
 	ret = libusb_claim_interface(devh->usb_devh, idx);
-
+#else
+	/* Tell libusb to detach any active kernel drivers. libusb will keep track of whether
+	 * it found a kernel driver for this interface. */
+	ret = libusb_detach_kernel_driver(devh->usb_devh, idx);
+	
+	if LIKELY(!ret || ret == LIBUSB_ERROR_NOT_FOUND || ret == LIBUSB_ERROR_NOT_SUPPORTED) {
+		UVC_DEBUG("claiming interface %d", idx);
+		ret = libusb_claim_interface(devh->usb_devh, idx);
+	} else {
+	    UVC_DEBUG("not claiming interface %d: unable to detach kernel driver (%s)",
+			idx, uvc_strerror(ret));
+	}
+#endif
 	UVC_EXIT(ret);
 	return ret;
 }
@@ -779,9 +801,32 @@ uvc_error_t uvc_release_if(uvc_device_handle_t *devh, int idx) {
 	/* libusb_release_interface *should* reset the alternate setting to the first available,
 	 but sometimes (e.g. on Darwin) it doesn't. Thus, we do it explicitly here.
 	 This is needed to de-initialize certain cameras. */
-	libusb_set_interface_alt_setting(devh->usb_devh, idx, 0);
+	// XXX but resetting the alt setting here manytimes leads trouble
+	// on GT-N7100(international Galaxy Note2 at lease with Android4.4.2)
+	// so we add flag to avoid the issue
+	if (devh->reset_on_release_if)
+		libusb_set_interface_alt_setting(devh->usb_devh, idx, 0);
+
 	ret = libusb_release_interface(devh->usb_devh, idx);
 
+#if !UVC_DETACH_ATTACH
+	// libusb automatically attach/detach kernel driver on supported platforms
+	// and nothing to do here
+#else
+	if (UVC_SUCCESS == ret) {
+		/* Reattach any kernel drivers that were disabled when we claimed this interface */
+		ret = libusb_attach_kernel_driver(devh->usb_devh, idx);
+
+		if LIKELY(!ret) {
+			UVC_DEBUG("reattached kernel driver to interface %d", idx);
+		} else if (ret == LIBUSB_ERROR_NOT_FOUND || ret == LIBUSB_ERROR_NOT_SUPPORTED) {
+			ret = UVC_SUCCESS;  /* NOT_FOUND and NOT_SUPPORTED are OK: nothing to do */
+		} else {
+			UVC_DEBUG("error reattaching kernel driver to interface %d: %s",
+                idx, uvc_strerror(ret));
+		}
+	}
+#endif
 	UVC_EXIT(ret);
 	return ret;
 }
@@ -802,18 +847,22 @@ uvc_error_t uvc_scan_control(uvc_device_t *dev, uvc_device_info_t *info) {
 	ret = UVC_SUCCESS;
 	if_desc = NULL;
 
-	for (interface_idx = 0; interface_idx < info->config->bNumInterfaces; ++interface_idx) {
-		if_desc = &info->config->interface[interface_idx].altsetting[0];
+	if LIKELY(info && info->config) {	// XXX add to avoid crash
+		MARK("bNumInterfaces=%d", info->config->bNumInterfaces);
+		for (interface_idx = 0; interface_idx < info->config->bNumInterfaces; ++interface_idx) {
+			if_desc = &info->config->interface[interface_idx].altsetting[0];
+			MARK("interface_idx=%d:bInterfaceClass=%02x,bInterfaceSubClass=%02x", interface_idx, if_desc->bInterfaceClass, if_desc->bInterfaceSubClass);
+			// select first found Video control
+			if (if_desc->bInterfaceClass == LIBUSB_CLASS_VIDEO/*14*/ && if_desc->bInterfaceSubClass == 1) // Video, Control
+				break;
 
-		// select first found Video control
-		if (if_desc->bInterfaceClass == 14 && if_desc->bInterfaceSubClass == 1) // Video, Control
-			break;
-
-		if_desc = NULL;
+			if_desc = NULL;
+		}
 	}
 
-	if (UNLIKELY(if_desc == NULL)) {
+	if UNLIKELY(!if_desc) {
 		UVC_EXIT(UVC_ERROR_INVALID_DEVICE);
+		LOGE("UVC_ERROR_INVALID_DEVICE");
 		return UVC_ERROR_INVALID_DEVICE;
 	}
 
@@ -865,6 +914,7 @@ uvc_error_t uvc_parse_vc_header(uvc_device_t *dev, uvc_device_info_t *info,
 	case 0x0100:
 	case 0x010a:
 	case 0x0110:
+	case 0x0150:	// XXX add to support UVC 1.5
 		break;
 	default:
 		UVC_EXIT(UVC_ERROR_NOT_SUPPORTED);
@@ -1016,7 +1066,7 @@ uvc_error_t uvc_parse_vc(uvc_device_t *dev, uvc_device_info_t *info,
 
 	UVC_ENTER();
 
-	if (block[1] != 36) { // not a CS_INTERFACE descriptor??
+	if (block[1] != LIBUSB_DT_CS_INTERFACE/*36*/) { // not a CS_INTERFACE descriptor??
 		UVC_EXIT(UVC_SUCCESS);
 		return UVC_SUCCESS; // UVC_ERROR_INVALID_DEVICE;
 	}
@@ -1041,6 +1091,7 @@ uvc_error_t uvc_parse_vc(uvc_device_t *dev, uvc_device_info_t *info,
 		ret = uvc_parse_vc_extension_unit(dev, info, block, block_size);
 		break;
 	default:
+		LOGW("UVC_ERROR_INVALID_DEVICE:descriptor_subtype=0x%02x", descriptor_subtype);
 		ret = UVC_ERROR_INVALID_DEVICE;
 	}
 
@@ -1067,23 +1118,35 @@ uvc_error_t uvc_scan_streaming(uvc_device_t *dev, uvc_device_info_t *info,
 	if_desc = &(info->config->interface[interface_idx].altsetting[0]);
 	buffer = if_desc->extra;
 	buffer_left = if_desc->extra_length;
-
+	// XXX some device have it's format descriptions after the endpoint descriptor
+	if UNLIKELY(!buffer || !buffer_left) {
+		if (if_desc->bNumEndpoints && if_desc->endpoint) {
+			// try to use extra data in endpoint[0]
+			buffer = if_desc->endpoint[0].extra;
+			buffer_left = if_desc->endpoint[0].extra_length;
+		}
+	}
 	stream_if = calloc(1, sizeof(*stream_if));
 	stream_if->parent = info;
 	stream_if->bInterfaceNumber = if_desc->bInterfaceNumber;
 	DL_APPEND(info->stream_ifs, stream_if);
 
-	while (buffer_left >= 3) {
-		block_size = buffer[0];
-		parse_ret = uvc_parse_vs(dev, info, stream_if, buffer, block_size);
+	if LIKELY(buffer_left >= 3) {
+		while (buffer_left >= 3) {
+			block_size = buffer[0];
+			MARK("bDescriptorType=0x%02x", buffer[1]);
+			parse_ret = uvc_parse_vs(dev, info, stream_if, buffer, block_size);
 
-		if (parse_ret != UVC_SUCCESS) {
-			ret = parse_ret;
-			break;
+			if (parse_ret != UVC_SUCCESS) {
+				ret = parse_ret;
+				break;
+			}
+
+			buffer_left -= block_size;
+			buffer += block_size;
 		}
-
-		buffer_left -= block_size;
-		buffer += block_size;
+	} else {
+		LOGW("This VideoStreaming interface has no extra data");
 	}
 
 	UVC_EXIT(ret);
@@ -1229,7 +1292,7 @@ uvc_error_t uvc_parse_vs(uvc_device_t *dev, uvc_device_info_t *info,
 
 	ret = UVC_SUCCESS;
 	descriptor_subtype = block[2];
-
+	MARK("descriptor_subtype=0x%02x", descriptor_subtype);
 	switch (descriptor_subtype) {
 	case UVC_VS_INPUT_HEADER:
 		ret = uvc_parse_vs_input_header(stream_if, block, block_size);
@@ -1246,6 +1309,7 @@ uvc_error_t uvc_parse_vs(uvc_device_t *dev, uvc_device_info_t *info,
 		break;
 	default:
 		/** @todo handle JPEG and maybe still frames or even DV... */
+		LOGV("unsupported descriptor_subtype(0x%02x)", descriptor_subtype);
 		break;
 	}
 
@@ -1290,6 +1354,10 @@ void uvc_close(uvc_device_handle_t *devh) {
 
 	uvc_release_if(devh, devh->info->ctrl_if.bInterfaceNumber);
 
+#if !UVC_DETACH_ATTACH
+	/* disable automatic attach/detach kernel driver on supported platforms in libusb */
+	libusb_set_auto_detach_kernel_driver(devh->usb_devh, 0);
+#endif
 	/* If we are managing the libusb context and this is the last open device,
 	 * then we need to cancel the handler thread. When we call libusb_close,
 	 * it'll cause a return from the thread's libusb_handle_events call, after
@@ -1311,6 +1379,13 @@ void uvc_close(uvc_device_handle_t *devh) {
 	UVC_EXIT_VOID();
 }
 
+uvc_error_t uvc_set_reset_altsetting(uvc_device_handle_t *devh, uint8_t reset_on_release_if) {
+	if UNLIKELY(!devh)
+		RETURN(UVC_ERROR_INVALID_PARAM, uvc_error_t);
+	devh->reset_on_release_if = reset_on_release_if;
+	RETURN(UVC_SUCCESS, uvc_error_t);
+}
+
 /** @internal
  * @brief Get number of open devices
  */
@@ -1326,7 +1401,7 @@ size_t uvc_num_devices(uvc_context_t *ctx) {
 		count++;
 	}
 
-	UVC_EXIT((int ) count);
+	UVC_EXIT((int) count);
 	return count;
 }
 
@@ -1343,8 +1418,7 @@ void uvc_process_status_xfer(uvc_device_handle_t *devh,
 	/* printf("Got transfer of aLen = %d\n", transfer->actual_length); */
 
 	if (transfer->actual_length < 4) {
-		UVC_DEBUG("Short read of status update (%d bytes)",
-				transfer->actual_length);
+		UVC_DEBUG("Short read of status update (%d bytes)", transfer->actual_length);
 		UVC_EXIT_VOID();
 		return;
 	}
@@ -1374,7 +1448,7 @@ void uvc_process_status_xfer(uvc_device_handle_t *devh,
 		}
 
 		if (event != 0) {
-			UVC_DEBUG("Unhandled VC event %d", (int ) event);
+			UVC_DEBUG("Unhandled VC event %d", (int) event);
 			UVC_EXIT_VOID();
 			return;
 		}
@@ -1403,7 +1477,7 @@ void uvc_process_status_xfer(uvc_device_handle_t *devh,
 
 		if (!found_entity) {
 			UVC_DEBUG("Got status update for unknown VideoControl entity %d",
-					(int ) originator);
+				(int) originator);
 			UVC_EXIT_VOID();
 			return;
 		}

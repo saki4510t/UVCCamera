@@ -634,6 +634,10 @@ struct usbi_os_backend {
 	 */
 	void (*close)(struct libusb_device_handle *handle);
 
+#ifdef ACCESS_RAW_DESCRIPTORS
+	int (*get_raw_descriptor)(struct libusb_device *device,
+			unsigned char *buffer, int *descriptors_len, int *host_endian);	// XXX
+#endif
 	/* Retrieve the device descriptor from a device.
 	 *
 	 * The descriptor should be retrieved from memory, NOT via bus I/O to the

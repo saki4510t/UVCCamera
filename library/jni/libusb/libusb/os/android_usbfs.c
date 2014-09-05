@@ -21,8 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "config.h"
+#define LOCAL_DEBUG 0
 
+#include "config.h"
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
@@ -179,6 +180,14 @@ struct linux_transfer_priv {
 	/* next iso packet in user-supplied transfer to be populated */
 	int iso_packet_offset;
 };
+
+#if LOCAL_DEBUG
+static void dump_urb(int ix, struct usbfs_urb *urb) {
+	LOGI("%d:type=%d,endpopint=%d,status=%d,flag=%d", ix, urb->type, urb->endpoint, urb->status, urb->flags);
+	LOGI("%d:buffer_length=%d,actual_length=%d,start_frame=%d", ix, urb->buffer_length, urb->actual_length, urb->start_frame);
+	LOGI("%d:number_of_packets=%d,error_count=%d,signr=%d", ix, urb->number_of_packets, urb->error_count, urb->signr);
+}
+#endif
 
 /**
  * this is original _get_usbfs_fd (name changed to __get_usbfs_fd)
@@ -568,10 +577,27 @@ static int __read_sysfs_attr(struct libusb_context *ctx, const char *devname,
 	return value;
 }
 
+// XXX
+static int op_get_raw_descriptor(struct libusb_device *dev,
+		unsigned char *buffer, int *descriptors_len, int *host_endian) {
+	struct linux_device_priv *priv = _device_priv(dev);
+
+	if (!descriptors_len || !host_endian)
+		return LIBUSB_ERROR_INVALID_PARAM;
+	*host_endian = sysfs_has_descriptors ? 0 : 1;
+	if (buffer && (*descriptors_len >= priv->descriptors_len)) {
+		memcpy(buffer, priv->descriptors, priv->descriptors_len);
+	}
+	*descriptors_len = priv->descriptors_len;
+	return 0;
+}
+
 static int op_get_device_descriptor(struct libusb_device *dev,
 		unsigned char *buffer, int *host_endian) {
 	struct linux_device_priv *priv = _device_priv(dev);
 
+	if (!host_endian)
+		return LIBUSB_ERROR_INVALID_PARAM;
 	*host_endian = sysfs_has_descriptors ? 0 : 1;
 	memcpy(buffer, priv->descriptors, DEVICE_DESC_LENGTH);
 
@@ -665,6 +691,34 @@ int linux_get_device_address(struct libusb_context *ctx, int detached,
 	return LIBUSB_SUCCESS;
 }
 
+/*
+ * Return offset of the first descriptor with the given type
+ * return 0 if the buffer is already placed at the specific descriptor.
+ * this is the difference from seek_to_next_descriptor
+ */
+static int seek_to_first_descriptor(struct libusb_context *ctx,
+		uint8_t descriptor_type, unsigned char *buffer, int size) {
+	struct usb_descriptor_header header;
+	int i;
+
+	for (i = 0; size >= 0; i += header.bLength, size -= header.bLength) {
+		if (size == 0)
+			return LIBUSB_ERROR_NOT_FOUND;
+
+		if (size < LIBUSB_DT_HEADER_SIZE) {
+			usbi_err(ctx, "short descriptor read %d/2", size);
+			return LIBUSB_ERROR_IO;
+		}
+		usbi_parse_descriptor(buffer + i, "bb", &header, 0);
+
+		if (header.bDescriptorType == descriptor_type)	// XXX
+			return i;
+	}
+	usbi_err(ctx, "bLength overflow by %d bytes", -size);
+	return LIBUSB_ERROR_IO;
+}
+
+
 /* Return offset of the next descriptor with the given type */
 static int seek_to_next_descriptor(struct libusb_context *ctx,
 		uint8_t descriptor_type, unsigned char *buffer, int size) {
@@ -675,7 +729,7 @@ static int seek_to_next_descriptor(struct libusb_context *ctx,
 		if (size == 0)
 			return LIBUSB_ERROR_NOT_FOUND;
 
-		if (size < 2) {
+		if (size < LIBUSB_DT_HEADER_SIZE) {
 			usbi_err(ctx, "short descriptor read %d/2", size);
 			return LIBUSB_ERROR_IO;
 		}
@@ -692,10 +746,16 @@ static int seek_to_next_descriptor(struct libusb_context *ctx,
 static int seek_to_next_config(struct libusb_context *ctx,
 		unsigned char *buffer, int size) {
 	struct libusb_config_descriptor config;
+	struct usb_descriptor_header header;
 
 	if (size == 0)
 		return LIBUSB_ERROR_NOT_FOUND;
 
+	if (size < LIBUSB_DT_HEADER_SIZE) {
+		usbi_err(ctx, "short descriptor read %d/%d",
+			size, LIBUSB_DT_CONFIG_SIZE);
+		return LIBUSB_ERROR_IO;
+	}
 	if (size < LIBUSB_DT_CONFIG_SIZE) {
 		usbi_err(ctx, "short descriptor read %d/%d",
 			size, LIBUSB_DT_CONFIG_SIZE);
@@ -747,7 +807,7 @@ static int op_get_config_descriptor_by_value(struct libusb_device *dev,
 	struct libusb_context *ctx = DEVICE_CTX(dev);
 	struct linux_device_priv *priv = _device_priv(dev);
 	unsigned char *descriptors = priv->descriptors;
-	int size = priv->descriptors_len;
+	int size = priv->descriptors_len, r;
 	struct libusb_config_descriptor *config;
 
 	*buffer = NULL;
@@ -757,11 +817,23 @@ static int op_get_config_descriptor_by_value(struct libusb_device *dev,
 	/* Skip device header */
 	descriptors += DEVICE_DESC_LENGTH;
 	size -= DEVICE_DESC_LENGTH;
-
+	// XXX at this point, we skipped device descriptor only and the next one
+	// will not be a config descriptor. It may be a qualifer descriptor
+	// or other speed config descriptor on some device.
+	// Therefor we need to find the first config descriptor.
+	// FIXME On current implemntation, any descriptor other than config descriptor
+	// are skipped if they placed before config descriptor.
+	r = seek_to_first_descriptor(ctx, LIBUSB_DT_CONFIG, descriptors, size);
+	if UNLIKELY(r < 0) {
+		LOGE("could not find config descriptor:r=%d", r);
+		return r;
+	}
+	descriptors += r;
+	size -= r;
 	/* Seek till the config is found, or till "EOF" */
-	while (1) {
-		int next = seek_to_next_config(ctx, descriptors, size);
-		if (next < 0)
+	for (; ;) {
+		register int next = seek_to_next_config(ctx, descriptors, size);
+		if UNLIKELY(next < 0)
 			return next;
 		config = (struct libusb_config_descriptor *) descriptors;
 		if (config->bConfigurationValue == value) {
@@ -803,6 +875,7 @@ static int op_get_active_config_descriptor(struct libusb_device *dev,
 static int op_get_config_descriptor(struct libusb_device *dev,
 		uint8_t config_index, unsigned char *buffer, size_t len,
 		int *host_endian) {
+	struct libusb_context *ctx = DEVICE_CTX(dev);
 	struct linux_device_priv *priv = _device_priv(dev);
 	unsigned char *descriptors = priv->descriptors;
 	int i, r, size = priv->descriptors_len;
@@ -810,14 +883,26 @@ static int op_get_config_descriptor(struct libusb_device *dev,
 	/* Unlike the device desc. config descs. are always in raw format */
 	*host_endian = 0;
 
-	/* Skip device header */
+	/* Skip device header (device descriptor) */
 	descriptors += DEVICE_DESC_LENGTH;
 	size -= DEVICE_DESC_LENGTH;
-
+	// XXX at this point, we skipped device descriptor only and the next one
+	// will not be a config descriptor. It may be a qualifer descriptor
+	// or other speed config descriptor on some device.
+	// Therefor we need to find the first config descriptor.
+	// FIXME On current implemntation, any descriptor other than config descriptor
+	// are skipped if they placed before config descriptor.
+	r = seek_to_first_descriptor(ctx, LIBUSB_DT_CONFIG, descriptors, size);
+	if UNLIKELY(r < 0) {
+		LOGE("could not find config descriptor:r=%d", r);
+		return r;
+	}
+	descriptors += r;
+	size -= r;
 	/* Seek till the config is found, or till "EOF" */
 	for (i = 0; ; i++) {
-		r = seek_to_next_config(DEVICE_CTX(dev), descriptors, size);
-		if (UNLIKELY(r < 0))
+		r = seek_to_next_config(ctx, descriptors, size);
+		if (UNLIKELY(r < 0))	// if error
 			return r;
 		if (i == config_index)
 			break;
@@ -935,7 +1020,7 @@ static int initialize_device(struct libusb_device *dev, uint8_t busnum,
 
 	/* cache active config */
 	fd = _get_usbfs_fd(dev, O_RDWR, 1);
-	if (fd < 0) {
+	if (fd < 0) {	// if could not get fd of usbfs with read/write access
 		/* cannot send a control message to determine the active
 		 * config. just assume the first one is active. */
 		usbi_warn(ctx, "Missing rw usbfs access; cannot determine "
@@ -951,7 +1036,7 @@ static int initialize_device(struct libusb_device *dev, uint8_t busnum,
 
 		return LIBUSB_SUCCESS;
 	}
-
+	// if we could get fd of usbfs with read/write access
 	r = usbfs_get_active_config(dev, fd);
 	if (r > 0) {
 		priv->active_config = r;
@@ -1344,7 +1429,7 @@ static int op_get_configuration(struct libusb_device_handle *handle,
 
 static int op_set_configuration(struct libusb_device_handle *handle, int config) {
 	struct linux_device_priv *priv = _device_priv(handle->dev);
-	int fd = _device_handle_priv(handle)->fd;
+	const int fd = _device_handle_priv(handle)->fd;
 	int r = ioctl(fd, IOCTL_USBFS_SETCONFIG, &config);
 	if (UNLIKELY(r)) {
 		if (errno == EINVAL)
@@ -1365,7 +1450,7 @@ static int op_set_configuration(struct libusb_device_handle *handle, int config)
 }
 
 static int claim_interface(struct libusb_device_handle *handle, int iface) {
-	int fd = _device_handle_priv(handle)->fd;
+	const int fd = _device_handle_priv(handle)->fd;
 	int r = ioctl(fd, IOCTL_USBFS_CLAIMINTF, &iface);
 	if (UNLIKELY(r)) {
 		if (errno == ENOENT)
@@ -1383,7 +1468,7 @@ static int claim_interface(struct libusb_device_handle *handle, int iface) {
 }
 
 static int release_interface(struct libusb_device_handle *handle, int iface) {
-	int fd = _device_handle_priv(handle)->fd;
+	const int fd = _device_handle_priv(handle)->fd;
 	int r = ioctl(fd, IOCTL_USBFS_RELEASEINTF, &iface);
 	if (UNLIKELY(r)) {
 		if (errno == ENODEV)
@@ -1397,7 +1482,7 @@ static int release_interface(struct libusb_device_handle *handle, int iface) {
 }
 
 static int op_set_interface(struct libusb_device_handle *handle, int iface, int altsetting) {
-	int fd = _device_handle_priv(handle)->fd;
+	const int fd = _device_handle_priv(handle)->fd;
 	struct usbfs_setinterface setintf;
 	int r;
 
@@ -1420,7 +1505,7 @@ static int op_set_interface(struct libusb_device_handle *handle, int iface, int 
 
 static int op_clear_halt(struct libusb_device_handle *handle,
 		unsigned char endpoint) {
-	int fd = _device_handle_priv(handle)->fd;
+	const int fd = _device_handle_priv(handle)->fd;
 	unsigned int _endpoint = endpoint;
 	int r = ioctl(fd, IOCTL_USBFS_CLEAR_HALT, &_endpoint);
 	if (UNLIKELY(r)) {
@@ -1438,7 +1523,7 @@ static int op_clear_halt(struct libusb_device_handle *handle,
 }
 
 static int op_reset_device(struct libusb_device_handle *handle) {
-	int fd = _device_handle_priv(handle)->fd;
+	const int fd = _device_handle_priv(handle)->fd;
 	int i, r, ret = 0;
 
 	/* Doing a device reset will cause the usbfs driver to get unbound
@@ -1490,9 +1575,9 @@ out:
 }
 
 static int do_streams_ioctl(struct libusb_device_handle *handle, long req,
-	uint32_t num_streams, unsigned char *endpoints, int num_endpoints)
-{
-	int r, fd = _device_handle_priv(handle)->fd;
+	uint32_t num_streams, unsigned char *endpoints, int num_endpoints) {
+	const int fd = _device_handle_priv(handle)->fd;
+	int r;
 	struct usbfs_streams *streams;
 
 	if (num_endpoints > 30) /* Max 15 in + 15 out eps */
@@ -1539,9 +1624,8 @@ static int op_free_streams(struct libusb_device_handle *handle,
 				endpoints, num_endpoints);
 }
 
-static int op_kernel_driver_active(struct libusb_device_handle *handle,
-		int interface) {
-	int fd = _device_handle_priv(handle)->fd;
+static int op_kernel_driver_active(struct libusb_device_handle *handle, int interface) {
+	const int fd = _device_handle_priv(handle)->fd;
 	struct usbfs_getdriver getdrv;
 	int r;
 
@@ -1561,9 +1645,8 @@ static int op_kernel_driver_active(struct libusb_device_handle *handle,
 	return (strcmp(getdrv.driver, "usbfs") == 0) ? 0 : 1;
 }
 
-static int op_detach_kernel_driver(struct libusb_device_handle *handle,
-		int interface) {
-	int fd = _device_handle_priv(handle)->fd;
+static int op_detach_kernel_driver(struct libusb_device_handle *handle, int interface) {
+	const int fd = _device_handle_priv(handle)->fd;
 	struct usbfs_ioctl command;
 	struct usbfs_getdriver getdrv;
 	int r;
@@ -1594,9 +1677,8 @@ static int op_detach_kernel_driver(struct libusb_device_handle *handle,
 	return 0;
 }
 
-static int op_attach_kernel_driver(struct libusb_device_handle *handle,
-		int interface) {
-	int fd = _device_handle_priv(handle)->fd;
+static int op_attach_kernel_driver(struct libusb_device_handle *handle, int interface) {
+	const int fd = _device_handle_priv(handle)->fd;
 	struct usbfs_ioctl command;
 	int r;
 
@@ -1626,8 +1708,9 @@ static int op_attach_kernel_driver(struct libusb_device_handle *handle,
 }
 
 static int detach_kernel_driver_and_claim(struct libusb_device_handle *handle, int interface) {
+	const int fd = _device_handle_priv(handle)->fd;
 	struct usbfs_disconnect_claim dc;
-	int r, fd = _device_handle_priv(handle)->fd;
+	int r;
 
 	dc.interface = interface;
 	strcpy(dc.driver, "usbfs");
@@ -1919,7 +2002,7 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer) {
 	struct linux_device_handle_priv *dpriv = _device_handle_priv(transfer->dev_handle);
 	struct usbfs_urb **urbs;
 	size_t alloc_size;
-	int num_packets = transfer->num_iso_packets;
+	const int num_packets = transfer->num_iso_packets;
 	int i;
 	int this_urb_len = 0;
 	int num_urbs = 1;
@@ -1953,7 +2036,7 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer) {
 			this_urb_len += packet_len;
 		}
 	}
-	usbi_dbg("need %d 32k URBs for transfer", num_urbs);
+	usbi_dbg("need %d of 32k URBs for transfer", num_urbs);
 
 	alloc_size = num_urbs * sizeof(*urbs);
 	urbs = calloc(1, alloc_size);
@@ -1976,7 +2059,7 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer) {
 		int k;
 
 		/* swallow up all the packets we can fit into this URB */
-		while (packet_offset < transfer->num_iso_packets) {
+		while (packet_offset < num_packets) {
 			packet_len = transfer->iso_packet_desc[packet_offset].length;
 			if (packet_len <= space_remaining_in_urb) {
 				/* throw it in */
@@ -2309,7 +2392,8 @@ out_unlock:
 	return 0;
 
 completed:
-	free(tpriv->urbs);
+	if (tpriv->urbs)
+		free(tpriv->urbs);
 	tpriv->urbs = NULL;
 	usbi_mutex_unlock(&itransfer->lock);
 	return CANCELLED == tpriv->reap_action ?
@@ -2449,8 +2533,10 @@ static int handle_control_completion(struct usbi_transfer *itransfer,
 		if (urb->status != 0 && urb->status != -ENOENT)
 			usbi_warn(ITRANSFER_CTX(itransfer),
 				"cancel: unrecognised urb status %d", urb->status);
-		free(tpriv->urbs);
-		tpriv->urbs = NULL;
+		if (tpriv->urbs) {
+			free(tpriv->urbs);
+			tpriv->urbs = NULL;
+		}
 		usbi_mutex_unlock(&itransfer->lock);
 		return usbi_handle_transfer_cancellation(itransfer);
 	}
@@ -2490,8 +2576,10 @@ static int handle_control_completion(struct usbi_transfer *itransfer,
 		break;
 	}
 
-	free(tpriv->urbs);
-	tpriv->urbs = NULL;
+	if (tpriv->urbs) {
+		free(tpriv->urbs);	// crash
+		tpriv->urbs = NULL;
+	}
 	usbi_mutex_unlock(&itransfer->lock);
 	return usbi_handle_transfer_completion(itransfer, status);
 }
@@ -2620,6 +2708,7 @@ const struct usbi_os_backend android_usbfs_backend = {
 	.exit = op_exit,
 	.get_device_list = NULL,
 	.hotplug_poll = op_hotplug_poll,
+	.get_raw_descriptor = op_get_raw_descriptor,	// XXX
 	.get_device_descriptor = op_get_device_descriptor,
 	.get_active_config_descriptor = op_get_active_config_descriptor,
 	.get_config_descriptor = op_get_config_descriptor,

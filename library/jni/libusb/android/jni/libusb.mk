@@ -54,6 +54,7 @@ LOCAL_EXPORT_C_INCLUDES := \
 # add some flags
 LOCAL_CFLAGS := $(LOCAL_C_INCLUDES:%=-I%)
 LOCAL_CFLAGS += -DANDROID_NDK
+LOCAL_CFLAGS += -DACCESS_RAW_DESCRIPTORS
 LOCAL_CFLAGS += -O3 -fstrict-aliasing -fprefetch-loop-arrays
 LOCAL_EXPORT_LDLIBS += -llog
 LOCAL_ARM_MODE := arm

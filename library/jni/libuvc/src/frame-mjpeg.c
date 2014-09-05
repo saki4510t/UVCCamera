@@ -1,3 +1,7 @@
+/**
+ * add uvc_mjpeg2yuyv and modified to improve performance
+ * Copyright(c) 2014 saki saki@serenegiant.com
+ */
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
@@ -49,7 +53,16 @@ struct error_mgr {
 
 static void _error_exit(j_common_ptr dinfo) {
 	struct error_mgr *myerr = (struct error_mgr *) dinfo->err;
+#ifndef NDEBUG
+#if (defined(ANDROID) || defined(__ANDROID__))
+	char err_msg[1024];
+	(*dinfo->err->format_message)(dinfo, err_msg);
+	err_msg[1023] = 0;
+	LOGW("err=%s", err_msg);
+#else
 	(*dinfo->err->output_message)(dinfo);
+#endif
+#endif
 	longjmp(myerr->jmp, 1);
 }
 
@@ -123,12 +136,27 @@ static const unsigned char ac_chromi_val[] = {
 		memcpy(dinfo->tbl->huffval, name##_val, sizeof(name##_val)); \
 	} while(0)
 
-static void insert_huff_tables(j_decompress_ptr dinfo) {
+static inline void insert_huff_tables(j_decompress_ptr dinfo) {
 	COPY_HUFF_TABLE(dinfo, dc_huff_tbl_ptrs[0], dc_lumi);
 	COPY_HUFF_TABLE(dinfo, dc_huff_tbl_ptrs[1], dc_chromi);
 	COPY_HUFF_TABLE(dinfo, ac_huff_tbl_ptrs[0], ac_lumi);
 	COPY_HUFF_TABLE(dinfo, ac_huff_tbl_ptrs[1], ac_chromi);
 }
+
+// XXX added to improve the performance of decoding
+// maximun reading lines for each call of jpeg_read_scanlines
+// when defined this macro, it's value should be common factor
+// of all available frame height.
+// (1, 2, 4, 5, 6, 8, 10, 12, 20, 40...for 720p&1080p)
+#define MAX_READLINE 8
+
+#ifndef MAX_READLINE
+#define MAX_READLINE 1
+#endif
+#if MAX_READLINE < 1
+#undef MAX_READLINE
+#define MAX_READLINE 1
+#endif
 
 /** @brief Convert an MJPEG frame to RGB
  * @ingroup frame
@@ -140,7 +168,15 @@ uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	struct jpeg_decompress_struct dinfo;
 	struct error_mgr jerr;
 	size_t lines_read;
+	// local copy
+	uint8_t *data = out->data;
+	const int out_step = out->step;
 
+	int num_scanlines, i;
+	lines_read = 0;
+	unsigned char *buffer[MAX_READLINE];
+
+	out->actual_bytes = 0;	// XXX
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
 		return UVC_ERROR_INVALID_PARAM;
 
@@ -163,7 +199,7 @@ uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->data_bytes);
+	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
@@ -176,15 +212,15 @@ uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 
 	jpeg_start_decompress(&dinfo);
 
-	lines_read = 0;
 	if (LIKELY(dinfo.output_height == out->height)) {
 		for (; dinfo.output_scanline < dinfo.output_height ;) {
-			unsigned char *buffer[1] = { out->data + lines_read * out->step };
-			int num_scanlines;
-
-			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, 1);
+			buffer[0] = data + (lines_read) * out_step;
+			for (i = 1; i < MAX_READLINE; i++)
+				buffer[i] = buffer[i-1] + out_step;
+			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, MAX_READLINE);
 			lines_read += num_scanlines;
 		}
+		out->actual_bytes = in->width * in->height * 3;	// XXX
 	}
 	jpeg_finish_decompress(&dinfo);
 	jpeg_destroy_decompress(&dinfo);
@@ -192,7 +228,7 @@ uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 
 fail:
 	jpeg_destroy_decompress(&dinfo);
-	return UVC_ERROR_OTHER;
+	return UVC_ERROR_OTHER+1;
 }
 
 static inline unsigned char sat(int i) {
@@ -209,11 +245,17 @@ static inline unsigned char sat(int i) {
 
 uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 
+	out->actual_bytes = 0;	// XXX
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
 		return UVC_ERROR_INVALID_PARAM;
 
 	if (uvc_ensure_frame_size(out, in->width * in->height * 2) < 0)
 		return UVC_ERROR_NO_MEM;
+
+	size_t lines_read = 0;
+	int i, j;
+	int num_scanlines;
+	register uint8_t *yuyv, *ycbcr;
 
 	out->width = in->width;
 	out->height = in->height;
@@ -222,7 +264,6 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
-	uint8_t ycbcr[in->width * 3];	// allocate memories for a line
 
 	struct jpeg_decompress_struct dinfo;
 	struct error_mgr jerr;
@@ -234,7 +275,7 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->data_bytes);
+	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);	// XXX
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
@@ -245,24 +286,38 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 	dinfo.out_color_space = JCS_YCbCr;
 	dinfo.dct_method = JDCT_IFAST;
 
-	size_t lines_read = 0;
-	int i, num_scanlines, len;
-	uint8_t *buffer[1] = { ycbcr };
-	uint8_t *yuyv;
+	// start decompressor
 	jpeg_start_decompress(&dinfo);
+
+	// these dinfo.xxx valiables are only valid after jpeg_start_decompress
+	const int row_stride = dinfo.output_width * dinfo.output_components;
+
+	// allocate buffer
+	register JSAMPARRAY buffer = (*dinfo.mem->alloc_sarray)
+		((j_common_ptr) &dinfo, JPOOL_IMAGE, row_stride, MAX_READLINE);
+
+	// local copy
+	uint8_t *data = out->data;
+	const int out_step = out->step;
+
 	if (LIKELY(dinfo.output_height == out->height)) {
 		for (; dinfo.output_scanline < dinfo.output_height ;) {
-			// convert a line of mjpeg data to YCbCr
-			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, 1);
+			// convert lines of mjpeg data to YCbCr
+			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, MAX_READLINE);
 			// convert YCbCr to yuyv(YUV422)
-			yuyv = out->data + lines_read * out->step;
-			len = num_scanlines * out->width * 3;
-			for (i = 0; i < len; i += 12) {	// step by YCbCr x 4 pixels = 3 x 4 bytes
-				YCbCr_YUYV_2(ycbcr + i, yuyv);
-				YCbCr_YUYV_2(ycbcr + i + 6, yuyv);
+			for (j = 0; j < num_scanlines; j++) {
+				yuyv = data + (lines_read + j) * out_step;
+				ycbcr = buffer[j];
+				for (i = 0; i < row_stride; i += 24) {	// step by YCbCr x 8 pixels = 3 x 8 bytes
+					YCbCr_YUYV_2(ycbcr + i, yuyv);
+					YCbCr_YUYV_2(ycbcr + i + 6, yuyv);
+					YCbCr_YUYV_2(ycbcr + i + 12, yuyv);
+					YCbCr_YUYV_2(ycbcr + i + 18, yuyv);
+				}
 			}
 			lines_read += num_scanlines;
 		}
+		out->actual_bytes = in->width * in->height * 2;	// XXX
 	}
 
 	jpeg_finish_decompress(&dinfo);
@@ -271,6 +326,6 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 
 fail:
 	jpeg_destroy_decompress(&dinfo);
-	return UVC_ERROR_OTHER;
+	return lines_read == out->height ? UVC_SUCCESS : UVC_ERROR_OTHER+1;
 }
 

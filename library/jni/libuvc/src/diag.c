@@ -39,6 +39,7 @@
  *********************************************************************/
 /**
  * @defgroup diag Diagnostics
+ * @brief Interpretation of devices, error codes and negotiated stream parameters
  */
 
 #include "libuvc/libuvc.h"
@@ -70,7 +71,7 @@ static const _uvc_error_msg_t uvc_error_msgs[] = {
 };
 
 #ifdef __ANDROID__
-#define FPRINTF(stream, ...) MARK(__VA_ARGS__)
+#define FPRINTF(stream, ...) MARK(__VA_ARGS__); usleep(1000);
 #define FPRINTF_ERR(stream, ...) LOGW(__VA_ARGS__)
 #else
 #define FPRINTF(stream, ...) fprintf(stream, __VA_ARGS__)
@@ -192,7 +193,8 @@ void uvc_print_diag(uvc_device_handle_t *devh, FILE *stream) {
 				"VideoStreaming(%d):\n"
 				"\tbEndpointAddress: %d\n\tFormats:\n",
 				stream_idx, stream_if->bEndpointAddress);
-
+			uvc_print_format_descriptor(stream_if->format_descs, stream);
+/*			// move to separate function
 			DL_FOREACH(stream_if->format_descs, fmt_desc)
 			{
 				uvc_frame_desc_t *frame_desc;
@@ -201,12 +203,9 @@ void uvc_print_diag(uvc_device_handle_t *devh, FILE *stream) {
 				switch (fmt_desc->bDescriptorSubtype) {
 				case UVC_VS_FORMAT_UNCOMPRESSED:
 				case UVC_VS_FORMAT_MJPEG:
-					FPRINTF(stream, "\t\%s(%d)\n"
-							"\t\t  bits per pixel: %d\n",
-							_uvc_name_for_format_subtype(
-									fmt_desc->bDescriptorSubtype),
-							fmt_desc->bFormatIndex, fmt_desc->bBitsPerPixel);
-#ifdef __ANDROID__
+					FPRINTF(stream, "\t\%s(%d)",
+						_uvc_name_for_format_subtype(fmt_desc->bDescriptorSubtype), fmt_desc->bFormatIndex);
+					FPRINTF(stream, "\t\t  bits per pixel: %d", fmt_desc->bBitsPerPixel);
 					FPRINTF(stream,
 							"\t\t  GUID:%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
 							fmt_desc->guidFormat[0], fmt_desc->guidFormat[1],
@@ -217,65 +216,47 @@ void uvc_print_diag(uvc_device_handle_t *devh, FILE *stream) {
 							fmt_desc->guidFormat[10], fmt_desc->guidFormat[11],
 							fmt_desc->guidFormat[12], fmt_desc->guidFormat[13],
 							fmt_desc->guidFormat[14], fmt_desc->guidFormat[15]);
-#else
-					FPRINTF(stream, "\t\t  GUID:");
-					for (i = 0; i < 16; ++i)
-						FPRINTF(stream, "%02x", fmt_desc->guidFormat[i]);
-#endif
-					FPRINTF(stream, "\n");
 
-					FPRINTF(stream, "\t\t  default frame: %d\n"
-							"\t\t  aspect ration: %dx%d\n"
-							"\t\t  interlace flags: %02x\n"
-							"\t\t  copy protect: %02x\n",
-							fmt_desc->bDefaultFrameIndex,
-							fmt_desc->bAspectRatioX, fmt_desc->bAspectRatioY,
-							fmt_desc->bmInterlaceFlags, fmt_desc->bCopyProtect);
+					FPRINTF(stream, "\t\t  default frame: %d", fmt_desc->bDefaultFrameIndex);
+					FPRINTF(stream, "\t\t  aspect ration: %dx%d", fmt_desc->bAspectRatioX, fmt_desc->bAspectRatioY);
+					FPRINTF(stream, "\t\t  interlace flags: %02x", fmt_desc->bmInterlaceFlags);
+					FPRINTF(stream, "\t\t  copy protect: %02x", fmt_desc->bCopyProtect);
 
 					DL_FOREACH(fmt_desc->frame_descs, frame_desc)
 					{
 						uint32_t *interval_ptr;
 
-						FPRINTF(stream, "\t\t\tFrameDescriptor(%d)\n"
-								"\t\t\t  capabilities: %02x\n"
-								"\t\t\t  size: %dx%d\n"
-								"\t\t\t  bit rate: %d-%d\n"
-								"\t\t\t  max frame size: %d\n"
-								"\t\t\t  default interval: 1/%d\n",
-								frame_desc->bFrameIndex,
-								frame_desc->bmCapabilities,
-								frame_desc->wWidth, frame_desc->wHeight,
-								frame_desc->dwMinBitRate, frame_desc->dwMaxBitRate,
-								frame_desc->dwMaxVideoFrameBufferSize,
-								10000000 / frame_desc->dwDefaultFrameInterval);
+						FPRINTF(stream, "\t\t\tFrameDescriptor(%d)\n", frame_desc->bFrameIndex);
+						FPRINTF(stream, "\t\t\t  capabilities: %02x\n", frame_desc->bmCapabilities);
+						FPRINTF(stream, "\t\t\t  size: %dx%d\n", frame_desc->wWidth, frame_desc->wHeight);
+						FPRINTF(stream, "\t\t\t  bit rate: %d-%d\n", frame_desc->dwMinBitRate, frame_desc->dwMaxBitRate);
+						FPRINTF(stream, "\t\t\t  max frame size: %d\n", frame_desc->dwMaxVideoFrameBufferSize);
+						FPRINTF(stream, "\t\t\t  default interval: 1/%d\n", 10000000 / frame_desc->dwDefaultFrameInterval);
 						if (frame_desc->intervals) {
 							for (interval_ptr = frame_desc->intervals;
 									*interval_ptr; ++interval_ptr) {
-								FPRINTF(stream, "\t\t\t  interval[%d]: 1/%d\n",
-										(int ) (interval_ptr
-												- frame_desc->intervals),
+								FPRINTF(stream, "\t\t\t  interval[%d]: 1/%d",
+										(int ) (interval_ptr - frame_desc->intervals),
 										10000000 / *interval_ptr);
 							}
 						} else {
-							FPRINTF(stream, "\t\t\t  min interval[%d] = 1/%d\n"
-									"\t\t\t  max interval[%d] = 1/%d\n",
-									frame_desc->dwMinFrameInterval,
-									10000000 / frame_desc->dwMinFrameInterval,
-									frame_desc->dwMaxFrameInterval,
-									10000000 / frame_desc->dwMaxFrameInterval);
+							FPRINTF(stream, "\t\t\t  min interval[%d] = 1/%d",
+								frame_desc->dwMinFrameInterval,
+								10000000 / frame_desc->dwMinFrameInterval);
+							FPRINTF(stream, "\t\t\t  max interval[%d] = 1/%d",
+								frame_desc->dwMaxFrameInterval,
+								10000000 / frame_desc->dwMaxFrameInterval);
 							if (frame_desc->dwFrameIntervalStep)
-								FPRINTF(stream,
-										"\t\t\t  interval step[%d] = 1/%d\n",
-										frame_desc->dwFrameIntervalStep,
-										10000000
-												/ frame_desc->dwFrameIntervalStep);
+								FPRINTF(stream, "\t\t\t  interval step[%d] = 1/%d",
+									frame_desc->dwFrameIntervalStep,
+									10000000 / frame_desc->dwFrameIntervalStep);
 						}
 					}
 					break;
 				default:
-					FPRINTF(stream, "\t-UnknownFormat\n");
+					FPRINTF(stream, "\t-UnknownFormat");
 				}
-			}
+			} */
 		}
 
 		FPRINTF(stream, "END DEVICE CONFIGURATION\n");
@@ -285,3 +266,222 @@ void uvc_print_diag(uvc_device_handle_t *devh, FILE *stream) {
 	UVC_EXIT_VOID();
 }
 
+void uvc_print_format_descriptor(uvc_format_desc_t *format_descriptors, FILE *stream) {
+	ENTER();
+
+	if (stream == NULL)
+		stream = stderr;
+
+	uvc_format_desc_t *fmt_desc;
+	MARK("FORMAT DESCRIPTOR");
+	DL_FOREACH(format_descriptors, fmt_desc)
+	{
+		uvc_frame_desc_t *frame_desc;
+		int i;
+
+		switch (fmt_desc->bDescriptorSubtype) {
+		case UVC_VS_FORMAT_UNCOMPRESSED:
+		case UVC_VS_FORMAT_MJPEG:
+			FPRINTF(stream, "\t\%s(%d)",
+				_uvc_name_for_format_subtype(fmt_desc->bDescriptorSubtype), fmt_desc->bFormatIndex);
+			FPRINTF(stream, "\t\t  bits per pixel: %d", fmt_desc->bBitsPerPixel);
+			FPRINTF(stream,
+					"\t\t  GUID:%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+					fmt_desc->guidFormat[0], fmt_desc->guidFormat[1],
+					fmt_desc->guidFormat[2], fmt_desc->guidFormat[3],
+					fmt_desc->guidFormat[4], fmt_desc->guidFormat[5],
+					fmt_desc->guidFormat[6], fmt_desc->guidFormat[7],
+					fmt_desc->guidFormat[8], fmt_desc->guidFormat[9],
+					fmt_desc->guidFormat[10], fmt_desc->guidFormat[11],
+					fmt_desc->guidFormat[12], fmt_desc->guidFormat[13],
+					fmt_desc->guidFormat[14], fmt_desc->guidFormat[15]);
+
+			FPRINTF(stream, "\t\t  default frame: %d", fmt_desc->bDefaultFrameIndex);
+			FPRINTF(stream, "\t\t  aspect ration: %dx%d", fmt_desc->bAspectRatioX, fmt_desc->bAspectRatioY);
+			FPRINTF(stream, "\t\t  interlace flags: %02x", fmt_desc->bmInterlaceFlags);
+			FPRINTF(stream, "\t\t  copy protect: %02x", fmt_desc->bCopyProtect);
+
+			DL_FOREACH(fmt_desc->frame_descs, frame_desc)
+			{
+				uint32_t *interval_ptr;
+
+				FPRINTF(stream, "\t\t\tFrameDescriptor(%d)", frame_desc->bFrameIndex);
+				FPRINTF(stream, "\t\t\t  capabilities: %02x", frame_desc->bmCapabilities);
+				FPRINTF(stream, "\t\t\t  size: %dx%d", frame_desc->wWidth, frame_desc->wHeight);
+				FPRINTF(stream, "\t\t\t  bit rate: %d-%d", frame_desc->dwMinBitRate, frame_desc->dwMaxBitRate);
+				FPRINTF(stream, "\t\t\t  max frame size: %d", frame_desc->dwMaxVideoFrameBufferSize);
+				FPRINTF(stream, "\t\t\t  default interval: 1/%d", 10000000 / frame_desc->dwDefaultFrameInterval);
+				if (frame_desc->intervals) {
+					for (interval_ptr = frame_desc->intervals;
+							*interval_ptr; ++interval_ptr) {
+						FPRINTF(stream, "\t\t\t  interval[%d]: 1/%d",
+								(int ) (interval_ptr - frame_desc->intervals),
+								10000000 / *interval_ptr);
+					}
+				} else {
+					FPRINTF(stream, "\t\t\t  min interval[%d] = 1/%d",
+						frame_desc->dwMinFrameInterval,
+						10000000 / frame_desc->dwMinFrameInterval);
+					FPRINTF(stream, "\t\t\t  max interval[%d] = 1/%d",
+						frame_desc->dwMaxFrameInterval,
+						10000000 / frame_desc->dwMaxFrameInterval);
+					if (frame_desc->dwFrameIntervalStep)
+						FPRINTF(stream, "\t\t\t  interval step[%d] = 1/%d",
+							frame_desc->dwFrameIntervalStep,
+							10000000 / frame_desc->dwFrameIntervalStep);
+				}
+			}
+			break;
+		default:
+			FPRINTF(stream, "\t-UnknownFormat");
+		}
+	}
+	MARK("END FORMAT DESCRIPTOR");
+
+	EXIT();
+}
+
+void uvc_print_device_descriptor(uvc_device_handle_t *devh, FILE *stream) {
+	ENTER();
+
+	if (stream == NULL)
+		stream = stderr;
+
+	struct libusb_device_descriptor usb_desc;
+	uvc_error_t ret;
+
+	ret = libusb_get_device_descriptor(devh->dev->usb_dev, &usb_desc);
+
+	if (UNLIKELY(ret != UVC_SUCCESS)) {
+		LOGE("failed libusb_get_device_descriptor");
+		EXIT();
+	}
+
+	FPRINTF(stream, "DEVICE DESCRIPTOR (%04x:%04x)", usb_desc.idVendor, usb_desc.idProduct);
+	FPRINTF(stream, "\t bLength:%d", usb_desc.bLength);
+	FPRINTF(stream, "\t bDescriptorType:0x%02x", usb_desc.bDescriptorType);
+	FPRINTF(stream, "\t bcdUSB:0x%04x", usb_desc.bcdUSB);
+	FPRINTF(stream, "\t bDeviceClass:0x%02x", usb_desc.bDeviceClass);
+	FPRINTF(stream, "\t bDeviceSubClass:0x%02x", usb_desc.bDeviceSubClass);
+	FPRINTF(stream, "\t bDeviceProtocol:0x%02x", usb_desc.bDeviceProtocol);
+	FPRINTF(stream, "\t bMaxPacketSize0:%d", usb_desc.bMaxPacketSize0);
+	FPRINTF(stream, "\t idVendor:0x%04x", usb_desc.idVendor);
+	FPRINTF(stream, "\t idProduct:0x%04x", usb_desc.idProduct);
+	FPRINTF(stream, "\t bcdDevice:0x%04x", usb_desc.bcdDevice);
+	FPRINTF(stream, "\t iManufacturer:%d", usb_desc.iManufacturer);
+	FPRINTF(stream, "\t iProduct:%d", usb_desc.iProduct);
+	FPRINTF(stream, "\t iSerialNumber:%d", usb_desc.iSerialNumber);
+	FPRINTF(stream, "\t bNumConfigurations:%d", usb_desc.bNumConfigurations);
+
+	EXIT();
+}
+
+void uvc_print_endpoint_descriptor(
+	const struct libusb_endpoint_descriptor *endpoint, const int num_endpoint,
+	const char *prefix, FILE *stream) {
+
+	ENTER();
+
+	if (stream == NULL)
+		stream = stderr;
+
+	int ep_ix;
+	const struct libusb_endpoint_descriptor *ep;
+
+	for (ep_ix = 0; ep_ix < num_endpoint; ep_ix++) {
+		ep = endpoint + ep_ix;
+		FPRINTF(stream, "%s endpoint(%d)", prefix, ep_ix);
+		if LIKELY(ep) {
+			FPRINTF(stream, "%s\t bLength:%d", prefix, ep->bLength);
+			FPRINTF(stream, "%s\t bDescriptorType:0x%02x", prefix, ep->bDescriptorType);
+			FPRINTF(stream, "%s\t bEndpointAddress:0x%02x", prefix, ep->bEndpointAddress);
+			FPRINTF(stream, "%s\t bmAttributes:0x%02x", prefix, ep->bmAttributes);
+			FPRINTF(stream, "%s\t wMaxPacketSize:%d", prefix, ep->wMaxPacketSize);
+			FPRINTF(stream, "%s\t bInterval:%d", prefix, ep->bInterval);
+			FPRINTF(stream, "%s\t bRefresh(audio):%d", prefix, ep->bRefresh);
+			FPRINTF(stream, "%s\t bSynchAddress(audio):%d", prefix, ep->bSynchAddress);
+			FPRINTF(stream, "%s\t extra_length:%d", prefix, ep->extra_length);
+		}
+	}
+	EXIT();
+}
+
+void uvc_print_interface_descriptor(
+	const struct libusb_interface *interface, const int num_interface,
+	const char *prefix, FILE *stream) {
+
+	ENTER();
+
+	if (stream == NULL)
+		stream = stderr;
+
+	const struct libusb_interface *usb_if;
+	const struct libusb_interface_descriptor *altsetting;
+	int if_ix, alt_ix;
+	char pre[64];
+	sprintf(pre, "%s\t\t", prefix);
+	for (if_ix = 0; if_ix < num_interface; if_ix++) {
+		usb_if = interface + if_ix;
+		if LIKELY(usb_if) {
+			FPRINTF(stream, "%s interface(%d)", prefix, if_ix);
+			for (alt_ix = 0; alt_ix < usb_if->num_altsetting; alt_ix++) {
+				altsetting = usb_if->altsetting + alt_ix;
+				if LIKELY(altsetting) {
+					FPRINTF(stream, "%s\t altsetting:%d", prefix, alt_ix);
+					FPRINTF(stream, "%s\t\t bLength:%d", prefix, altsetting->bLength);
+					FPRINTF(stream, "%s\t\t bDescriptorType:0x%02x", prefix, altsetting->bDescriptorType);
+					FPRINTF(stream, "%s\t\t bInterfaceNumber:%d", prefix, altsetting->bInterfaceNumber);
+					FPRINTF(stream, "%s\t\t bAlternateSetting:%d", prefix, altsetting->bAlternateSetting);
+					FPRINTF(stream, "%s\t\t bNumEndpoints:%d", prefix, altsetting->bNumEndpoints);
+					FPRINTF(stream, "%s\t\t bInterfaceClass:0x%02x", prefix, altsetting->bInterfaceClass);
+					FPRINTF(stream, "%s\t\t bInterfaceSubClass:0x%02x", prefix, altsetting->bInterfaceSubClass);
+					FPRINTF(stream, "%s\t\t bInterfaceProtocol:0x%02x", prefix, altsetting->bInterfaceProtocol);
+					FPRINTF(stream, "%s\t\t iInterface:%d", prefix, altsetting->iInterface);
+					FPRINTF(stream, "%s\t\t extra_length:%d", prefix, altsetting->extra_length);
+					if (altsetting->bNumEndpoints)
+						uvc_print_endpoint_descriptor(altsetting->endpoint, altsetting->bNumEndpoints, pre, stream);
+				}
+			}
+		}
+	}
+
+	EXIT();
+}
+
+void uvc_print_configuration_descriptor(uvc_device_handle_t *devh, FILE *stream) {
+	ENTER();
+
+	if (stream == NULL)
+		stream = stderr;
+
+	int ret;
+	libusb_device_handle *usb_devh = uvc_get_libusb_handle(devh);
+	libusb_device *usb_dev = devh->dev->usb_dev;
+	struct libusb_config_descriptor *config_desc;
+	int config;
+
+	FPRINTF(stream, "CONFIGURATION DESCRIPTOR");
+	ret = libusb_get_configuration(usb_devh, &config);
+	if (!ret) {
+		FPRINTF(stream, "\t current=%d", config);
+		if LIKELY(config >= 0) {
+			ret = libusb_get_active_config_descriptor(usb_dev, &config_desc);
+			if LIKELY(!ret) {
+				FPRINTF(stream, "\t\t bLength=%d", config_desc->bLength);
+				FPRINTF(stream, "\t\t bDescriptorType=0x%02x", config_desc->bDescriptorType);
+				FPRINTF(stream, "\t\t wTotalLength=%d", config_desc->wTotalLength);
+				FPRINTF(stream, "\t\t bNumInterfaces=%d", config_desc->bNumInterfaces);
+				FPRINTF(stream, "\t\t bConfigurationValue=%d", config_desc->bConfigurationValue);
+				FPRINTF(stream, "\t\t iConfiguration=%d", config_desc->iConfiguration);
+				FPRINTF(stream, "\t\t bmAttributes=0x%02x", config_desc->bmAttributes);
+				FPRINTF(stream, "\t\t MaxPower=%d x2[mA]", config_desc->MaxPower);
+				FPRINTF(stream, "\t\t extra_length=%d", config_desc->extra_length);
+				if (config_desc->wTotalLength && config_desc->bNumInterfaces)
+					uvc_print_interface_descriptor(config_desc->interface, config_desc->bNumInterfaces, "\t\t", stream);
+				libusb_free_config_descriptor(config_desc);
+			}
+		}
+	}
+
+	EXIT();
+}
