@@ -127,7 +127,15 @@ public class MainActivity extends Activity {
 	public void onDestroy() {
 		if (mUVCCamera != null) {
 			mUVCCamera.destroy();
+			mUVCCamera = null;
 		}
+		if (mUSBMonitor != null) {
+			mUSBMonitor.destroy();
+			mUSBMonitor = null;
+		}
+		mCameraButton = null;
+		mCaptureButton = null;
+		mUVCCameraView = null;
 		super.onDestroy();
 	}
 

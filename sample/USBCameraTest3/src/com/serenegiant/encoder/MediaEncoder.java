@@ -104,6 +104,11 @@ public abstract class MediaEncoder implements Runnable {
         }
 	}
 
+    public String getOutputPath() {
+    	MediaMuxerWrapper muxer = mWeakMuxer.get();
+    	return muxer != null ? muxer.getOutputPath() : null;
+    }
+
     /**
      * the method to indicate frame data is soon available or already available
      * @return return true if encoder is ready to encod.
@@ -169,6 +174,7 @@ public abstract class MediaEncoder implements Runnable {
 			}
 			mRequestStop = true;	// for rejecting newer frame
 			mSync.notifyAll();
+            mHandler.removeMessages(MSG_FRAME_AVAILABLE);
 	        // request endoder handler to stop encoding 
 	        mHandler.sendEmptyMessage(MSG_STOP_RECORDING);
 	        // We can not know when the encoding and writing finish.

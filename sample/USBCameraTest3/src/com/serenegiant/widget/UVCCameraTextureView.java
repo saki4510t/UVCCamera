@@ -235,11 +235,13 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 		}
 
 		public final void setVideoEncoder(MediaVideoEncoder encoder) {
+			if (DEBUG) Log.v(TAG, "setVideoEncoder:");
 			if (mIsActive)
 				sendMessage(obtainMessage(MSG_SET_ENCODER, encoder));
 		}
 
 		public final SurfaceTexture getPreviewTexture() {
+			if (DEBUG) Log.v(TAG, "getPreviewTexture:");
 			synchronized (mThread.mSync) {
 				sendEmptyMessage(MSG_CREATE_SURFACE);
 				try {
@@ -252,6 +254,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 
 
 		public final void release() {
+			if (DEBUG) Log.v(TAG, "release:");
 			if (mIsActive) {
 				mIsActive = false;
 				removeMessages(MSG_REQUEST_RENDER);
@@ -323,7 +326,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 			}
 
 			public final void updatePreviewSurface() {
-	            if (DEBUG) Log.i(TAG, "updatePreviewSurface:");
+	            if (DEBUG) Log.i(TAG, "RenderThread#updatePreviewSurface:");
 	            synchronized (mSync) {
 	            	if (mPreviewSurface != null) {
 	            		if (DEBUG) Log.d(TAG, "release mPreviewSurface");
@@ -346,6 +349,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 			}
 
 			public final void setEncoder(MediaVideoEncoder encoder) {
+				if (DEBUG) Log.v(TAG, "RenderThread#setEncoder:encoder=" + encoder);
 				if (encoder != null) {
 					encoder.setEglContext(mEglSurface.getContext(), mTexId);
 				}

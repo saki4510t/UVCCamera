@@ -53,7 +53,7 @@ public class MediaVideoEncoder extends MediaEncoder {
 	public MediaVideoEncoder(MediaMuxerWrapper muxer, MediaEncoderListener listener) {
 		super(muxer, listener);
 		if (DEBUG) Log.i(TAG, "MediaVideoEncoder: ");
-		mRenderHandler = RenderHandler.createHandler(TAG);
+		mRenderHandler = RenderHandler.createHandler("MediaVideoEncoder:Renderer");
 	}
 
 	public boolean frameAvailableSoon(final float[] tex_matrix) {
@@ -125,7 +125,7 @@ public class MediaVideoEncoder extends MediaEncoder {
 			mSurface.release();
 			mSurface = null;
 		}
-		if (mRenderHandler == null) {
+		if (mRenderHandler != null) {
 			mRenderHandler.release();
 			mRenderHandler = null;
 		}

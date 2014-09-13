@@ -105,34 +105,38 @@ public class MediaAudioEncoder extends MediaEncoder {
     private class AudioThread extends Thread {
     	@Override
     	public void run() {
-            final int buf_sz = AudioRecord.getMinBufferSize(
-            	SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT) * 4;
-            final AudioRecord audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
-            	SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, buf_sz);
-            try {
-            	if (mIsCapturing) {
-    				if (DEBUG) Log.v(TAG, "AudioThread:start audio recording");
-	                final byte[] buf = new byte[buf_sz];
-	                int readBytes;
-	                audioRecord.startRecording();
-	                try {
-			    		while (mIsCapturing && !mRequestStop && !mIsEOS) {
-			    			// read audio data from internal mic
-			    			readBytes = audioRecord.read(buf, 0, buf_sz);
-			    			if (readBytes > 0) {
-			    			    // set audio data to encoder
-			    				encode(buf, readBytes, getPTSUs());
-			    				frameAvailableSoon();
-			    			}
-			    		}
-	    				frameAvailableSoon();
-	                } finally {
-	                	audioRecord.stop();
-	                }
-            	}
-            } finally {
-            	audioRecord.release();
-            }
+    		try {
+	            final int buf_sz = AudioRecord.getMinBufferSize(
+	            	SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT) * 4;
+	            final AudioRecord audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
+	            	SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, buf_sz);
+	            try {
+	            	if (mIsCapturing) {
+	    				if (DEBUG) Log.v(TAG, "AudioThread:start audio recording");
+		                final byte[] buf = new byte[buf_sz];
+		                int readBytes;
+		                audioRecord.startRecording();
+		                try {
+				    		while (mIsCapturing && !mRequestStop && !mIsEOS) {
+				    			// read audio data from internal mic
+				    			readBytes = audioRecord.read(buf, 0, buf_sz);
+				    			if (readBytes > 0) {
+				    			    // set audio data to encoder
+				    				encode(buf, readBytes, getPTSUs());
+				    				frameAvailableSoon();
+				    			}
+				    		}
+		    				frameAvailableSoon();
+		                } finally {
+		                	audioRecord.stop();
+		                }
+	            	}
+	            } finally {
+	            	audioRecord.release();
+	            }
+    		} catch (Exception e) {
+    			Log.e(TAG, "AudioThread#run", e);
+    		}
 			if (DEBUG) Log.v(TAG, "AudioThread:finished");
     	}
     }

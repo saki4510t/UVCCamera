@@ -23,11 +23,13 @@ package com.serenegiant.usb;
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -48,7 +50,7 @@ public class USBMonitor {
 	 
 	private final HashMap<UsbDevice, UsbControlBlock> mCtrlBlocks = new HashMap<UsbDevice, UsbControlBlock>();
 
-	private final Context mContext;
+	private final WeakReference<Context> mWeakContext;
 	private final UsbManager mUsbManager;
 	private PendingIntent mPermissionIntent;
 	private final OnDeviceConnectListener mOnDeviceConnectListener;
@@ -79,7 +81,7 @@ public class USBMonitor {
 	}
 	
 	public USBMonitor(Context context, OnDeviceConnectListener listener) {
-		mContext = context;
+		mWeakContext = new WeakReference<Context>(context);
 		mUsbManager = (UsbManager)context.getSystemService(Context.USB_SERVICE);
 		mOnDeviceConnectListener = listener;
 	}
@@ -104,11 +106,14 @@ public class USBMonitor {
 	 */
 	public void register() {
 		unregister();
-		mPermissionIntent = PendingIntent.getBroadcast(mContext, 0, new Intent(ACTION_USB_PERMISSION), 0);
-		final IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
-		filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
-		filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-		mContext.registerReceiver(mUsbReceiver, filter);
+		final Context context = mWeakContext.get();
+		if (context != null) {
+			mPermissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), 0);
+			final IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
+			filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
+			filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
+			context.registerReceiver(mUsbReceiver, filter);
+		}
 	}
 	
 	/**
@@ -117,7 +122,9 @@ public class USBMonitor {
 	 */
 	public void unregister() {
 		if (mPermissionIntent != null) {
-			mContext.unregisterReceiver(mUsbReceiver);
+			final Context context = mWeakContext.get();
+			if (context != null)
+				context.unregisterReceiver(mUsbReceiver);
 			mPermissionIntent = null;
 		}
 	}
@@ -339,11 +346,11 @@ public class USBMonitor {
 			}
 		}
 
-		@Override
+/*		@Override
 		protected void finalize() throws Throwable {
 			close();
 			super.finalize();
-		}
+		} */
 	}
 
 }

@@ -196,7 +196,7 @@ public final class RenderHandler extends Handler {
     	}
  
     	private final void draw(int tex_id, final float[] tex_matrix) {
-    		if (DEBUG) Log.i(TAG, "RenderThread#draw:tex_id=" + tex_id);
+//    		if (DEBUG) Log.i(TAG, "RenderThread#draw:tex_id=" + tex_id);
     		if (tex_id >= 0) {
 	    		mInputSurface.makeCurrent();
 	    		mDrawer.draw(tex_id, tex_matrix);
