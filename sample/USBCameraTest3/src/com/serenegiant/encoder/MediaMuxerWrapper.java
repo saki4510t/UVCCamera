@@ -5,7 +5,7 @@ package com.serenegiant.encoder;
  * 
  * Copyright (c) 2014 saki t_saki@serenegiant.com
  * 
- * File name: MainActivity.java
+ * File name: MediaMuxerWrapper.java
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -109,6 +109,10 @@ public class MediaMuxerWrapper {
 			if (mVideoEncoder != null)
 				throw new IllegalArgumentException("Video encoder already added.");
 			mVideoEncoder = encoder;
+		} else if (encoder instanceof MediaSurfaceEncoder) {
+				if (mVideoEncoder != null)
+					throw new IllegalArgumentException("Video encoder already added.");
+				mVideoEncoder = encoder;
 		} else if (encoder instanceof MediaAudioEncoder) {
 			if (mAudioEncoder != null)
 				throw new IllegalArgumentException("Video encoder already added.");

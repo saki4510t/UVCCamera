@@ -34,6 +34,7 @@ import java.lang.reflect.Field;
 import com.serenegiant.encoder.MediaAudioEncoder;
 import com.serenegiant.encoder.MediaEncoder;
 import com.serenegiant.encoder.MediaMuxerWrapper;
+import com.serenegiant.encoder.MediaSurfaceEncoder;
 import com.serenegiant.encoder.MediaVideoEncoder;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.UVCCamera;
@@ -71,6 +72,13 @@ public class MainActivity extends Activity {
 	private static final String TAG = "MainActivity";
 
 	/**
+	 * set true if you want to record movie using MediaSurfaceEncoder
+	 * (writing frame data into Surface camera from MediaCodec
+	 *  by almost same way as USBCameratest2)
+	 * set false if you want to record movie using MediaVideoEncoder
+	 */
+    private static final boolean USE_SURFACE_ENCODER = true;
+	/**
 	 * for accessing USB
 	 */
 	private USBMonitor mUSBMonitor;
@@ -95,7 +103,10 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		if (DEBUG) Log.v(TAG, "onCreate:");
-		setContentView(R.layout.activity_main);
+		if (USE_SURFACE_ENCODER)
+			setContentView(R.layout.activity_main2);
+		else
+			setContentView(R.layout.activity_main);
 		mCameraButton = (ToggleButton)findViewById(R.id.camera_button);
 		mCameraButton.setOnClickListener(mOnClickListener);
 		mCaptureButton = (ImageButton)findViewById(R.id.capture_button);
@@ -502,8 +513,11 @@ public class MainActivity extends Activity {
 						if ((mUVCCamera == null) || (mMuxer != null)) return;
 						mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
 					}
-					if (true) {
-						// for video capturing
+					if (USE_SURFACE_ENCODER) {
+						// for video capturing using MediaSurfaceEncoder 
+						new MediaSurfaceEncoder(mMuxer, mMediaEncoderListener);
+					} else {
+						// for video capturing using MediaVideoEncoder 
 						new MediaVideoEncoder(mMuxer, mMediaEncoderListener);
 					}
 					if (true) {
@@ -564,7 +578,14 @@ public class MainActivity extends Activity {
 					mIsRecording = true;
 					if (encoder instanceof MediaVideoEncoder)
 					try {
-						mWeakCameraView.get().setVideoEncoder((MediaVideoEncoder)encoder);
+						mWeakCameraView.get().setVideoEncoder(encoder);
+					} catch (Exception e) {
+						Log.e(TAG, "onPrepared:", e);
+					}
+					if (encoder instanceof MediaSurfaceEncoder)
+					try {
+						mWeakCameraView.get().setVideoEncoder(encoder);
+						mUVCCamera.startCapture(((MediaSurfaceEncoder)encoder).getInputSurface());
 					} catch (Exception e) {
 						Log.e(TAG, "onPrepared:", e);
 					}
@@ -573,11 +594,13 @@ public class MainActivity extends Activity {
 				@Override
 				public void onStopped(MediaEncoder encoder) {
 					if (DEBUG) Log.v(TAG_THREAD, "onStopped:encoder=" + encoder);
-					if (encoder instanceof MediaVideoEncoder)
+					if ((encoder instanceof MediaVideoEncoder)
+						|| (encoder instanceof MediaSurfaceEncoder))
 					try {
 						mIsRecording = false;
 						final MainActivity parent = mWeakParent.get();
 						mWeakCameraView.get().setVideoEncoder(null);
+						mUVCCamera.stopCapture();
 						final String path = encoder.getOutputPath();
 						if (!TextUtils.isEmpty(path)) {
 							mHandler.sendMessageDelayed(mHandler.obtainMessage(MSG_MEDIA_UPDATE, path), 1000);
@@ -596,7 +619,7 @@ public class MainActivity extends Activity {
 			 * prepare and load shutter sound for still image capturing
 			 */
 			private void loadSutterSound(Context context) {
-		    	// get system strean type using refrection
+		    	// get system stream type using refrection
 		        int streamType;
 		        try {
 		            final Class<?> audioSystemClass = Class.forName("android.media.AudioSystem");

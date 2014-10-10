@@ -23,7 +23,7 @@ package com.serenegiant.widget;
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
 
-import com.serenegiant.encoder.MediaVideoEncoder;
+import com.serenegiant.encoder.MediaEncoder;
 
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
@@ -31,6 +31,6 @@ import android.graphics.SurfaceTexture;
 public interface CameraViewInterface extends AspectRatioViewInterface {
 	public SurfaceTexture getSurfaceTexture();
 	public boolean hasSurface();
-	public void setVideoEncoder(final MediaVideoEncoder encoder);
+	public void setVideoEncoder(final MediaEncoder encoder);
 	public Bitmap captureStillImage();
 }

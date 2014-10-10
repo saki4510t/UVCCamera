@@ -23,6 +23,7 @@ package com.serenegiant.widget;
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
 
+import com.serenegiant.encoder.MediaEncoder;
 import com.serenegiant.encoder.MediaVideoEncoder;
 import com.serenegiant.glutils.EGLBase;
 import com.serenegiant.glutils.GLDrawer2D;
@@ -203,7 +204,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	}
 
 	@Override
-	public void setVideoEncoder(final MediaVideoEncoder encoder) {
+	public void setVideoEncoder(final MediaEncoder encoder) {
 		if (mRenderHandler != null)
 			mRenderHandler.setVideoEncoder(encoder);
 	}
@@ -234,7 +235,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 			mThread = thread;
 		}
 
-		public final void setVideoEncoder(MediaVideoEncoder encoder) {
+		public final void setVideoEncoder(MediaEncoder encoder) {
 			if (DEBUG) Log.v(TAG, "setVideoEncoder:");
 			if (mIsActive)
 				sendMessage(obtainMessage(MSG_SET_ENCODER, encoder));
@@ -277,7 +278,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 				mThread.onDrawFrame();
 				break;
 			case MSG_SET_ENCODER:
-				mThread.setEncoder((MediaVideoEncoder)msg.obj);
+				mThread.setEncoder((MediaEncoder)msg.obj);
 				break;
 			case MSG_CREATE_SURFACE:
 				mThread.updatePreviewSurface();
@@ -301,7 +302,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	    	private int mTexId = -1;
 	    	private SurfaceTexture mPreviewSurface;
 			private final float[] mStMatrix = new float[16];
-			private MediaVideoEncoder mEncoder;
+			private MediaEncoder mEncoder;
 
 			/**
 			 * constructor
@@ -348,14 +349,25 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	            }
 			}
 
-			public final void setEncoder(MediaVideoEncoder encoder) {
+			public final void setEncoder(MediaEncoder encoder) {
 				if (DEBUG) Log.v(TAG, "RenderThread#setEncoder:encoder=" + encoder);
-				if (encoder != null) {
-					encoder.setEglContext(mEglSurface.getContext(), mTexId);
+				if (encoder != null && (encoder instanceof MediaVideoEncoder)) {
+					((MediaVideoEncoder)encoder).setEglContext(mEglSurface.getContext(), mTexId);
 				}
 				mEncoder = encoder;
 			}
 
+/*			// for part1
+ 			private static final int BUF_NUM = 1;
+			private static final int BUF_STRIDE = 640 * 480;
+			private static final int BUF_SIZE = BUF_STRIDE * BUF_NUM;
+			int cnt = 0;
+			int offset = 0;
+			final int pixels[] = new int[BUF_SIZE];
+			final IntBuffer buffer = IntBuffer.wrap(pixels); */
+/*			// for part2
+			private ByteBuffer buf = ByteBuffer.allocateDirect(640 * 480 * 4);
+ */
 			/**
 			 * draw a frame (and request to draw for video capturing if it is necessary)
 			 */
@@ -367,12 +379,87 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 				mPreviewSurface.getTransformMatrix(mStMatrix);
 				if (mEncoder != null) {
 					// notify to capturing thread that the camera frame is available.
-					mEncoder.frameAvailableSoon(mStMatrix);
+					if (mEncoder instanceof MediaVideoEncoder)
+						((MediaVideoEncoder)mEncoder).frameAvailableSoon(mStMatrix);
+					else
+						mEncoder.frameAvailableSoon();
 				}
 				// draw to preview screen
 				mDrawer.draw(mTexId, mStMatrix);
 				mEglSurface.swap();
+/*				// sample code to read pixels into Buffer and save as a Bitmap (part1)
+				buffer.position(offset);
+				GLES20.glReadPixels(0, 0, 640, 480, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buffer);
+				if (++cnt == 100) { // save as a Bitmap, only once on this sample code 
+					// if you save every frame as a Bitmap, app will crash by Out of Memory exception...
+					Log.i(TAG, "Capture image using glReadPixels:offset=" + offset);
+					final Bitmap bitmap = createBitmap(pixels,offset,  640, 480);
+					final File outputFile = MediaMuxerWrapper.getCaptureFile(Environment.DIRECTORY_DCIM, ".png");
+					try {
+						final BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(outputFile));
+						try {
+							try {
+								bitmap.compress(CompressFormat.PNG, 100, os);
+								os.flush();
+								bitmap.recycle();
+							} catch (IOException e) {
+							}
+						} finally {
+							os.close();
+						}
+					} catch (FileNotFoundException e) {
+					} catch (IOException e) {
+					}
+				}
+				offset = (offset + BUF_STRIDE) % BUF_SIZE;
+*/
+/*				// sample code to read pixels into Buffer and save as a Bitmap (part2)
+		        buf.order(ByteOrder.LITTLE_ENDIAN);	// it is enough to call this only once.
+		        GLES20.glReadPixels(0, 0, 640, 480, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf);
+		        buf.rewind();
+				if (++cnt == 100) {	// save as a Bitmap, only once on this sample code
+					// if you save every frame as a Bitmap, app will crash by Out of Memory exception...
+					final File outputFile = MediaMuxerWrapper.getCaptureFile(Environment.DIRECTORY_DCIM, ".png");
+			        BufferedOutputStream os = null;
+					try {
+				        try {
+				            os = new BufferedOutputStream(new FileOutputStream(outputFile));
+				            Bitmap bmp = Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888);
+				            bmp.copyPixelsFromBuffer(buf);
+				            bmp.compress(Bitmap.CompressFormat.PNG, 90, os);
+				            bmp.recycle();
+				        } finally {
+				            if (os != null) os.close();
+				        }
+					} catch (FileNotFoundException e) {
+					} catch (IOException e) {
+					}
+				}
+*/
 			}
+
+/*			// sample code to read pixels into IntBuffer and save as a Bitmap (part1)
+			private static Bitmap createBitmap(final int[] pixels, final int offset, final int width, final int height) {
+				final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+				paint.setColorFilter(new ColorMatrixColorFilter(new ColorMatrix(new float[] {
+						0, 0, 1, 0, 0,
+						0, 1, 0, 0, 0,
+						1, 0, 0, 0, 0,
+						0, 0, 0, 1, 0
+					})));
+
+				final Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+				final Canvas canvas = new Canvas(bitmap);
+
+				final Matrix matrix = new Matrix();
+				matrix.postScale(1.0f, -1.0f);
+				matrix.postTranslate(0, height);
+				canvas.concat(matrix);
+
+				canvas.drawBitmap(pixels, offset, width, 0, 0, width, height, false, paint);
+
+				return bitmap;
+			} */
 
 			@Override
 			public final void run() {

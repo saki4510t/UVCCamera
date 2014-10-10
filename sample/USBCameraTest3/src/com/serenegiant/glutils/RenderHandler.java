@@ -68,18 +68,22 @@ public final class RenderHandler extends Handler {
 	}
 
 	public final void draw() {
+		removeMessages(MSG_RENDER_DRAW);
 		sendMessage(obtainMessage(MSG_RENDER_DRAW, mTexId, 0, null));
 	}
 
 	public final void draw(int tex_id) {
+		removeMessages(MSG_RENDER_DRAW);
 		sendMessage(obtainMessage(MSG_RENDER_DRAW, tex_id, 0, null));
 	}
 
 	public final void draw(final float[] tex_matrix) {
+		removeMessages(MSG_RENDER_DRAW);
 		sendMessage(obtainMessage(MSG_RENDER_DRAW, mTexId, 0, tex_matrix));
 	}
 	
 	public final void draw(int tex_id, final float[] tex_matrix) {
+		removeMessages(MSG_RENDER_DRAW);
 		sendMessage(obtainMessage(MSG_RENDER_DRAW, tex_id, 0, tex_matrix));
 	}
 

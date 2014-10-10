@@ -5,7 +5,7 @@ package com.serenegiant.encoder;
  * 
  * Copyright (c) 2014 saki t_saki@serenegiant.com
  * 
- * File name: MediaVideoEncoder.java
+ * File name: MediaSurfaceEncoder.java
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,19 +25,16 @@ package com.serenegiant.encoder;
 
 import java.io.IOException;
 
-import com.serenegiant.glutils.RenderHandler;
-
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
-import android.opengl.EGLContext;
 import android.util.Log;
 import android.view.Surface;
 
-public class MediaVideoEncoder extends MediaEncoder {
+public class MediaSurfaceEncoder extends MediaEncoder {
 	private static final boolean DEBUG = true;	// TODO set false on release
-	private static final String TAG = "MediaVideoEncoder";
+	private static final String TAG = "MediaSurfaceEncoder";
 
 	private static final String MIME_TYPE = "video/avc";
 	// parameters for recording
@@ -47,35 +44,18 @@ public class MediaVideoEncoder extends MediaEncoder {
     private static final int FRAME_RATE = 15;
     private static final float BPP = 0.125f;
  
-    private RenderHandler mRenderHandler;
     private Surface mSurface;
 	
-	public MediaVideoEncoder(MediaMuxerWrapper muxer, MediaEncoderListener listener) {
+	public MediaSurfaceEncoder(MediaMuxerWrapper muxer, MediaEncoderListener listener) {
 		super(muxer, listener);
 		if (DEBUG) Log.i(TAG, "MediaVideoEncoder: ");
-		mRenderHandler = RenderHandler.createHandler("MediaVideoEncoder:Renderer");
 	}
 
-	public boolean frameAvailableSoon(final float[] tex_matrix) {
-		boolean result;
-		if (result = super.frameAvailableSoon())
-			mRenderHandler.draw(tex_matrix);
-		return result;
-	}
-
-	public boolean frameAvailableSoon(final int tex_id, final float[] tex_matrix) {
-		boolean result;
-		if (result = super.frameAvailableSoon())
-			mRenderHandler.draw(tex_id, tex_matrix);
-		return result;
-	}
-
-	@Override
-	public boolean frameAvailableSoon() {
-		boolean result;
-		if (result = super.frameAvailableSoon())
-			mRenderHandler.draw(null);
-		return result;
+	/**
+	* Returns the encoder's input surface.
+	*/
+	public Surface getInputSurface() {
+		return mSurface;
 	}
 
 	@Override
@@ -114,20 +94,12 @@ public class MediaVideoEncoder extends MediaEncoder {
         }
 	}
 
-	public void setEglContext(EGLContext shared_context, int tex_id) {
-		mRenderHandler.setEglContext(shared_context, tex_id, mSurface);
-	}
-
 	@Override
     protected void release() {
 		if (DEBUG) Log.i(TAG, "release: ");
 		if (mSurface != null) {
 			mSurface.release();
 			mSurface = null;
-		}
-		if (mRenderHandler != null) {
-			mRenderHandler.release();
-			mRenderHandler = null;
 		}
 		super.release();
 	}
