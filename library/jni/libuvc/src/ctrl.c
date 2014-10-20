@@ -1,4 +1,9 @@
 /*********************************************************************
+ * add some functions unsupported on original libuvc library
+ * and fixed some issues
+ * Copyright (C) 2014 saki@serenegiant All rights reserved.
+ *********************************************************************/
+/*********************************************************************
  * Software License Agreement (BSD License)
  *
  *  Copyright (C) 2010-2012 Ken Tossell
@@ -875,7 +880,18 @@ uvc_error_t uvc_set_powerline_freqency(uvc_device_handle_t *devh, uint8_t freq) 
 	uint8_t data[1];
 	uvc_error_t ret;
 
-	data[0] = freq;
+	// XXX AUTO(0x03) is only available for UVC1.5.
+	if (((freq & 0xff) == 0xff)
+		|| (((freq & 0x03) == 0x03) && (devh->info->ctrl_if.bcdUVC < 0x0150))) {
+
+		ret = uvc_get_powerline_freqency(devh, &freq, UVC_GET_DEF);
+		if (UNLIKELY(ret)) {
+			LOGE("failed to uvc_get_powerline_freqency:err=%d", ret);
+			return ret;
+		}
+	}
+
+	data[0] = freq & 0x03;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
 			UVC_PU_POWER_LINE_FREQUENCY_CONTROL << 8,

@@ -2266,7 +2266,8 @@ static void op_clear_transfer_priv(struct usbi_transfer *itransfer) {
 	}
 }
 
-static int handle_bulk_completion(struct usbi_transfer *itransfer,
+static int handle_bulk_completion(struct libusb_device_handle *handle,	// XXX added saki
+		struct usbi_transfer *itransfer,
 		struct usbfs_urb *urb) {
 	struct linux_transfer_priv *tpriv = usbi_transfer_get_os_priv(itransfer);
 	struct libusb_transfer *transfer = USBI_TRANSFER_TO_LIBUSB_TRANSFER(itransfer);
@@ -2342,6 +2343,8 @@ static int handle_bulk_completion(struct usbi_transfer *itransfer,
 		usbi_dbg("detected endpoint stall");
 		if (tpriv->reap_status == LIBUSB_TRANSFER_COMPLETED)
 			tpriv->reap_status = LIBUSB_TRANSFER_STALL;
+		LOGE("LIBUSB_TRANSFER_STALL");
+		op_clear_halt(handle, urb->endpoint);	// XXX added saki
 		goto cancel_remaining;
 	case -EOVERFLOW:
 		/* overflow can only ever occur in the last urb */
@@ -2401,7 +2404,8 @@ completed:
 		usbi_handle_transfer_completion(itransfer, tpriv->reap_status);
 }
 
-static int handle_iso_completion(struct usbi_transfer *itransfer,
+static int handle_iso_completion(struct libusb_device_handle *handle,	// XXX added saki
+		struct usbi_transfer *itransfer,
 		struct usbfs_urb *urb) {
 	struct libusb_transfer *transfer = USBI_TRANSFER_TO_LIBUSB_TRANSFER(itransfer);
 	struct linux_transfer_priv *tpriv = usbi_transfer_get_os_priv(itransfer);
@@ -2418,7 +2422,7 @@ static int handle_iso_completion(struct usbi_transfer *itransfer,
 		}
 	}
 	if (UNLIKELY(urb_idx == 0)) {
-		usbi_err(TRANSFER_CTX(transfer), "could not locate urb!");
+		usbi_err(TRANSFER_CTX(transfer), "could not locate urb!");	// crash 2014/09/29 SIGSEGV/SEGV_MAPERR
 		usbi_mutex_unlock(&itransfer->lock);
 		return LIBUSB_ERROR_NOT_FOUND;
 	}
@@ -2447,6 +2451,8 @@ static int handle_iso_completion(struct usbi_transfer *itransfer,
 		case -EPIPE:
 			usbi_dbg("detected endpoint stall");
 			lib_desc->status = LIBUSB_TRANSFER_STALL;
+			LOGE("LIBUSB_TRANSFER_STALL");
+			op_clear_halt(handle, urb->endpoint);	// XXX added saki
 			break;
 		case -EOVERFLOW:
 			usbi_dbg("overflow error");
@@ -2519,7 +2525,8 @@ out:
 	return 0;
 }
 
-static int handle_control_completion(struct usbi_transfer *itransfer,
+static int handle_control_completion(struct libusb_device_handle *handle,	// XXX added saki
+		struct usbi_transfer *itransfer,
 		struct usbfs_urb *urb) {
 	struct linux_transfer_priv *tpriv = usbi_transfer_get_os_priv(itransfer);
 	int status;
@@ -2556,6 +2563,8 @@ static int handle_control_completion(struct usbi_transfer *itransfer,
 	case -EPIPE:
 		usbi_dbg("unsupported control request");
 		status = LIBUSB_TRANSFER_STALL;
+		LOGE("LIBUSB_TRANSFER_STALL");
+		op_clear_halt(handle, urb->endpoint);	// XXX added saki
 		break;
 	case -EOVERFLOW:
 		usbi_dbg("control overflow error");
@@ -2610,13 +2619,13 @@ static int reap_for_handle(struct libusb_device_handle *handle) {
 
 	switch (transfer->type) {
 	case LIBUSB_TRANSFER_TYPE_ISOCHRONOUS:
-		return handle_iso_completion(itransfer, urb);
+		return handle_iso_completion(handle, itransfer, urb);
 	case LIBUSB_TRANSFER_TYPE_BULK:
 	case LIBUSB_TRANSFER_TYPE_BULK_STREAM:
 	case LIBUSB_TRANSFER_TYPE_INTERRUPT:
-		return handle_bulk_completion(itransfer, urb);
+		return handle_bulk_completion(handle, itransfer, urb);
 	case LIBUSB_TRANSFER_TYPE_CONTROL:
-		return handle_control_completion(itransfer, urb);
+		return handle_control_completion(handle, itransfer, urb);
 	default:
 		usbi_err(HANDLE_CTX(handle),
 			"unrecognised endpoint type %x", transfer->type);

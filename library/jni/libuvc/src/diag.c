@@ -140,14 +140,143 @@ void uvc_print_stream_ctrl(uvc_stream_ctrl_t *ctrl, FILE *stream) {
 	FPRINTF(stream, "dwMaxVideoFrameSize: %u\n", ctrl->dwMaxVideoFrameSize);
 	FPRINTF(stream, "dwMaxPayloadTransferSize: %u\n", ctrl->dwMaxPayloadTransferSize);
 	FPRINTF(stream, "bInterfaceNumber: %d\n", ctrl->bInterfaceNumber);
+//
+	/** add UVC 1.1 parameters */
+	FPRINTF(stream, "dwClockFrequency: %d\n", ctrl->dwClockFrequency);
+	FPRINTF(stream, "bmFramingInfo: %d\n", ctrl->bmFramingInfo);
+	FPRINTF(stream, "bPreferedVersion: %d\n", ctrl->bPreferedVersion);
+	FPRINTF(stream, "bMinVersion: %d\n", ctrl->bMinVersion);
+	FPRINTF(stream, "bMaxVersion: %d\n", ctrl->bMaxVersion);
+	/** add UVC 1.5 parameters */
+	FPRINTF(stream, "bUsage: %d\n", ctrl->bUsage);
+	FPRINTF(stream, "bBitDepthLuma: %d\n", ctrl->bBitDepthLuma);
+	FPRINTF(stream, "bmSettings: %d\n", ctrl->bmSettings);
+	FPRINTF(stream, "bMaxNumberOfRefFramesPlus1: %d\n", ctrl->bMaxNumberOfRefFramesPlus1);
+	FPRINTF(stream, "bmRateControlModes: %d\n", ctrl->bmRateControlModes);
+	FPRINTF(stream, "bmLayoutPerStream: %llx\n", ctrl->bmLayoutPerStream);
 }
 
-static const char *_uvc_name_for_format_subtype(uint8_t subtype) {
+static const char *_uvc_name_for_desc_type(const uint8_t type) {
+	switch (type) {
+	case LIBUSB_DT_DEVICE:						// 0x01,
+		return "Device Descriptor(0x01)";
+	case LIBUSB_DT_CONFIG:						// 0x02,
+		return "Config Descriptor(0x02)";
+	case LIBUSB_DT_STRING:						// 0x03,
+		return "String Descriptor(0x03)";
+	case LIBUSB_DT_INTERFACE:					// 0x04,
+		return "Interface Descriptor(0x04)";
+	case LIBUSB_DT_ENDPOINT:					// 0x05,
+		return "Endpoint Descriptor(0x05)";
+	case LIBUSB_DT_DEVICE_QUALIFIER:			// 0x06,	// deprecated on USB3.0
+		return "Qualifier Descriptor(0x06)";
+	case LIBUSB_DT_OTHER_SPEED_CONFIGURATION:	// 0x07,	// deprecated on USB3.0
+		return "Other speed Config Descriptor(0x07)";
+	case LIBUSB_DT_INTERFACE_POWER:				// 0x08,
+		return "Power interface Descriptor(0x08)";
+	case LIBUSB_DT_OTG:							// 0x09,
+		return "OTG Interface Descriptor(0x09)";
+	case LIBUSB_DT_DEBUG:						// 0x0a,
+		return "Debug Descriptor(0x0a)";
+	case LIBUSB_DT_ASSOCIATION:					// 0x0b,
+		return "Association Descriptor(0x0b)";
+	case LIBUSB_DT_BOS:							// 0x0f,
+		return "BOS Descriptor(0x0f)";
+	case LIBUSB_DT_DEVICE_CAPABILITY:			// 0x10,
+		return "Device capability Descriptor(0x10)";
+// Class specified descriptors
+	case LIBUSB_DT_HID:							// 0x21,
+		return "CS:HID Descriptor(0x21)";
+	case LIBUSB_DT_HID_REPORT:					// 0x22,
+		return "CS:HID Report Descriptor(0x22)";
+	case LIBUSB_DT_HID_PHYSICAL: 				// 0x23,
+		return "CS:HID Pysical Descriptor(0x23)";
+	case LIBUSB_DT_CS_INTERFACE:				// 0x24,
+		return "CS:Interface Descriptor(0x24)";
+	case LIBUSB_DT_CS_ENDPOINT:					// 0x25,
+		return "CS:Endpoint Descriptor(0x25)";
+	case LIBUSB_DT_HUB: 						// 0x29,
+		return "CS:Hub Descriptor(0x29)";
+	case LIBUSB_DT_SUPERSPEED_HUB: 				// 0x2a,
+		return "CS:Superspeed Hub Descriptor(0x2a)";
+	case LIBUSB_DT_SS_ENDPOINT_COMPANION: 		// 0x30		// defined on USB 3.0
+		return "CS:Superspeed Endpoint Companion Descriptor(0x30)";
+	default:
+		return "Unknown descriptor";
+	}
+}
+
+static const char *_uvc_name_for_class(const uint8_t clazz) {
+	switch (clazz) {
+	case LIBUSB_CLASS_AUDIO:				// 1,		/** Audio class */
+		return "Audio";
+	case LIBUSB_CLASS_COMM:					// 2,		/** Communications class */
+		return "Comm";
+	case LIBUSB_CLASS_HID:					// 3,		/** Human Interface Device class */
+		return "HID";
+	case LIBUSB_CLASS_PHYSICAL:				// 5,		/** Physical */
+		return "Physical";
+	case LIBUSB_CLASS_IMAGE:				// 6,		/** Image class */
+		return "Image";
+	case LIBUSB_CLASS_PRINTER:				// 7,		/** Printer class */
+		return "Printer";
+	case LIBUSB_CLASS_MASS_STORAGE:			// 8,		/** Mass storage class */
+		return "Mass storage";
+	case LIBUSB_CLASS_HUB:					// 9,		/** Hub class */
+		return "Hub";
+	case LIBUSB_CLASS_DATA:					// 0x0a,	/** Data class */
+		return "Data";
+	case LIBUSB_CLASS_SMART_CARD:			// 0x0b,	/** Smart Card */
+		return "Smart card";
+	case LIBUSB_CLASS_CONTENT_SECURITY:		// 0x0d,	/** Content Security */
+		return "Security";
+	case LIBUSB_CLASS_VIDEO:				// 0x0e,	/** Video */
+		return "Video";
+	case LIBUSB_CLASS_PERSONAL_HEALTHCARE:	// 0x0f,	/** Personal Healthcare */
+		return "Helthcare";
+	case LIBUSB_CLASS_DIAGNOSTIC_DEVICE:	// 0xdc,	/** Diagnostic Device */
+		return "Diag";
+	case LIBUSB_CLASS_WIRELESS:				// 0xe0,	/** Wireless class */
+		return "Wireless";
+	case LIBUSB_CLASS_APPLICATION:			// 0xfe,	/** Application class */
+		return "App";
+	case LIBUSB_CLASS_VENDOR_SPEC:			// 0xff		/** Class is vendor-specific */
+		return "Vender specific";
+	default:
+		return "Unknown";
+	}
+}
+
+static const char *_uvc_name_for_subtype(const uint8_t subtype) {
 	switch (subtype) {
-	case UVC_VS_FORMAT_UNCOMPRESSED:
-		return "UncompressedFormat";
-	case UVC_VS_FORMAT_MJPEG:
-		return "MJPEGFormat";
+	case UVC_VS_UNDEFINED:				// 0x00,
+		return "Undefined(0x00)";
+	case UVC_VS_INPUT_HEADER:			// 0x01,
+		return "Header(Input,0x01)";
+	case UVC_VS_OUTPUT_HEADER:			// 0x02,
+		return "Header(Output,0x02)";
+	case UVC_VS_STILL_IMAGE_FRAME:		// 0x03,
+		return "Frame(StillImage,0x03)";
+	case UVC_VS_FORMAT_UNCOMPRESSED:	// 0x04,
+		return "Format(Uncompressed,0x04)";
+	case UVC_VS_FRAME_UNCOMPRESSED:		// 0x05,
+		return "Frame(Uncompressed,0x05)";
+	case UVC_VS_FORMAT_MJPEG:			// 0x06,
+		return "Format(MJPEG,0x06)";
+	case UVC_VS_FRAME_MJPEG:			// 0x07,
+		return "Frame(MJPEG,0x07)";
+	case UVC_VS_FORMAT_MPEG2TS:			// 0x0a,
+		return "Format(MPEG2TS,0x0a)";
+	case UVC_VS_FORMAT_DV:				// 0x0c,
+		return "Format(DV,0x0c)";
+	case UVC_VS_COLORFORMAT:			// 0x0d,
+		return "ColorFormat(0x0d)";
+	case UVC_VS_FORMAT_FRAME_BASED:		// 0x10,
+		return "Format(FRAME_BASED,0x10)";
+	case UVC_VS_FRAME_FRAME_BASED:		// 0x11,
+		return "Frame(FRAME_BASED,0x10)";
+	case UVC_VS_FORMAT_STREAM_BASED:	// 0x12
+		return "Format(STREAM_BASED,0x10)";
 	default:
 		return "Unknown";
 	}
@@ -193,70 +322,7 @@ void uvc_print_diag(uvc_device_handle_t *devh, FILE *stream) {
 				"VideoStreaming(%d):\n"
 				"\tbEndpointAddress: %d\n\tFormats:\n",
 				stream_idx, stream_if->bEndpointAddress);
-			uvc_print_format_descriptor(stream_if->format_descs, stream);
-/*			// move to separate function
-			DL_FOREACH(stream_if->format_descs, fmt_desc)
-			{
-				uvc_frame_desc_t *frame_desc;
-				int i;
-
-				switch (fmt_desc->bDescriptorSubtype) {
-				case UVC_VS_FORMAT_UNCOMPRESSED:
-				case UVC_VS_FORMAT_MJPEG:
-					FPRINTF(stream, "\t\%s(%d)",
-						_uvc_name_for_format_subtype(fmt_desc->bDescriptorSubtype), fmt_desc->bFormatIndex);
-					FPRINTF(stream, "\t\t  bits per pixel: %d", fmt_desc->bBitsPerPixel);
-					FPRINTF(stream,
-							"\t\t  GUID:%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-							fmt_desc->guidFormat[0], fmt_desc->guidFormat[1],
-							fmt_desc->guidFormat[2], fmt_desc->guidFormat[3],
-							fmt_desc->guidFormat[4], fmt_desc->guidFormat[5],
-							fmt_desc->guidFormat[6], fmt_desc->guidFormat[7],
-							fmt_desc->guidFormat[8], fmt_desc->guidFormat[9],
-							fmt_desc->guidFormat[10], fmt_desc->guidFormat[11],
-							fmt_desc->guidFormat[12], fmt_desc->guidFormat[13],
-							fmt_desc->guidFormat[14], fmt_desc->guidFormat[15]);
-
-					FPRINTF(stream, "\t\t  default frame: %d", fmt_desc->bDefaultFrameIndex);
-					FPRINTF(stream, "\t\t  aspect ration: %dx%d", fmt_desc->bAspectRatioX, fmt_desc->bAspectRatioY);
-					FPRINTF(stream, "\t\t  interlace flags: %02x", fmt_desc->bmInterlaceFlags);
-					FPRINTF(stream, "\t\t  copy protect: %02x", fmt_desc->bCopyProtect);
-
-					DL_FOREACH(fmt_desc->frame_descs, frame_desc)
-					{
-						uint32_t *interval_ptr;
-
-						FPRINTF(stream, "\t\t\tFrameDescriptor(%d)\n", frame_desc->bFrameIndex);
-						FPRINTF(stream, "\t\t\t  capabilities: %02x\n", frame_desc->bmCapabilities);
-						FPRINTF(stream, "\t\t\t  size: %dx%d\n", frame_desc->wWidth, frame_desc->wHeight);
-						FPRINTF(stream, "\t\t\t  bit rate: %d-%d\n", frame_desc->dwMinBitRate, frame_desc->dwMaxBitRate);
-						FPRINTF(stream, "\t\t\t  max frame size: %d\n", frame_desc->dwMaxVideoFrameBufferSize);
-						FPRINTF(stream, "\t\t\t  default interval: 1/%d\n", 10000000 / frame_desc->dwDefaultFrameInterval);
-						if (frame_desc->intervals) {
-							for (interval_ptr = frame_desc->intervals;
-									*interval_ptr; ++interval_ptr) {
-								FPRINTF(stream, "\t\t\t  interval[%d]: 1/%d",
-										(int ) (interval_ptr - frame_desc->intervals),
-										10000000 / *interval_ptr);
-							}
-						} else {
-							FPRINTF(stream, "\t\t\t  min interval[%d] = 1/%d",
-								frame_desc->dwMinFrameInterval,
-								10000000 / frame_desc->dwMinFrameInterval);
-							FPRINTF(stream, "\t\t\t  max interval[%d] = 1/%d",
-								frame_desc->dwMaxFrameInterval,
-								10000000 / frame_desc->dwMaxFrameInterval);
-							if (frame_desc->dwFrameIntervalStep)
-								FPRINTF(stream, "\t\t\t  interval step[%d] = 1/%d",
-									frame_desc->dwFrameIntervalStep,
-									10000000 / frame_desc->dwFrameIntervalStep);
-						}
-					}
-					break;
-				default:
-					FPRINTF(stream, "\t-UnknownFormat");
-				}
-			} */
+			uvc_print_format_desc(stream_if->format_descs, stream);
 		}
 
 		FPRINTF(stream, "END DEVICE CONFIGURATION\n");
@@ -266,7 +332,72 @@ void uvc_print_diag(uvc_device_handle_t *devh, FILE *stream) {
 	UVC_EXIT_VOID();
 }
 
-void uvc_print_format_descriptor(uvc_format_desc_t *format_descriptors, FILE *stream) {
+void uvc_print_format_desc_one(uvc_format_desc_t *format_desc, FILE *stream) {
+
+	uvc_frame_desc_t *frame_desc;
+	int i;
+
+	switch (format_desc->bDescriptorSubtype) {
+	case UVC_VS_FORMAT_UNCOMPRESSED:
+	case UVC_VS_FORMAT_MJPEG:
+		FPRINTF(stream, "\t\tFormatDescriptor(bFormatIndex=%d)", format_desc->bFormatIndex);
+		FPRINTF(stream, "\t\t  bDescriptorSubtype: %s",
+			_uvc_name_for_subtype(format_desc->bDescriptorSubtype));
+		FPRINTF(stream, "\t\t  bits per pixel: %d", format_desc->bBitsPerPixel);
+		FPRINTF(stream,
+				"\t\t  GUID:%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+				format_desc->guidFormat[0], format_desc->guidFormat[1],
+				format_desc->guidFormat[2], format_desc->guidFormat[3],
+				format_desc->guidFormat[4], format_desc->guidFormat[5],
+				format_desc->guidFormat[6], format_desc->guidFormat[7],
+				format_desc->guidFormat[8], format_desc->guidFormat[9],
+				format_desc->guidFormat[10], format_desc->guidFormat[11],
+				format_desc->guidFormat[12], format_desc->guidFormat[13],
+				format_desc->guidFormat[14], format_desc->guidFormat[15]);
+
+		FPRINTF(stream, "\t\t  bDefaultFrameIndex: %d", format_desc->bDefaultFrameIndex);
+		FPRINTF(stream, "\t\t  bAspectRatio(x,y): %dx%d", format_desc->bAspectRatioX, format_desc->bAspectRatioY);
+		FPRINTF(stream, "\t\t  bmInterlaceFlags: 0x%02x", format_desc->bmInterlaceFlags);
+		FPRINTF(stream, "\t\t  bCopyProtect: 0x%02x", format_desc->bCopyProtect);
+
+		DL_FOREACH(format_desc->frame_descs, frame_desc)
+		{
+			uint32_t *interval_ptr;
+
+			FPRINTF(stream, "\t\t\tFrameDescriptor(bFrameIndex=%d)", frame_desc->bFrameIndex);
+			FPRINTF(stream, "\t\t\t  bDescriptorSubtype: %s", _uvc_name_for_subtype(frame_desc->bDescriptorSubtype));
+			FPRINTF(stream, "\t\t\t  bmCapabilities: 0x%02x", frame_desc->bmCapabilities);
+			FPRINTF(stream, "\t\t\t  size(w,h):(%d,%d)", frame_desc->wWidth, frame_desc->wHeight);
+			FPRINTF(stream, "\t\t\t  bit rate(min,max): (%d,%d)", frame_desc->dwMinBitRate, frame_desc->dwMaxBitRate);
+			FPRINTF(stream, "\t\t\t  dwMaxVideoFrameBufferSize: %d", frame_desc->dwMaxVideoFrameBufferSize);
+			FPRINTF(stream, "\t\t\t  dwDefaultFrameInterval: 1/%d", 10000000 / frame_desc->dwDefaultFrameInterval);
+			if (frame_desc->intervals) {
+				for (interval_ptr = frame_desc->intervals;
+						*interval_ptr; ++interval_ptr) {
+					FPRINTF(stream, "\t\t\t  interval[%d]: 1/%d",
+							(int ) (interval_ptr - frame_desc->intervals),
+							10000000 / *interval_ptr);
+				}
+			} else {
+				FPRINTF(stream, "\t\t\t  min interval[%d] = 1/%d",
+					frame_desc->dwMinFrameInterval,
+					10000000 / frame_desc->dwMinFrameInterval);
+				FPRINTF(stream, "\t\t\t  max interval[%d] = 1/%d",
+					frame_desc->dwMaxFrameInterval,
+					10000000 / frame_desc->dwMaxFrameInterval);
+				if (frame_desc->dwFrameIntervalStep)
+					FPRINTF(stream, "\t\t\t  interval step[%d] = 1/%d",
+						frame_desc->dwFrameIntervalStep,
+						10000000 / frame_desc->dwFrameIntervalStep);
+			}
+		}
+		break;
+	default:
+		FPRINTF(stream, "\t-UnknownFormat:0x%2d", format_desc->bDescriptorSubtype);
+	}
+}
+
+void uvc_print_format_desc(uvc_format_desc_t *format_descriptors, FILE *stream) {
 	ENTER();
 
 	if (stream == NULL)
@@ -276,72 +407,14 @@ void uvc_print_format_descriptor(uvc_format_desc_t *format_descriptors, FILE *st
 	MARK("FORMAT DESCRIPTOR");
 	DL_FOREACH(format_descriptors, fmt_desc)
 	{
-		uvc_frame_desc_t *frame_desc;
-		int i;
-
-		switch (fmt_desc->bDescriptorSubtype) {
-		case UVC_VS_FORMAT_UNCOMPRESSED:
-		case UVC_VS_FORMAT_MJPEG:
-			FPRINTF(stream, "\t\%s(%d)",
-				_uvc_name_for_format_subtype(fmt_desc->bDescriptorSubtype), fmt_desc->bFormatIndex);
-			FPRINTF(stream, "\t\t  bits per pixel: %d", fmt_desc->bBitsPerPixel);
-			FPRINTF(stream,
-					"\t\t  GUID:%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-					fmt_desc->guidFormat[0], fmt_desc->guidFormat[1],
-					fmt_desc->guidFormat[2], fmt_desc->guidFormat[3],
-					fmt_desc->guidFormat[4], fmt_desc->guidFormat[5],
-					fmt_desc->guidFormat[6], fmt_desc->guidFormat[7],
-					fmt_desc->guidFormat[8], fmt_desc->guidFormat[9],
-					fmt_desc->guidFormat[10], fmt_desc->guidFormat[11],
-					fmt_desc->guidFormat[12], fmt_desc->guidFormat[13],
-					fmt_desc->guidFormat[14], fmt_desc->guidFormat[15]);
-
-			FPRINTF(stream, "\t\t  default frame: %d", fmt_desc->bDefaultFrameIndex);
-			FPRINTF(stream, "\t\t  aspect ration: %dx%d", fmt_desc->bAspectRatioX, fmt_desc->bAspectRatioY);
-			FPRINTF(stream, "\t\t  interlace flags: %02x", fmt_desc->bmInterlaceFlags);
-			FPRINTF(stream, "\t\t  copy protect: %02x", fmt_desc->bCopyProtect);
-
-			DL_FOREACH(fmt_desc->frame_descs, frame_desc)
-			{
-				uint32_t *interval_ptr;
-
-				FPRINTF(stream, "\t\t\tFrameDescriptor(%d)", frame_desc->bFrameIndex);
-				FPRINTF(stream, "\t\t\t  capabilities: %02x", frame_desc->bmCapabilities);
-				FPRINTF(stream, "\t\t\t  size: %dx%d", frame_desc->wWidth, frame_desc->wHeight);
-				FPRINTF(stream, "\t\t\t  bit rate: %d-%d", frame_desc->dwMinBitRate, frame_desc->dwMaxBitRate);
-				FPRINTF(stream, "\t\t\t  max frame size: %d", frame_desc->dwMaxVideoFrameBufferSize);
-				FPRINTF(stream, "\t\t\t  default interval: 1/%d", 10000000 / frame_desc->dwDefaultFrameInterval);
-				if (frame_desc->intervals) {
-					for (interval_ptr = frame_desc->intervals;
-							*interval_ptr; ++interval_ptr) {
-						FPRINTF(stream, "\t\t\t  interval[%d]: 1/%d",
-								(int ) (interval_ptr - frame_desc->intervals),
-								10000000 / *interval_ptr);
-					}
-				} else {
-					FPRINTF(stream, "\t\t\t  min interval[%d] = 1/%d",
-						frame_desc->dwMinFrameInterval,
-						10000000 / frame_desc->dwMinFrameInterval);
-					FPRINTF(stream, "\t\t\t  max interval[%d] = 1/%d",
-						frame_desc->dwMaxFrameInterval,
-						10000000 / frame_desc->dwMaxFrameInterval);
-					if (frame_desc->dwFrameIntervalStep)
-						FPRINTF(stream, "\t\t\t  interval step[%d] = 1/%d",
-							frame_desc->dwFrameIntervalStep,
-							10000000 / frame_desc->dwFrameIntervalStep);
-				}
-			}
-			break;
-		default:
-			FPRINTF(stream, "\t-UnknownFormat");
-		}
+		uvc_print_format_desc_one(fmt_desc, stream);
 	}
 	MARK("END FORMAT DESCRIPTOR");
 
 	EXIT();
 }
 
-void uvc_print_device_descriptor(uvc_device_handle_t *devh, FILE *stream) {
+void uvc_print_device_desc(uvc_device_handle_t *devh, FILE *stream) {
 	ENTER();
 
 	if (stream == NULL)
@@ -359,9 +432,9 @@ void uvc_print_device_descriptor(uvc_device_handle_t *devh, FILE *stream) {
 
 	FPRINTF(stream, "DEVICE DESCRIPTOR (%04x:%04x)", usb_desc.idVendor, usb_desc.idProduct);
 	FPRINTF(stream, "\t bLength:%d", usb_desc.bLength);
-	FPRINTF(stream, "\t bDescriptorType:0x%02x", usb_desc.bDescriptorType);
+	FPRINTF(stream, "\t bDescriptorType: %s", _uvc_name_for_desc_type(usb_desc.bDescriptorType));
 	FPRINTF(stream, "\t bcdUSB:0x%04x", usb_desc.bcdUSB);
-	FPRINTF(stream, "\t bDeviceClass:0x%02x", usb_desc.bDeviceClass);
+	FPRINTF(stream, "\t bDeviceClass: %s(0x%02x)", _uvc_name_for_class(usb_desc.bDeviceClass), usb_desc.bDeviceClass);
 	FPRINTF(stream, "\t bDeviceSubClass:0x%02x", usb_desc.bDeviceSubClass);
 	FPRINTF(stream, "\t bDeviceProtocol:0x%02x", usb_desc.bDeviceProtocol);
 	FPRINTF(stream, "\t bMaxPacketSize0:%d", usb_desc.bMaxPacketSize0);
@@ -376,11 +449,11 @@ void uvc_print_device_descriptor(uvc_device_handle_t *devh, FILE *stream) {
 	EXIT();
 }
 
-void uvc_print_endpoint_descriptor(
+void uvc_print_endpoint_desc(
 	const struct libusb_endpoint_descriptor *endpoint, const int num_endpoint,
 	const char *prefix, FILE *stream) {
 
-	ENTER();
+//	ENTER();
 
 	if (stream == NULL)
 		stream = stderr;
@@ -393,7 +466,7 @@ void uvc_print_endpoint_descriptor(
 		FPRINTF(stream, "%s endpoint(%d)", prefix, ep_ix);
 		if LIKELY(ep) {
 			FPRINTF(stream, "%s\t bLength:%d", prefix, ep->bLength);
-			FPRINTF(stream, "%s\t bDescriptorType:0x%02x", prefix, ep->bDescriptorType);
+			FPRINTF(stream, "%s\t bDescriptorType: %s", prefix, _uvc_name_for_desc_type(ep->bDescriptorType));
 			FPRINTF(stream, "%s\t bEndpointAddress:0x%02x", prefix, ep->bEndpointAddress);
 			FPRINTF(stream, "%s\t bmAttributes:0x%02x", prefix, ep->bmAttributes);
 			FPRINTF(stream, "%s\t wMaxPacketSize:%d", prefix, ep->wMaxPacketSize);
@@ -403,14 +476,14 @@ void uvc_print_endpoint_descriptor(
 			FPRINTF(stream, "%s\t extra_length:%d", prefix, ep->extra_length);
 		}
 	}
-	EXIT();
+//	EXIT();
 }
 
-void uvc_print_interface_descriptor(
+void uvc_print_interface_desc(
 	const struct libusb_interface *interface, const int num_interface,
 	const char *prefix, FILE *stream) {
 
-	ENTER();
+//	ENTER();
 
 	if (stream == NULL)
 		stream = stderr;
@@ -429,26 +502,26 @@ void uvc_print_interface_descriptor(
 				if LIKELY(altsetting) {
 					FPRINTF(stream, "%s\t altsetting:%d", prefix, alt_ix);
 					FPRINTF(stream, "%s\t\t bLength:%d", prefix, altsetting->bLength);
-					FPRINTF(stream, "%s\t\t bDescriptorType:0x%02x", prefix, altsetting->bDescriptorType);
+					FPRINTF(stream, "%s\t\t bDescriptorType: %s", prefix, _uvc_name_for_desc_type(altsetting->bDescriptorType));
 					FPRINTF(stream, "%s\t\t bInterfaceNumber:%d", prefix, altsetting->bInterfaceNumber);
 					FPRINTF(stream, "%s\t\t bAlternateSetting:%d", prefix, altsetting->bAlternateSetting);
 					FPRINTF(stream, "%s\t\t bNumEndpoints:%d", prefix, altsetting->bNumEndpoints);
-					FPRINTF(stream, "%s\t\t bInterfaceClass:0x%02x", prefix, altsetting->bInterfaceClass);
+					FPRINTF(stream, "%s\t\t bInterfaceClass: %s(0x%02x)", prefix, _uvc_name_for_class(altsetting->bInterfaceClass), altsetting->bInterfaceClass);
 					FPRINTF(stream, "%s\t\t bInterfaceSubClass:0x%02x", prefix, altsetting->bInterfaceSubClass);
 					FPRINTF(stream, "%s\t\t bInterfaceProtocol:0x%02x", prefix, altsetting->bInterfaceProtocol);
 					FPRINTF(stream, "%s\t\t iInterface:%d", prefix, altsetting->iInterface);
 					FPRINTF(stream, "%s\t\t extra_length:%d", prefix, altsetting->extra_length);
 					if (altsetting->bNumEndpoints)
-						uvc_print_endpoint_descriptor(altsetting->endpoint, altsetting->bNumEndpoints, pre, stream);
+						uvc_print_endpoint_desc(altsetting->endpoint, altsetting->bNumEndpoints, pre, stream);
 				}
 			}
 		}
 	}
 
-	EXIT();
+//	EXIT();
 }
 
-void uvc_print_configuration_descriptor(uvc_device_handle_t *devh, FILE *stream) {
+void uvc_print_configuration_desc(uvc_device_handle_t *devh, FILE *stream) {
 	ENTER();
 
 	if (stream == NULL)
@@ -467,17 +540,17 @@ void uvc_print_configuration_descriptor(uvc_device_handle_t *devh, FILE *stream)
 		if LIKELY(config >= 0) {
 			ret = libusb_get_active_config_descriptor(usb_dev, &config_desc);
 			if LIKELY(!ret) {
-				FPRINTF(stream, "\t\t bLength=%d", config_desc->bLength);
-				FPRINTF(stream, "\t\t bDescriptorType=0x%02x", config_desc->bDescriptorType);
-				FPRINTF(stream, "\t\t wTotalLength=%d", config_desc->wTotalLength);
-				FPRINTF(stream, "\t\t bNumInterfaces=%d", config_desc->bNumInterfaces);
-				FPRINTF(stream, "\t\t bConfigurationValue=%d", config_desc->bConfigurationValue);
-				FPRINTF(stream, "\t\t iConfiguration=%d", config_desc->iConfiguration);
-				FPRINTF(stream, "\t\t bmAttributes=0x%02x", config_desc->bmAttributes);
-				FPRINTF(stream, "\t\t MaxPower=%d x2[mA]", config_desc->MaxPower);
-				FPRINTF(stream, "\t\t extra_length=%d", config_desc->extra_length);
+				FPRINTF(stream, "\t\t bLength:%d", config_desc->bLength);
+				FPRINTF(stream, "\t\t bDescriptorType: %s", _uvc_name_for_desc_type(config_desc->bDescriptorType));
+				FPRINTF(stream, "\t\t wTotalLength:%d", config_desc->wTotalLength);
+				FPRINTF(stream, "\t\t bNumInterfaces:%d", config_desc->bNumInterfaces);
+				FPRINTF(stream, "\t\t bConfigurationValue:%d", config_desc->bConfigurationValue);
+				FPRINTF(stream, "\t\t iConfiguration:%d", config_desc->iConfiguration);
+				FPRINTF(stream, "\t\t bmAttributes:0x%02x", config_desc->bmAttributes);
+				FPRINTF(stream, "\t\t MaxPower:%d x2[mA]", config_desc->MaxPower);
+				FPRINTF(stream, "\t\t extra_length:%d", config_desc->extra_length);
 				if (config_desc->wTotalLength && config_desc->bNumInterfaces)
-					uvc_print_interface_descriptor(config_desc->interface, config_desc->bNumInterfaces, "\t\t", stream);
+					uvc_print_interface_desc(config_desc->interface, config_desc->bNumInterfaces, "\t\t", stream);
 				libusb_free_config_descriptor(config_desc);
 			}
 		}

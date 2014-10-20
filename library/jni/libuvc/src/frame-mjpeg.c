@@ -1,7 +1,7 @@
-/**
- * add uvc_mjpeg2yuyv and modified to improve performance
- * Copyright(c) 2014 saki saki@serenegiant.com
- */
+/*********************************************************************
+ * add and modified some function to avoid crash
+ * Copyright (C) 2014 saki@serenegiant All rights reserved.
+ *********************************************************************/
 /*********************************************************************
  * Software License Agreement (BSD License)
  *

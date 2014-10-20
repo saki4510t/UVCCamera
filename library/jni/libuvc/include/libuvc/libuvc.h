@@ -50,7 +50,7 @@ typedef enum uvc_error {
 } uvc_error_t;
 
 /**
- * Table 4-7 Request Error Code Control
+ * Table 4-7 Request Error Code Control XXX add saki@serenegiant.com
  */
 enum uvc_error_code_control {
 	UVC_ERROR_CODECTRL_NO_ERROR = 0x00,
@@ -110,14 +110,14 @@ enum uvc_frame_format {
 /** UVC request code (A.8) */
 enum uvc_req_code {
 	UVC_RC_UNDEFINED = 0x00,
-	UVC_SET_CUR = 0x01,
-	UVC_GET_CUR = 0x81,
-	UVC_GET_MIN = 0x82,
-	UVC_GET_MAX = 0x83,
-	UVC_GET_RES = 0x84,
-	UVC_GET_LEN = 0x85,
-	UVC_GET_INFO = 0x86,
-	UVC_GET_DEF = 0x87
+	UVC_SET_CUR = 0x01,			// bmRequestType=0x21
+	UVC_GET_CUR = 0x81,			// bmRequestType=0xa1
+	UVC_GET_MIN = 0x82,			// ↑
+	UVC_GET_MAX = 0x83,			// ↑
+	UVC_GET_RES = 0x84,			// ↑
+	UVC_GET_LEN = 0x85,			// ↑
+	UVC_GET_INFO = 0x86,		// ↑
+	UVC_GET_DEF = 0x87			// ↑
 };
 
 enum uvc_device_power_mode {
@@ -659,16 +659,23 @@ uvc_error_t uvc_any2rgbx(uvc_frame_t *in, uvc_frame_t *out);
 //**********************************************************************
 // added for diagonostic
 // t_saki@serenegiant.com
-void uvc_print_format_descriptor(uvc_format_desc_t *format_descriptors, FILE *stream);
-void uvc_print_device_descriptor(uvc_device_handle_t *devh, FILE *stream);
-void uvc_print_configuration_descriptor(uvc_device_handle_t *devh, FILE *stream);
-void uvc_print_interface_descriptor(
+void uvc_print_format_desc_one(uvc_format_desc_t *format_descriptors, FILE *stream);
+void uvc_print_format_desc(uvc_format_desc_t *format_descriptors, FILE *stream);
+void uvc_print_device_desc(uvc_device_handle_t *devh, FILE *stream);
+void uvc_print_configuration_desc(uvc_device_handle_t *devh, FILE *stream);
+void uvc_print_interface_desc(
 	const struct libusb_interface *interface, const int num_interface,
 	const char *prefix, FILE *stream);
-void uvc_print_endpoint_descriptor(
+void uvc_print_endpoint_desc(
 	const struct libusb_endpoint_descriptor *endpoint, const int num_endpoint,
 	const char *prefix, FILE *stream);
 
+#define uvc_print_format_descriptor_one uvc_print_format_desc_one
+#define uvc_print_format_descriptor uvc_print_format_desc
+#define uvc_print_device_descriptor uvc_print_device_desc
+#define uvc_print_configuration_descriptor uvc_print_configuration_desc
+#define uvc_print_interface_descriptor uvc_print_interface_desc
+#define uvc_print_endpoint_descriptor uvc_print_endpoint_desc;
 
 #ifdef __cplusplus
 }

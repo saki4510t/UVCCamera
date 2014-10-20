@@ -158,7 +158,7 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 		len = 34;
 	else
 		len = 26;
-
+//	LOGI("bcdUVC:%x,req:0x%02x,probe:%d", bcdUVC, req, probe);
 	/* prepare for a SET transfer */
 	if (req == UVC_SET_CUR) {
 		SHORT_TO_SW(ctrl->bmHint, buf);
@@ -206,7 +206,10 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 		}
 		return err;
 	}
-
+	if (err < len) {
+		LOGE("transfered bytes is smaller than data bytes:%d expected %d", err, len);
+		return LIBUSB_ERROR_OTHER;
+	}
 	/* now decode following a GET transfer */
 	if (req != UVC_SET_CUR) {
 		ctrl->bmHint = SW_TO_SHORT(buf);
@@ -239,8 +242,9 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 			}
 		}
 
-		/* fix up block for cameras that fail to set dwMax* */
-		if (ctrl->dwMaxVideoFrameSize == 0) {
+		/* fix up block for cameras that fail to set dwMax */
+		if (!ctrl->dwMaxVideoFrameSize) {
+			LOGW("fix up block for cameras that fail to set dwMax");
 			uvc_frame_desc_t *frame_desc = uvc_find_frame_desc(devh,
 					ctrl->bFormatIndex, ctrl->bFrameIndex);
 
@@ -341,183 +345,200 @@ uvc_frame_desc_t *uvc_find_frame_desc(uvc_device_handle_t *devh,
 	return NULL;
 }
 
+static void _uvc_print_streaming_interface_one(uvc_streaming_interface_t *stream_if) {
+//	struct uvc_device_info *parent;
+//	struct uvc_streaming_interface *prev, *next;
+	MARK("bInterfaceNumber:%d", stream_if->bInterfaceNumber);
+	uvc_print_format_desc_one(stream_if->format_descs, NULL);
+	MARK("bEndpointAddress:%d", stream_if->bEndpointAddress);
+	MARK("bTerminalLink:%d", stream_if->bTerminalLink);
+}
+
+static uvc_error_t _prepare_stream_ctrl(uvc_device_handle_t *devh, uvc_stream_ctrl_t *ctrl) {
+	// XXX some camera may need to call uvc_query_stream_ctrl with UVC_GET_CUR/UVC_GET_MAX/UVC_GET_MIN
+	// before negotiation otherwise stream stall. added by saki
+	uvc_error_t result = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_CUR);	// probe query
+	if (LIKELY(!result)) {
+		result = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_MIN);			// probe query
+		if (LIKELY(!result)) {
+			result = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_MAX);		// probe query
+			if (UNLIKELY(result))
+				LOGE("uvc_query_stream_ctrl:UVC_GET_MAX:err=%d", result);	// XXX 最大値の方を後で取得しないとだめ
+		} else {
+			LOGE("uvc_query_stream_ctrl:UVC_GET_MIN:err=%d", result);
+		}
+	} else {
+		LOGE("uvc_query_stream_ctrl:UVC_GET_CUR:err=%d", result);
+	}
+#if 0
+	if (UNLIKELY(result)) {
+		enum uvc_error_code_control error_code;
+		uvc_get_error_code(devh, &error_code, UVC_GET_CUR);
+		LOGE("uvc_query_stream_ctrl:ret=%d,err_code=%d", result, error_code);
+		uvc_print_format_desc(devh->info->stream_ifs->format_descs, NULL);
+	}
+#endif
+	return result;
+}
+
+static uvc_error_t _uvc_get_stream_ctrl_format(uvc_device_handle_t *devh,
+	uvc_streaming_interface_t *stream_if, uvc_stream_ctrl_t *ctrl, uvc_format_desc_t *format,
+	const int width, const int height,
+	const int min_fps, const int max_fps) {
+
+	ENTER();
+
+	int i;
+	uvc_frame_desc_t *frame;
+
+	ctrl->bInterfaceNumber = stream_if->bInterfaceNumber;
+	uvc_error_t result = uvc_claim_if(devh, ctrl->bInterfaceNumber);
+	if (UNLIKELY(result)) {
+		LOGE("uvc_claim_if:err=%d", result);
+		goto fail;
+	}
+	for (i = 0; i < 2; i++) {
+		result = _prepare_stream_ctrl(devh, ctrl);
+	}
+	if (UNLIKELY(result)) {
+		LOGE("_prepare_stream_ctrl:err=%d", result);
+		goto fail;
+	}
+#if 0
+	// XXX add check ctrl values
+	uint64_t bmaControl = stream_if->bmaControls[format->bFormatIndex - 1];
+	if (bmaControl & 0x001) {	// wKeyFrameRate
+		if (UNLIKELY(!ctrl->wKeyFrameRate)) {
+			LOGE("wKeyFrameRate should be set");
+			RETURN(UVC_ERROR_INVALID_MODE, uvc_error_t);
+		}
+	}
+	if (bmaControl & 0x002) {	// wPFrameRate
+		if (UNLIKELY(!ctrl->wPFrameRate)) {
+			LOGE("wPFrameRate should be set");
+			RETURN(UVC_ERROR_INVALID_MODE, uvc_error_t);
+		}
+	}
+	if (bmaControl & 0x004) {	// wCompQuality
+		if (UNLIKELY(!ctrl->wCompQuality)) {
+			LOGE("wCompQuality should be set");
+			RETURN(UVC_ERROR_INVALID_MODE, uvc_error_t);
+		}
+	}
+	if (bmaControl & 0x008) {	// wCompWindowSize
+		if (UNLIKELY(!ctrl->wCompWindowSize)) {
+			LOGE("wCompWindowSize should be set");
+			RETURN(UVC_ERROR_INVALID_MODE, uvc_error_t);
+		}
+	}
+#endif
+	DL_FOREACH(format->frame_descs, frame)
+	{
+		if (frame->wWidth != width || frame->wHeight != height)
+			continue;
+
+		uint32_t *interval;
+
+		if (frame->intervals) {
+			for (interval = frame->intervals; *interval; ++interval) {
+				uint32_t it = 10000000 / *interval;
+				LOGV("it:%d", it);
+				if ((it >= (uint32_t) min_fps) && (it <= (uint32_t) max_fps)) {
+					ctrl->bmHint = (1 << 0); /* don't negotiate interval */
+					ctrl->bFormatIndex = format->bFormatIndex;
+					ctrl->bFrameIndex = frame->bFrameIndex;
+					ctrl->dwFrameInterval = *interval;
+
+					goto found;
+				}
+			}
+		} else {
+			int32_t fps;
+			for (fps = max_fps; fps >= min_fps; fps--) {
+				uint32_t interval_100ns = 10000000 / fps;
+				uint32_t interval_offset = interval_100ns
+						- frame->dwMinFrameInterval;
+				LOGV("fps:%d", fps);
+				if (interval_100ns >= frame->dwMinFrameInterval
+					&& interval_100ns <= frame->dwMaxFrameInterval
+					&& !(interval_offset
+						&& (interval_offset % frame->dwFrameIntervalStep) ) ) {
+					ctrl->bmHint = (1 << 0); /* don't negotiate interval */
+					ctrl->bFormatIndex = format->bFormatIndex;
+					ctrl->bFrameIndex = frame->bFrameIndex;
+					ctrl->dwFrameInterval = interval_100ns;
+
+					goto found;
+				}
+			}
+		}
+	}
+	result = UVC_ERROR_INVALID_MODE;
+fail:
+	uvc_release_if(devh, ctrl->bInterfaceNumber);
+	RETURN(result, uvc_error_t);
+
+found:
+	RETURN(UVC_SUCCESS, uvc_error_t);	// we don't call uvc_probe_stream_ctrl because bInterfaceNumber may not be set.
+}
+
 /** Get a negotiated streaming control block for some common parameters.
  * @ingroup streaming
  *
  * @param[in] devh Device handle
  * @param[in,out] ctrl Control block
- * @param[in] format_class Type of streaming format
+ * @param[in] cf Type of streaming format
  * @param[in] width Desired frame width
  * @param[in] height Desired frame height
  * @param[in] fps Frame rate, frames per second
  */
 uvc_error_t uvc_get_stream_ctrl_format_size(uvc_device_handle_t *devh,
-		uvc_stream_ctrl_t *ctrl, enum uvc_frame_format cf, int width,
-		int height, int fps) {
-	uvc_streaming_interface_t *stream_if;
-	enum uvc_vs_desc_subtype format_class;
+		uvc_stream_ctrl_t *ctrl, enum uvc_frame_format cf, int width, int height, int fps) {
 
-	/* get the max values */
-	// XXX calling uvc_query_stream_ctrl at this point almost allways fails
-	uvc_error_t result = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_MAX);	// probe query
-#if 1
-	// These code need when using some conbination of device and cameras like Nexus5 + Logitech C270
-	// otherwise hang-up on next call of uvc_query_stream_ctrl in uvc_probe_stream_ctrl
-	// I assume that some waitting is required dor such combination  XXX saki
-	if UNLIKELY(result) {
-		enum uvc_error_code_control error_code;
-		uvc_get_error_code(devh, &error_code, UVC_GET_CUR);
-		// result is UVC_ERROR_IO(-1) or UVC_ERROR_PIPE(-9), the error code will be zero
-		LOGE("uvc_query_stream_ctrl:ret=%d,err_code=%d", result, error_code);
-		uvc_print_format_descriptor(devh->info->stream_ifs->format_descs, NULL);
-//		return result;
-	}
-#endif
-
-	/* find a matching frame descriptor and interval */
-	DL_FOREACH(devh->info->stream_ifs, stream_if)
-	{
-		uvc_format_desc_t *format;
-
-		DL_FOREACH(stream_if->format_descs, format)
-		{
-			uvc_frame_desc_t *frame;
-
-			if (!_uvc_frame_format_matches_guid(cf, format->guidFormat))
-				continue;
-
-			DL_FOREACH(format->frame_descs, frame)
-			{
-				if (frame->wWidth != width || frame->wHeight != height)
-					continue;
-
-				uint32_t *interval;
-
-				if (frame->intervals) {
-					for (interval = frame->intervals; *interval; ++interval) {
-						if (10000000 / *interval == (unsigned int) fps) {
-							ctrl->bmHint = (1 << 0); /* don't negotiate interval */
-							ctrl->bFormatIndex = format->bFormatIndex;
-							ctrl->bFrameIndex = frame->bFrameIndex;
-							ctrl->bInterfaceNumber = stream_if->bInterfaceNumber;
-							ctrl->dwFrameInterval = *interval;
-
-							goto found;
-						}
-					}
-				} else {
-					uint32_t interval_100ns = 10000000 / fps;
-					uint32_t interval_offset = interval_100ns
-							- frame->dwMinFrameInterval;
-
-					if (interval_100ns >= frame->dwMinFrameInterval
-						&& interval_100ns <= frame->dwMaxFrameInterval
-						&& !(interval_offset
-							&& (interval_offset % frame->dwFrameIntervalStep) ) ) {
-						ctrl->bmHint = (1 << 0); /* don't negotiate interval */
-						ctrl->bFormatIndex = format->bFormatIndex;
-						ctrl->bFrameIndex = frame->bFrameIndex;
-						ctrl->bInterfaceNumber = stream_if->bInterfaceNumber;
-						ctrl->dwFrameInterval = interval_100ns;
-
-						goto found;
-					}
-				}
-			}
-		}
-	}
-
-	return UVC_ERROR_INVALID_MODE;
-
-found:
-	return uvc_probe_stream_ctrl(devh, ctrl);
+	return uvc_get_stream_ctrl_format_size_fps(devh, ctrl, cf, width, height, fps, fps);
 }
 
+/** Get a negotiated streaming control block for some common parameters.
+ * @ingroup streaming
+ *
+ * @param[in] devh Device handle
+ * @param[in,out] ctrl Control block
+ * @param[in] cf Type of streaming format
+ * @param[in] width Desired frame width
+ * @param[in] height Desired frame height
+ * @param[in] min_fps Frame rate, minimum frames per second, this value is included
+ * @param[in] max_fps Frame rate, maximum frames per second, this value is included
+ */
 uvc_error_t uvc_get_stream_ctrl_format_size_fps(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl, enum uvc_frame_format cf, int width,
 		int height, int min_fps, int max_fps) {
 
+	ENTER();
+
 	uvc_streaming_interface_t *stream_if;
-	enum uvc_vs_desc_subtype format_class;
+	uvc_error_t result;
 
-	/* get the max values */
-	// XXX calling uvc_query_stream_ctrl at this point almost allways fails
-	uvc_error_t result = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_MAX);	// probe query
-#if 1
-	// These code need when using some conbination of device and cameras like Nexus5 + Logitech C270
-	// otherwise hang-up on next call of uvc_query_stream_ctrl in uvc_probe_stream_ctrl
-	// I assume that some waitting is required dor such combination  XXX saki
-	if UNLIKELY(result) {
-		enum uvc_error_code_control error_code;
-		uvc_get_error_code(devh, &error_code, UVC_GET_CUR);
-		// result is UVC_ERROR_IO(-1) or UVC_ERROR_PIPE(-9), the error code will be zero
-		LOGE("uvc_query_stream_ctrl:ret=%d,err_code=%d", result, error_code);
-		uvc_print_format_descriptor(devh->info->stream_ifs->format_descs, NULL);
-//		return result;
-	}
-#endif
-
+	memset(ctrl, 0, sizeof(*ctrl));	// XXX add
 	/* find a matching frame descriptor and interval */
+	uvc_format_desc_t *format;
 	DL_FOREACH(devh->info->stream_ifs, stream_if)
 	{
-		uvc_format_desc_t *format;
-
 		DL_FOREACH(stream_if->format_descs, format)
 		{
-			uvc_frame_desc_t *frame;
-
 			if (!_uvc_frame_format_matches_guid(cf, format->guidFormat))
 				continue;
 
-			DL_FOREACH(format->frame_descs, frame)
-			{
-				if (frame->wWidth != width || frame->wHeight != height)
-					continue;
-
-				uint32_t *interval;
-
-				if (frame->intervals) {
-					for (interval = frame->intervals; *interval; ++interval) {
-						uint32_t it = 10000000 / *interval;
-						if ((it >= (uint32_t) min_fps) && (it <= (uint32_t) max_fps)) {
-							ctrl->bmHint = (1 << 0); /* don't negotiate interval */
-							ctrl->bFormatIndex = format->bFormatIndex;
-							ctrl->bFrameIndex = frame->bFrameIndex;
-							ctrl->bInterfaceNumber = stream_if->bInterfaceNumber;
-							ctrl->dwFrameInterval = *interval;
-
-							goto found;
-						}
-					}
-				} else {
-					int32_t fps;
-					for (fps = max_fps; fps >= min_fps; fps++) {
-						uint32_t interval_100ns = 10000000 / fps;
-						uint32_t interval_offset = interval_100ns
-								- frame->dwMinFrameInterval;
-
-						if (interval_100ns >= frame->dwMinFrameInterval
-							&& interval_100ns <= frame->dwMaxFrameInterval
-							&& !(interval_offset
-								&& (interval_offset % frame->dwFrameIntervalStep) ) ) {
-							ctrl->bmHint = (1 << 0); /* don't negotiate interval */
-							ctrl->bFormatIndex = format->bFormatIndex;
-							ctrl->bFrameIndex = frame->bFrameIndex;
-							ctrl->bInterfaceNumber = stream_if->bInterfaceNumber;
-							ctrl->dwFrameInterval = interval_100ns;
-
-							goto found;
-						}
-					}
-				}
+			result = _uvc_get_stream_ctrl_format(devh, stream_if, ctrl, format, width, height, min_fps, max_fps);
+			if (!result) {	// UVC_SUCCESS
+				goto found;
 			}
 		}
 	}
 
-	return UVC_ERROR_INVALID_MODE;
+	RETURN(UVC_ERROR_INVALID_MODE, uvc_error_t);
 
 found:
-	return uvc_probe_stream_ctrl(devh, ctrl);
+	RETURN(uvc_probe_stream_ctrl(devh, ctrl), uvc_error_t);
 }
 
 /** @internal
@@ -531,19 +552,19 @@ uvc_error_t uvc_probe_stream_ctrl(uvc_device_handle_t *devh,
 	uvc_error_t err;
 
 	err = uvc_claim_if(devh, ctrl->bInterfaceNumber);
-	if UNLIKELY(err) {
+	if (UNLIKELY(err)) {
 		LOGE("uvc_claim_if:err=%d", err);
 		return err;
 	}
 
 	err = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_SET_CUR);	// probe query
-	if UNLIKELY(err) {
+	if (UNLIKELY(err)) {
 		LOGE("uvc_query_stream_ctrl(UVC_SET_CUR):err=%d", err);
 		return err;
 	}
 
-	err = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_CUR);	// probe query
-	if UNLIKELY(err) {
+	err = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_CUR);	// probe query ここでエラーが返ってくる
+	if (UNLIKELY(err)) {
 		LOGE("uvc_query_stream_ctrl(UVC_GET_CUR):err=%d", err);
 		return err;
 	}
@@ -585,7 +606,7 @@ void _uvc_iso_delete_transfer(struct libusb_transfer *transfer) {
 
 //	MARK("");
 	uvc_stream_handle_t *strmh = transfer->user_data;
-	if UNLIKELY(!strmh) EXIT();		// XXX
+	if (UNLIKELY(!strmh)) EXIT();		// XXX
 	int i;
 
 	pthread_mutex_lock(&strmh->cb_mutex);	// XXX crash while calling uvc_stop_streaming
@@ -650,20 +671,20 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 #endif
 	switch (transfer->status) {
 	case LIBUSB_TRANSFER_COMPLETED:
-		if UNLIKELY(!transfer->num_iso_packets)
+		if (UNLIKELY(!transfer->num_iso_packets))
 			MARK("num_iso_packets is zero");
 		for (packet_id = 0; packet_id < transfer->num_iso_packets; ++packet_id) {
 			check_header = 1;
 
 			pkt = transfer->iso_packet_desc + packet_id;
 
-			if UNLIKELY(pkt->status != 0) {
+			if (UNLIKELY(pkt->status != 0)) {
 				MARK("bad packet:status=%d,actual_length=%d", pkt->status, pkt->actual_length);
 				strmh->bfh_err |= STREAM_HEADER_BFH_ERR;
 				continue;
 			}
 
-			if UNLIKELY(!pkt->actual_length) {	// 転送したバイト数が0・・・ってどういうこと?
+			if (UNLIKELY(!pkt->actual_length)) {	// why transfered byte is zero...
 //				MARK("zero packet (transfer):");
 //				strmh->bfh_err |= STREAM_HEADER_BFH_ERR;	// don't set this flag here
 				continue;
@@ -671,7 +692,7 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 			// XXX accessing to pktbuf could lead to crash on the original implementation
 			// because the substances of pktbuf will be deleted in uvc_stream_stop.
 			pktbuf = libusb_get_iso_packet_buffer_simple(transfer, packet_id);
-			if LIKELY(pktbuf) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null
+			if (LIKELY(pktbuf)) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null
 //				assert(pktbuf < transfer->buffer + transfer->length - 1);	// XXX
 #ifdef __ANDROID__
 				// XXX optimaization because this flag never become true on Android devices
@@ -692,10 +713,11 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					header_len = pktbuf[0];	// Header length field of Stream Header
 				}
 
-				if LIKELY(check_header) {
-					if UNLIKELY(pktbuf[1] & STREAM_HEADER_BFH_ERR) {
+				if (LIKELY(check_header)) {
+					if (UNLIKELY(pktbuf[1] & STREAM_HEADER_BFH_ERR)) {
 						strmh->bfh_err |= STREAM_HEADER_BFH_ERR;
 						MARK("bad packet");
+						libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
 						continue;
 					}
 #ifdef USE_EOF
@@ -729,7 +751,7 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 #endif
 				} // if LIKELY(check_header)
 
-				if UNLIKELY(pkt->actual_length < header_len) {
+				if (UNLIKELY(pkt->actual_length < header_len)) {
 					/* Bogus packet received */
 					strmh->bfh_err |= STREAM_HEADER_BFH_ERR;
 					MARK("bogus packet: actual_len=%d, header_len=%zd", pkt->actual_length, header_len);
@@ -740,7 +762,7 @@ void _uvc_iso_callback(struct libusb_transfer *transfer) {
 				// and there calculated value never become minus.
 				// therefor changed to "if (pkt->actual_length > header_len)"
 				// from "if (pkt->actual_length - header_len > 0)"
-				if LIKELY(pkt->actual_length > header_len) {
+				if (LIKELY(pkt->actual_length > header_len)) {
 					const size_t odd_bytes = pkt->actual_length - header_len;
 					assert(strmh->got_bytes + odd_bytes < strmh->size_buf);
 					assert(strmh->outbuf);
@@ -980,12 +1002,10 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 	// Get the interface that provides the chosen format and frame configuration
 	interface_id = strmh->stream_if->bInterfaceNumber;
 	interface = &strmh->devh->info->config->interface[interface_id];
-
 	/* A VS interface uses isochronous transfers if it has multiple altsettings.
 	 * (UVC 1.5: 2.4.3. VideoStreaming Interface, on page 19) */
 	isochronous = (interface->num_altsetting > 1) || flags;
-	MARK("isochronous=%d", isochronous);
-	if (isochronous) {
+	if (LIKELY(isochronous)) {
 		/* For isochronous streaming, we choose an appropriate altsetting for the endpoint
 		 * and set up several transfers */
 		const struct libusb_interface_descriptor *altsetting;
@@ -1018,11 +1038,9 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 		for (alt_idx = 0; alt_idx <= num_alt ; alt_idx++) {
 			altsetting = interface->altsetting + alt_idx;
 			endpoint_bytes_per_packet = 0;
-
 			/* Find the endpoint with the number specified in the VS header */
 			for (ep_idx = 0; ep_idx < altsetting->bNumEndpoints; ep_idx++) {
 				endpoint = altsetting->endpoint + ep_idx;
-
 				if (endpoint->bEndpointAddress
 						== format_desc->parent->bEndpointAddress) {
 					endpoint_bytes_per_packet = endpoint->wMaxPacketSize;
@@ -1041,7 +1059,9 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 			}
 			// XXX config_bytes_per_packet should not be zero otherwise zero divided exception occur
 			if (LIKELY(endpoint_bytes_per_packet)) {
-
+				int num_packets = (dwMaxVideoFrameSize
+						+ endpoint_bytes_per_packet - 1)
+						/ endpoint_bytes_per_packet;		// XXX cashed by zero divided exception occured
 				if ( (endpoint_bytes_per_packet >= config_bytes_per_packet)
 					|| (alt_idx == num_alt) ) {	// XXX always match to last altsetting for buggy device
 					/* Transfers will be at most one frame long: Divide the maximum frame size
@@ -1059,13 +1079,23 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 				}
 			}
 		}
-
-		/* If we searched through all the altsettings and found nothing usable */
-		if (UNLIKELY(alt_idx == interface->num_altsetting)) {
+		if (UNLIKELY(!endpoint_bytes_per_packet)) {
+			LOGE("endpoint_bytes_per_packet is zero");
+			ret = UVC_ERROR_INVALID_MODE;
+			goto fail;
+		}
+		if (UNLIKELY(!total_transfer_size)) {
+			LOGE("total_transfer_size is zero");
 			ret = UVC_ERROR_INVALID_MODE;
 			goto fail;
 		}
 
+		/* If we searched through all the altsettings and found nothing usable */
+/*		if (UNLIKELY(alt_idx == interface->num_altsetting)) {	// XXX never hit this condition
+			UVC_DEBUG("libusb_set_interface_alt_setting failed");
+			ret = UVC_ERROR_INVALID_MODE;
+			goto fail;
+		} */
 		/* Select the altsetting */
 		ret = libusb_set_interface_alt_setting(strmh->devh->usb_devh,
 				altsetting->bInterfaceNumber, altsetting->bAlternateSetting);
@@ -1073,7 +1103,6 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 			UVC_DEBUG("libusb_set_interface_alt_setting failed");
 			goto fail;
 		}
-
 		/* Set up the transfers */
 		for (transfer_id = 0; transfer_id < ARRAYSIZE(strmh->transfers); ++transfer_id) {
 			transfer = libusb_alloc_transfer(packets_per_transfer);
@@ -1090,6 +1119,7 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 		}
 	} else {
 		/** @todo prepare for bulk transfer */
+		LOGE("bulk mode");
 	}
 
 	strmh->user_cb = cb;
@@ -1124,6 +1154,7 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 	UVC_EXIT(ret);
 	return ret;
 fail:
+	LOGE("fail");
 	strmh->running = 0;
 	UVC_EXIT(ret);
 	return ret;
@@ -1168,12 +1199,12 @@ void *_uvc_user_caller(void *arg) {
 			}
 
 			last_seq = strmh->hold_seq;
-			if LIKELY(!strmh->hold_bfh_err)	// XXX
+			if (LIKELY(!strmh->hold_bfh_err))	// XXX
 				_uvc_populate_frame(strmh);
 		}
 		pthread_mutex_unlock(&strmh->cb_mutex);
 
-		if LIKELY(!strmh->hold_bfh_err)	// XXX
+		if (LIKELY(!strmh->hold_bfh_err))	// XXX
 			strmh->user_cb(&strmh->frame, strmh->user_ptr);	// call user callback function
 	}
 
@@ -1368,7 +1399,7 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
 		pthread_join(strmh->cb_thread, NULL);
 	}
 
-	RETURN(UVC_SUCCESS, int);
+	RETURN(UVC_SUCCESS, uvc_error_t);
 }
 
 /** @brief Close stream.

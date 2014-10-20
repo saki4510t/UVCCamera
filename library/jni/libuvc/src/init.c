@@ -1,4 +1,8 @@
 /*********************************************************************
+ * modified _uvc_handle_events to improve performance on Android
+ * Copyright (C) 2014 saki@serenegiant All rights reserved.
+ *********************************************************************/
+/*********************************************************************
  * Software License Agreement (BSD License)
  *
  *  Copyright (C) 2010-2012 Ken Tossell

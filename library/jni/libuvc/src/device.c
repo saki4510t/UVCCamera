@@ -1,7 +1,7 @@
 /*********************************************************************
  *********************************************************************/
 /*********************************************************************
- * add some functions to support non-rooted Android devices
+ * add and modified some functions to support non-rooted Android devices
  * and modified some function for optimaization with gcc
  * Copyright (C) 2014 saki@serenegiant All rights reserved.
  *********************************************************************/
@@ -326,15 +326,15 @@ uvc_error_t uvc_get_device_info(uvc_device_t *dev, uvc_device_info_t **info) {
 	if (libusb_get_config_descriptor(dev->usb_dev, 0, &(internal_info->config)) != 0) {
 //	if (libusb_get_active_config_descriptor(dev->usb_dev, &(internal_info->config)) != 0) {
 		// XXX assume libusb_get_active_config_descriptor　is better
-		// but some buggy device will return error when get active congig.
+		// but some buggy device will return error when get active config.
 		// so we will use libusb_get_config_descriptor...
 		free(internal_info);
 		UVC_EXIT(UVC_ERROR_IO);
 		return UVC_ERROR_IO;
 	}
 
-	ret = uvc_scan_control(dev, internal_info);	// XXX ViewっとめがねはここでVideoControlを見つけれないlibusb_get_config_descriptorで読めてないみたい
-	if UNLIKELY(ret) {
+	ret = uvc_scan_control(dev, internal_info);
+	if (UNLIKELY(ret)) {
 		uvc_free_device_info(internal_info);
 		UVC_EXIT(ret);
 		return ret;
@@ -407,6 +407,7 @@ void uvc_free_device_info(uvc_device_info_t *info) {
 		}
 
 		DL_DELETE(info->stream_ifs, stream_if);
+		free(stream_if->bmaControls);	// XXX
 		free(stream_if);
 	}
 
@@ -442,7 +443,7 @@ uvc_error_t uvc_get_device_descriptor(uvc_device_t *dev,
 
 	ret = libusb_get_device_descriptor(dev->usb_dev, &usb_desc);
 
-	if UNLIKELY(ret) {
+	if (UNLIKELY(ret)) {
 		UVC_EXIT(ret);
 		return ret;
 	}
@@ -847,7 +848,7 @@ uvc_error_t uvc_scan_control(uvc_device_t *dev, uvc_device_info_t *info) {
 	ret = UVC_SUCCESS;
 	if_desc = NULL;
 
-	if LIKELY(info && info->config) {	// XXX add to avoid crash
+	if (LIKELY(info && info->config)) {	// XXX add to avoid crash
 		MARK("bNumInterfaces=%d", info->config->bNumInterfaces);
 		for (interface_idx = 0; interface_idx < info->config->bNumInterfaces; ++interface_idx) {
 			if_desc = &info->config->interface[interface_idx].altsetting[0];
@@ -860,7 +861,7 @@ uvc_error_t uvc_scan_control(uvc_device_t *dev, uvc_device_info_t *info) {
 		}
 	}
 
-	if UNLIKELY(!if_desc) {
+	if (UNLIKELY(!if_desc)) {
 		UVC_EXIT(UVC_ERROR_INVALID_DEVICE);
 		LOGE("UVC_ERROR_INVALID_DEVICE");
 		return UVC_ERROR_INVALID_DEVICE;
@@ -958,7 +959,8 @@ uvc_error_t uvc_parse_vc_input_terminal(uvc_device_t *dev,
 	term->wObjectiveFocalLengthMax = SW_TO_SHORT(&block[10]);
 	term->wOcularFocalLength = SW_TO_SHORT(&block[12]);
 	term->request = (term->bTerminalID << 8) | info->ctrl_if.bInterfaceNumber;
-	for (i = 14 + block[14]; i >= 15; --i)
+	term->bmControls = 0;	// XXX
+	for (i = 14 + block[14]; i >= 15; i--)
 		term->bmControls = block[i] + (term->bmControls << 8);
 
 	DL_APPEND(info->ctrl_if.input_term_descs, term);
@@ -991,7 +993,7 @@ uvc_error_t uvc_parse_vc_output_terminal(uvc_device_t *dev,
 	term->bAssocTerminal = block[6];
 	term->bSourceID = block[7];
 	term->iTerminal = block[8];
-	term->request = (term->bTerminalID << 8) | info->ctrl_if.bInterfaceNumber;
+	term->request = (term->bTerminalID << 8) | info->ctrl_if.bInterfaceNumber;	// XXX
 	// TODO depending on the wTerminalType
 
 	DL_APPEND(info->ctrl_if.output_term_descs, term);
@@ -1014,9 +1016,10 @@ uvc_error_t uvc_parse_vc_processing_unit(uvc_device_t *dev,
 	unit = calloc(1, sizeof(*unit));
 	unit->bUnitID = block[3];
 	unit->bSourceID = block[4];
-	unit->request = (unit->bUnitID << 8) | info->ctrl_if.bInterfaceNumber;
+	unit->request = (unit->bUnitID << 8) | info->ctrl_if.bInterfaceNumber;	// XXX
 
-	for (i = 7 + block[7]; i >= 8; --i)
+	unit->bmControls = 0;	// XXX
+	for (i = 7 + block[7]; i >= 8; i--)
 		unit->bmControls = block[i] + (unit->bmControls << 8);
 
 	DL_APPEND(info->ctrl_if.processing_unit_descs, unit);
@@ -1046,7 +1049,7 @@ uvc_error_t uvc_parse_vc_extension_unit(uvc_device_t *dev,
 	start_of_controls = &block[23 + num_in_pins];
 	unit->request = (unit->bUnitID << 8) | info->ctrl_if.bInterfaceNumber;
 
-	for (i = size_of_controls - 1; i >= 0; --i)
+	for (i = size_of_controls - 1; i >= 0; i--)
 		unit->bmControls = start_of_controls[i] + (unit->bmControls << 8);
 
 	DL_APPEND(info->ctrl_if.extension_unit_descs, unit);
@@ -1119,7 +1122,7 @@ uvc_error_t uvc_scan_streaming(uvc_device_t *dev, uvc_device_info_t *info,
 	buffer = if_desc->extra;
 	buffer_left = if_desc->extra_length;
 	// XXX some device have it's format descriptions after the endpoint descriptor
-	if UNLIKELY(!buffer || !buffer_left) {
+	if (UNLIKELY(!buffer || !buffer_left)) {
 		if (if_desc->bNumEndpoints && if_desc->endpoint) {
 			// try to use extra data in endpoint[0]
 			buffer = if_desc->endpoint[0].extra;
@@ -1131,10 +1134,10 @@ uvc_error_t uvc_scan_streaming(uvc_device_t *dev, uvc_device_info_t *info,
 	stream_if->bInterfaceNumber = if_desc->bInterfaceNumber;
 	DL_APPEND(info->stream_ifs, stream_if);
 
-	if LIKELY(buffer_left >= 3) {
+	if (LIKELY(buffer_left >= 3)) {
 		while (buffer_left >= 3) {
 			block_size = buffer[0];
-			MARK("bDescriptorType=0x%02x", buffer[1]);
+//			MARK("bDescriptorType=0x%02x", buffer[1]);
 			parse_ret = uvc_parse_vs(dev, info, stream_if, buffer, block_size);
 
 			if (parse_ret != UVC_SUCCESS) {
@@ -1163,7 +1166,28 @@ uvc_error_t uvc_parse_vs_input_header(uvc_streaming_interface_t *stream_if,
 
 	stream_if->bEndpointAddress = block[6] & 0x8f;
 	stream_if->bTerminalLink = block[8];
-
+	stream_if->bmInfo = block[7];	// XXX
+	stream_if->bStillCaptureMethod = block[9];	// XXX
+	stream_if->bTriggerSupport = block[10];	// XXX
+	stream_if->bTriggerUsage = block[11];	// XXX
+	stream_if->bmaControls = NULL;
+	const uint8_t n = block[12];
+	if (LIKELY(n)) {
+		const uint8_t p = (block_size - 13) / n;
+		if (LIKELY(p)) {
+			uint64_t *bmaControls = (uint64_t *)calloc(p, sizeof(uint64_t));
+			stream_if->bmaControls = bmaControls;
+			const uint8_t *bma;
+			int pp, nn;
+			for (pp = 1; pp <= p; pp++) {
+				bma = &block[12 + pp * n];
+				for (nn = n - 1; nn >= 0; --nn) {
+					*bmaControls = *bma-- + (*bmaControls << 8);
+				}
+				bmaControls++;
+			}
+		}
+	}
 	UVC_EXIT(UVC_SUCCESS);
 	return UVC_SUCCESS;
 }
@@ -1292,10 +1316,13 @@ uvc_error_t uvc_parse_vs(uvc_device_t *dev, uvc_device_info_t *info,
 
 	ret = UVC_SUCCESS;
 	descriptor_subtype = block[2];
-	MARK("descriptor_subtype=0x%02x", descriptor_subtype);
+//	MARK("descriptor_subtype=0x%02x", descriptor_subtype);
 	switch (descriptor_subtype) {
 	case UVC_VS_INPUT_HEADER:
 		ret = uvc_parse_vs_input_header(stream_if, block, block_size);
+		break;
+	case UVC_VS_STILL_IMAGE_FRAME:
+		// FIXME unsupported now
 		break;
 	case UVC_VS_FORMAT_UNCOMPRESSED:
 		ret = uvc_parse_vs_format_uncompressed(stream_if, block, block_size);
@@ -1306,6 +1333,9 @@ uvc_error_t uvc_parse_vs(uvc_device_t *dev, uvc_device_info_t *info,
 	case UVC_VS_FRAME_UNCOMPRESSED:
 	case UVC_VS_FRAME_MJPEG:
 		ret = uvc_parse_vs_frame_uncompressed(stream_if, block, block_size);
+		break;
+	case UVC_VS_COLORFORMAT:
+		// FIXME unsupported now
 		break;
 	default:
 		/** @todo handle JPEG and maybe still frames or even DV... */
@@ -1380,7 +1410,7 @@ void uvc_close(uvc_device_handle_t *devh) {
 }
 
 uvc_error_t uvc_set_reset_altsetting(uvc_device_handle_t *devh, uint8_t reset_on_release_if) {
-	if UNLIKELY(!devh)
+	if (UNLIKELY(!devh))
 		RETURN(UVC_ERROR_INVALID_PARAM, uvc_error_t);
 	devh->reset_on_release_if = reset_on_release_if;
 	RETURN(UVC_SUCCESS, uvc_error_t);

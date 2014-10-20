@@ -1,7 +1,3 @@
-/**
- * modified mainly to improve performace 
- * Copyright(c) saki saki@serenegiant.com
- */
 /* -*- Mode: C; indent-tabs-mode:t ; c-basic-offset:8 -*- */
 /*
  * I/O functions for libusb
@@ -1366,6 +1362,7 @@ void API_EXPORTED libusb_free_transfer(struct libusb_transfer *transfer) {
 	itransfer = LIBUSB_TRANSFER_TO_USBI_TRANSFER(transfer);
 	usbi_mutex_destroy(&itransfer->lock);
 	free(itransfer);
+	transfer->user_data = NULL;	// XXX
 }
 
 #ifdef USBI_TIMERFD_AVAILABLE
@@ -1884,7 +1881,7 @@ int API_EXPORTED libusb_wait_for_event(libusb_context *ctx, struct timeval *tv) 
 	}
 
 	r = usbi_cond_timedwait(&ctx->event_waiters_cond,
-		&ctx->event_waiters_lock, &timeout);
+		&ctx->event_waiters_lock, &timeout);	// XXX crash 2014/10/02 SIGABRT/SI_TKILL
 	return (r == ETIMEDOUT);
 }
 

@@ -96,6 +96,7 @@ public class USBMonitor {
 					ctrlBlock = mCtrlBlocks.remove(key);
 					ctrlBlock.close();
 				}
+				mCtrlBlocks.clear();
 			}
 		}
 	}
@@ -189,6 +190,11 @@ public class USBMonitor {
 		}
 	}
 	
+	/**
+	 * return whether the specific Usb device has permission
+	 * @param device
+	 * @return
+	 */
 	public boolean hasPermission(UsbDevice device) {
 		return mUsbManager.hasPermission(device);
 	}
@@ -256,8 +262,9 @@ public class USBMonitor {
 		synchronized (mCtrlBlocks) {
 			ctrlBlock = mCtrlBlocks.get(device); 
 			if (ctrlBlock == null) {
-				ctrlBlock = new UsbControlBlock(device);
+				ctrlBlock = new UsbControlBlock(this, device);
 				mCtrlBlocks.put(device, ctrlBlock);
+				createNew = true;
 			}
 		}
 		if (mOnDeviceConnectListener != null) {
@@ -266,7 +273,8 @@ public class USBMonitor {
 	}
 	
 	public final class UsbControlBlock {
-		private final UsbDevice mDevice;
+		private final WeakReference<USBMonitor> mWeakMonitor;
+		private final WeakReference<UsbDevice> mWeakDevice;
 		private UsbDeviceConnection mConnection;
 		private final SparseArray<UsbInterface> mInterfaces = new SparseArray<UsbInterface>();
 
@@ -274,9 +282,14 @@ public class USBMonitor {
 		 * this class needs permission to access USB device before constructing
 		 * @param device
 		 */
-		public UsbControlBlock(UsbDevice device) {
-			mDevice = device;
+		public UsbControlBlock(USBMonitor monitor, UsbDevice device) {
+			mWeakMonitor = new WeakReference<USBMonitor>(monitor);
+			mWeakDevice = new WeakReference<UsbDevice>(device);
 			mConnection = mUsbManager.openDevice(device);
+		}
+
+		public UsbDevice getDevice() {
+			return mWeakDevice.get();
 		}
 
 		public UsbDeviceConnection getUsbDeviceConnection() {
@@ -292,20 +305,28 @@ public class USBMonitor {
 		}
 
 		public int getVenderId() {
-			return mDevice.getVendorId();
+			final UsbDevice device = mWeakDevice.get();
+			return device != null ? device.getVendorId() : 0;
 		}
 
 		public int getProductId() {
-			return mDevice.getProductId();
+			final UsbDevice device = mWeakDevice.get();
+			return device != null ? device.getProductId() : 0;
 		}
 
+		/**
+		 * open specific interface
+		 * @param interfaceIndex
+		 * @return
+		 */
 		public UsbInterface open(int interfaceIndex) {
+			final UsbDevice device = mWeakDevice.get();
 			UsbInterface intf = null;
 			synchronized (mInterfaces) {
 				intf = mInterfaces.get(interfaceIndex);
 			}
-			if (intf == null) {
-				intf = mDevice.getInterface(interfaceIndex);
+			if (intf == null && device != null) {
+				intf = device.getInterface(interfaceIndex);
 				if (intf != null) {
 					synchronized (mInterfaces) {
 						mInterfaces.append(interfaceIndex, intf);
@@ -315,6 +336,10 @@ public class USBMonitor {
 			return intf;
 		}
 
+		/**
+		 * close specified interface. USB device itself still keep open.
+		 * @param interfaceIndex
+		 */
 		public void close(int interfaceIndex) {
 			UsbInterface intf = null;
 			synchronized (mInterfaces) {
@@ -326,10 +351,18 @@ public class USBMonitor {
 			}
 		}
 
+		/**
+		 * close USB device and release all related resolurces including interfaces
+		 */
 		public void close() {
 			if (mConnection != null) {
-				if (mOnDeviceConnectListener != null) {
-					mOnDeviceConnectListener.onDisconnect(mDevice, this);
+				final USBMonitor monitor = mWeakMonitor.get();
+				if (monitor != null) {
+					final UsbDevice device = mWeakDevice.get();
+					if (mOnDeviceConnectListener != null) {
+						mOnDeviceConnectListener.onDisconnect(device, this);
+					}
+					monitor.mCtrlBlocks.remove(device);
 				}
 				synchronized (mInterfaces) {
 					final int n = mInterfaces.size();

@@ -1,6 +1,6 @@
 /**
- * modified to improve compatibility with some web camera
- * Copyright(c) saki saki@serenegiant.com
+ * modified to improve compatibility with some cameras.
+ * Copyright(c) 2014 saki saki@serenegiant.com
  */
 /* -*- Mode: C; indent-tabs-mode:t ; c-basic-offset:8 -*- */
 /*
