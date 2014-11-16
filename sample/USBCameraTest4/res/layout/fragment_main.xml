@@ -1,0 +1,77 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/RelativeLayout1"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_margin="0dp"
+    android:paddingBottom="@dimen/vertical_margin"
+    android:paddingLeft="@dimen/horizontal_margin"
+    android:paddingRight="@dimen/horizontal_margin"
+    android:paddingTop="@dimen/vertical_margin"
+    tools:context="com.serenegiant.serviceviewtest.MainActivity" >
+
+
+	<com.serenegiant.widget.UVCCameraTextureView
+        android:id="@+id/camera_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerInParent="true"
+        android:layout_weight="1" />
+
+	<ImageView
+        android:id="@+id/frame_image"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/camera_view"
+        android:layout_alignBottom="@+id/camera_view"
+        android:layout_alignLeft="@+id/camera_view"
+        android:layout_alignRight="@+id/camera_view"
+        android:src="@drawable/border" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@id/camera_view"
+        android:gravity="bottom|center_horizontal" >
+
+        <Button
+            android:id="@+id/start_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Start service" />
+
+        <Button
+            android:id="@+id/stop_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Stop service" />
+    </LinearLayout>
+
+    <ToggleButton
+        android:id="@+id/preview_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_gravity="center_horizontal"
+        android:text="ToggleButton" />
+
+    <SurfaceView
+        android:id="@+id/camera_view_sub"
+        android:layout_margin="5dp"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_alignRight="@+id/camera_view"
+        android:layout_alignTop="@+id/camera_view" />
+
+    <ImageButton
+        android:id="@+id/record_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@id/preview_button"
+        android:layout_marginLeft="@dimen/horizontal_margin"
+        android:layout_marginTop="@dimen/vertical_margin"
+        android:background="@null"
+        android:src="@android:drawable/ic_menu_camera" />
+
+</RelativeLayout>

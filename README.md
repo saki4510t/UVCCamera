@@ -63,6 +63,12 @@ save as jpeg) This sample also requires at least Android 4.3(API>=18).
 This limitation does not come from the library itself but from the limitation of 
 MediaMuxer and MediaCodec#createInputSurface.
 
+Add new sample project named "USBCameraTest4"
+This new sample project mainly demonstrate how to use offscreen rendering
+and record movie without any display.
+The communication with camera execute as Service and continue working
+even if you stop app. If you stop camera communication, click "stop service" button.
+
 The library itself still works on at least Android 3.1 or later(API >= 12) and recommended
 Android 4.0 or later (API >= 14).
 

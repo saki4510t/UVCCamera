@@ -1,0 +1,334 @@
+package com.serenegiant.usbcameratest4;
+/*
+ * UVCCamera
+ * library and sample to access to UVC web camera on non-rooted Android device
+ * 
+ * Copyright (c) 2014 saki t_saki@serenegiant.com
+ * 
+ * File name: CameraFragment.java
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ * 
+ * All files in the folder are under this Apache License, Version 2.0.
+ * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+*/
+
+import java.util.List;
+
+import com.serenegiant.serviceclient.CameraClient;
+import com.serenegiant.serviceclient.ICameraClient;
+import com.serenegiant.serviceclient.ICameraClientCallback;
+import com.serenegiant.usb.DeviceFilter;
+import com.serenegiant.usb.USBMonitor;
+import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
+import com.serenegiant.usb.USBMonitor.UsbControlBlock;
+import com.serenegiant.widget.CameraViewInterface;
+
+import android.app.Activity;
+import android.app.Fragment;
+import android.hardware.usb.UsbDevice;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.SurfaceView;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.ImageButton;
+import android.widget.ToggleButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
+
+public class CameraFragment extends Fragment {
+	private static final boolean DEBUG = true;
+	private static final String TAG = "CameraFragment";
+
+	private USBMonitor mUSBMonitor;
+	private ICameraClient mCameraClient;
+
+	private ToggleButton mPreviewButton;
+	private ImageButton mRecordButton;
+	private CameraViewInterface mCameraView;
+	private SurfaceView mCameraViewSub;
+	private boolean isSubView;
+
+	public CameraFragment() {
+		if (DEBUG) Log.v(TAG, "Constructor:");
+		setRetainInstance(true);
+	}
+
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		if (DEBUG) Log.v(TAG, "onAttach:");
+	}
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		if (DEBUG) Log.v(TAG, "onCreate:");
+		if (mUSBMonitor == null) {
+			mUSBMonitor = new USBMonitor(getActivity().getApplicationContext(), mOnDeviceConnectListener);
+			final List<DeviceFilter> filter = DeviceFilter.getDeviceFilters(getActivity(), R.xml.device_filter);
+			mUSBMonitor.setDeviceFilter(filter.get(0));
+		}
+	}
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+		if (DEBUG) Log.v(TAG, "onCreateView:");
+		final View rootView = inflater.inflate(R.layout.fragment_main, container, false);
+		View view = rootView.findViewById(R.id.start_button);
+		view.setOnClickListener(mOnClickListener);
+		view =(Button)rootView.findViewById(R.id.stop_button);
+		view.setOnClickListener(mOnClickListener);
+		mPreviewButton = (ToggleButton)rootView.findViewById(R.id.preview_button);
+		setPreviewButton(false);
+		mPreviewButton.setEnabled(false);
+		mRecordButton = (ImageButton)rootView.findViewById(R.id.record_button);
+		mRecordButton.setOnClickListener(mOnClickListener);
+		mRecordButton.setEnabled(false);
+		mCameraView = (CameraViewInterface)rootView.findViewById(R.id.camera_view);
+		mCameraView.setAspectRatio(640 / 480.f);
+		mCameraViewSub = (SurfaceView)rootView.findViewById(R.id.camera_view_sub);
+		mCameraViewSub.setOnClickListener(mOnClickListener);
+		return rootView;
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+		if (DEBUG) Log.v(TAG, "onResume:");
+		mUSBMonitor.register();
+		disableButtons();
+	}
+
+	@Override
+	public void onPause() {
+		if (DEBUG) Log.v(TAG, "onPause:");
+		if (mCameraClient != null) {
+			mCameraClient.removeSurface(mCameraView.getSurface());
+			mCameraClient.removeSurface(mCameraViewSub.getHolder().getSurface());
+			isSubView = false;
+		}
+		mUSBMonitor.unregister();
+		super.onPause();
+	}
+
+	@Override
+	public void onDestroyView() {
+		if (DEBUG) Log.v(TAG, "onDestroyView:");
+		super.onDestroyView();
+	}
+
+	@Override
+	public void onDestroy() {
+		if (DEBUG) Log.v(TAG, "onDestroy:");
+		if (mCameraClient != null) {
+			mCameraClient.release();
+			mCameraClient = null;
+		}
+		super.onDestroy();
+	}
+
+	@Override
+	public void onDetach() {
+		if (DEBUG) Log.v(TAG, "onDetach:");
+		super.onDetach();
+	}
+
+	public USBMonitor getUSBMonitor() {
+		return mUSBMonitor;
+	}
+
+	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
+		@Override
+		public void onAttach(UsbDevice device) {
+			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onAttach:");
+			if (!updateCameraDialog()) {
+				tryOpenUVCCamera(true);
+			}
+		}
+
+		@Override
+		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, boolean createNew) {
+			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onConnect:");
+		}
+
+		@Override
+		public void onDisconnect(UsbDevice device, UsbControlBlock ctrlBlock) {
+			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onDisconnect:");
+		}
+
+		@Override
+		public void onDettach(UsbDevice device) {
+			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onDettach:");
+			if (mCameraClient != null) {
+				mCameraClient.disconnect();
+				mCameraClient.release();
+				mCameraClient = null;
+			}
+			disableButtons();
+			updateCameraDialog();
+		}
+
+		@Override
+		public void onCancel() {
+			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onCancel:");
+			disableButtons();
+		}
+	};
+
+	private boolean updateCameraDialog() {
+		final Fragment fragment = getFragmentManager().findFragmentByTag("CameraDialog");
+		if (fragment instanceof CameraDialog) {
+			((CameraDialog)fragment).updateDevices();
+			return true;
+		}
+		return false;
+	}
+
+	private void tryOpenUVCCamera(final boolean requestPermission) {
+		if (DEBUG) Log.v(TAG, "tryOpenUVCCamera:");
+		openUVCCamera(0);
+	}
+
+	public void openUVCCamera(int index) {
+		if (DEBUG) Log.v(TAG, "openUVCCamera:index=" + index);
+		if (!mUSBMonitor.isRegistered()) return;
+		final List<UsbDevice> list = mUSBMonitor.getDeviceList();
+		if (list.size() > index) {
+			disableButtons();
+			if (mCameraClient == null)
+				mCameraClient = new CameraClient(getActivity(), mCameraListener);
+			mCameraClient.select(list.get(index));
+			mCameraClient.connect();
+		}
+	}
+
+	private final ICameraClientCallback mCameraListener = new ICameraClientCallback() {
+		@Override
+		public void onConnect() {
+			if (DEBUG) Log.v(TAG, "onConnect:");
+			mCameraClient.addSurface(mCameraView.getSurface(), false);
+			mCameraClient.addSurface(mCameraViewSub.getHolder().getSurface(), false);
+			isSubView = true;
+			setPreviewButton(true);
+			getActivity().runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					mPreviewButton.setEnabled(true);
+					mRecordButton.setEnabled(true);
+					if (mCameraClient.isRecording())
+						mRecordButton.setColorFilter(0x7fff0000);
+				}
+			});
+		}
+
+		@Override
+		public void onDisconnect() {
+			if (DEBUG) Log.v(TAG, "onDisconnect:");
+			disableButtons();
+		}
+
+	};
+
+	private final OnClickListener mOnClickListener = new OnClickListener() {
+		@Override
+		public void onClick(View v) {
+			switch (v.getId()) {
+			case R.id.start_button:
+				if (DEBUG) Log.v(TAG, "onClick:start");
+				// start service
+				final List<UsbDevice> list = mUSBMonitor.getDeviceList();
+				if (list.size() > 0) {
+					if (mCameraClient == null)
+						mCameraClient = new CameraClient(getActivity(), mCameraListener);
+					mCameraClient.select(list.get(0));
+					mCameraClient.connect();
+					setPreviewButton(false);
+				}
+				break;
+			case R.id.stop_button:
+				if (DEBUG) Log.v(TAG, "onClick:stop");
+				// stop service
+				if (mCameraClient != null) {
+					mCameraClient.disconnect();
+					mCameraClient.release();
+					mCameraClient = null;
+				}
+				disableButtons();
+				break;
+			case R.id.camera_view_sub:
+				if (DEBUG) Log.v(TAG, "onClick:sub view");
+				if (isSubView) {
+					mCameraClient.removeSurface(mCameraViewSub.getHolder().getSurface());
+				} else {
+					mCameraClient.addSurface(mCameraViewSub.getHolder().getSurface(), false);
+				}
+				isSubView = !isSubView;
+				break;
+			case R.id.record_button:
+				if (mCameraClient.isRecording()) {
+					mRecordButton.setColorFilter(0);
+					mCameraClient.stopRecording();
+				} else {
+					mCameraClient.startRecording();
+					mRecordButton.setColorFilter(0x7fff0000);
+				}
+				break;
+			}
+		}
+	};
+
+	private final OnCheckedChangeListener mOnCheckedChangeListener = new OnCheckedChangeListener() {
+		@Override
+		public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+			if (DEBUG) Log.v(TAG, "onCheckedChanged:" + isChecked);
+			if (isChecked) {
+				mCameraClient.addSurface(mCameraView.getSurface(), false);
+//				mCameraClient.addSurface(mCameraViewSub.getHolder().getSurface(), false);
+			} else {
+				mCameraClient.removeSurface(mCameraView.getSurface());
+//				mCameraClient.removeSurface(mCameraViewSub.getHolder().getSurface());
+			}
+		}
+	};
+
+	private void setPreviewButton(final boolean onoff) {
+		getActivity().runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				mPreviewButton.setOnCheckedChangeListener(null);
+				try {
+					mPreviewButton.setChecked(onoff);
+				} finally {
+					mPreviewButton.setOnCheckedChangeListener(mOnCheckedChangeListener);
+				}
+			}
+		});
+	}
+
+	private final void disableButtons() {
+		setPreviewButton(false);
+		getActivity().runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+			mPreviewButton.setEnabled(false);
+			mRecordButton.setEnabled(false);
+			mRecordButton.setColorFilter(0);
+			}
+		});
+	}
+}
