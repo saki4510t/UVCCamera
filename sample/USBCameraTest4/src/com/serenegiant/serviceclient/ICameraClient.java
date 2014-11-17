@@ -37,4 +37,5 @@ public interface ICameraClient {
 	public void startRecording();
 	public void stopRecording();
 	public boolean isRecording();
+	public void captureStill(String path);
 }

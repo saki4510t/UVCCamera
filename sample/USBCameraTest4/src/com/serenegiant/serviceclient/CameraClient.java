@@ -136,6 +136,14 @@ public class CameraClient implements ICameraClient {
 		}
 	}
 
+	@Override
+	public void captureStill(String path) {
+		final CameraHandler handler = mWeakHandler.get();
+		if (handler != null) {
+			handler.sendMessage(handler.obtainMessage(MSG_CAPTURE_STILL, path));
+		}
+	}
+
 	protected boolean doBindService() {
 		if (DEBUG) Log.v(TAG, "doBindService:");
 		synchronized (mServiceSync) {
@@ -207,6 +215,7 @@ public class CameraClient implements ICameraClient {
 	private static final int MSG_REMOVE_SURFACE = 4;
 	private static final int MSG_START_RECORDING = 6;
 	private static final int MSG_STOP_RECORDING = 7;
+	private static final int MSG_CAPTURE_STILL = 8;
 	private static final int MSG_RELEASE = 9;
 
 	private static final class CameraHandler extends Handler {
@@ -256,6 +265,9 @@ public class CameraClient implements ICameraClient {
 				break;
 			case MSG_STOP_RECORDING:
 				mCameraTask.handleStopRecording();
+				break;
+			case MSG_CAPTURE_STILL:
+				mCameraTask.handleCaptureStill((String)msg.obj);
 				break;
 			case MSG_RELEASE:
 				mCameraTask.handleRelease();
@@ -400,6 +412,7 @@ public class CameraClient implements ICameraClient {
 			}
 
 			public void handleStartRecording() {
+				if (DEBUG) Log.v(TAG, "handleStartRecording:");
 				final IUVCService service = mParent.getService();
 				if (service != null)
 				try {
@@ -412,6 +425,7 @@ public class CameraClient implements ICameraClient {
 			}
 
 			public void handleStopRecording() {
+				if (DEBUG) Log.v(TAG, "handleStopRecording:");
 				final IUVCService service = mParent.getService();
 				if (service != null)
 				try {
@@ -420,6 +434,17 @@ public class CameraClient implements ICameraClient {
 					}
 				} catch (RemoteException e) {
 					if (DEBUG) Log.e(TAG_CAMERA, "handleStopRecording:", e);
+				}
+			}
+
+			public void handleCaptureStill(String path) {
+				if (DEBUG) Log.v(TAG, "handleCaptureStill:" + path);
+				final IUVCService service = mParent.getService();
+				if (service != null)
+				try {
+					service.captureStillImage(mServiceId, path);
+				} catch (RemoteException e) {
+					if (DEBUG) Log.e(TAG_CAMERA, "handleCaptureStill:", e);
 				}
 			}
 		}

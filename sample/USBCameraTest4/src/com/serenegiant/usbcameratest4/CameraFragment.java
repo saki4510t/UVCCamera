@@ -25,6 +25,7 @@ package com.serenegiant.usbcameratest4;
 
 import java.util.List;
 
+import com.serenegiant.encoder.MediaMuxerWrapper;
 import com.serenegiant.serviceclient.CameraClient;
 import com.serenegiant.serviceclient.ICameraClient;
 import com.serenegiant.serviceclient.ICameraClientCallback;
@@ -38,6 +39,7 @@ import android.app.Activity;
 import android.app.Fragment;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.SurfaceView;
@@ -59,6 +61,7 @@ public class CameraFragment extends Fragment {
 
 	private ToggleButton mPreviewButton;
 	private ImageButton mRecordButton;
+	private ImageButton mStillCaptureButton;
 	private CameraViewInterface mCameraView;
 	private SurfaceView mCameraViewSub;
 	private boolean isSubView;
@@ -99,6 +102,9 @@ public class CameraFragment extends Fragment {
 		mRecordButton = (ImageButton)rootView.findViewById(R.id.record_button);
 		mRecordButton.setOnClickListener(mOnClickListener);
 		mRecordButton.setEnabled(false);
+		mStillCaptureButton = (ImageButton)rootView.findViewById(R.id.still_button);
+		mStillCaptureButton.setOnClickListener(mOnClickListener);
+		mStillCaptureButton.setEnabled(false);
 		mCameraView = (CameraViewInterface)rootView.findViewById(R.id.camera_view);
 		mCameraView.setAspectRatio(640 / 480.f);
 		mCameraViewSub = (SurfaceView)rootView.findViewById(R.id.camera_view_sub);
@@ -111,7 +117,6 @@ public class CameraFragment extends Fragment {
 		super.onResume();
 		if (DEBUG) Log.v(TAG, "onResume:");
 		mUSBMonitor.register();
-		disableButtons();
 	}
 
 	@Override
@@ -123,6 +128,7 @@ public class CameraFragment extends Fragment {
 			isSubView = false;
 		}
 		mUSBMonitor.unregister();
+		enableButtons(false);
 		super.onPause();
 	}
 
@@ -179,14 +185,14 @@ public class CameraFragment extends Fragment {
 				mCameraClient.release();
 				mCameraClient = null;
 			}
-			disableButtons();
+			enableButtons(false);
 			updateCameraDialog();
 		}
 
 		@Override
 		public void onCancel() {
 			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onCancel:");
-			disableButtons();
+			enableButtons(false);
 		}
 	};
 
@@ -209,7 +215,7 @@ public class CameraFragment extends Fragment {
 		if (!mUSBMonitor.isRegistered()) return;
 		final List<UsbDevice> list = mUSBMonitor.getDeviceList();
 		if (list.size() > index) {
-			disableButtons();
+			enableButtons(false);
 			if (mCameraClient == null)
 				mCameraClient = new CameraClient(getActivity(), mCameraListener);
 			mCameraClient.select(list.get(index));
@@ -224,22 +230,15 @@ public class CameraFragment extends Fragment {
 			mCameraClient.addSurface(mCameraView.getSurface(), false);
 			mCameraClient.addSurface(mCameraViewSub.getHolder().getSurface(), false);
 			isSubView = true;
+			enableButtons(true);
 			setPreviewButton(true);
-			getActivity().runOnUiThread(new Runnable() {
-				@Override
-				public void run() {
-					mPreviewButton.setEnabled(true);
-					mRecordButton.setEnabled(true);
-					if (mCameraClient.isRecording())
-						mRecordButton.setColorFilter(0x7fff0000);
-				}
-			});
 		}
 
 		@Override
 		public void onDisconnect() {
 			if (DEBUG) Log.v(TAG, "onDisconnect:");
-			disableButtons();
+			setPreviewButton(false);
+			enableButtons(false);
 		}
 
 	};
@@ -268,7 +267,7 @@ public class CameraFragment extends Fragment {
 					mCameraClient.release();
 					mCameraClient = null;
 				}
-				disableButtons();
+				enableButtons(false);
 				break;
 			case R.id.camera_view_sub:
 				if (DEBUG) Log.v(TAG, "onClick:sub view");
@@ -280,6 +279,7 @@ public class CameraFragment extends Fragment {
 				isSubView = !isSubView;
 				break;
 			case R.id.record_button:
+				if (DEBUG) Log.v(TAG, "onClick:record");
 				if (mCameraClient.isRecording()) {
 					mRecordButton.setColorFilter(0);
 					mCameraClient.stopRecording();
@@ -287,6 +287,11 @@ public class CameraFragment extends Fragment {
 					mCameraClient.startRecording();
 					mRecordButton.setColorFilter(0x7fff0000);
 				}
+				break;
+			case R.id.still_button:
+				if (DEBUG) Log.v(TAG, "onClick:still capture");
+				if (mCameraClient != null)
+					mCameraClient.captureStill(MediaMuxerWrapper.getCaptureFile(Environment.DIRECTORY_DCIM, ".png").toString());
 				break;
 			}
 		}
@@ -320,14 +325,18 @@ public class CameraFragment extends Fragment {
 		});
 	}
 
-	private final void disableButtons() {
+	private final void enableButtons(final boolean enable) {
 		setPreviewButton(false);
 		getActivity().runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-			mPreviewButton.setEnabled(false);
-			mRecordButton.setEnabled(false);
-			mRecordButton.setColorFilter(0);
+				mPreviewButton.setEnabled(enable);
+				mRecordButton.setEnabled(enable);
+				mStillCaptureButton.setEnabled(enable);
+				if (enable && mCameraClient.isRecording())
+					mRecordButton.setColorFilter(0x7fff0000);
+				else
+					mRecordButton.setColorFilter(0);
 			}
 		});
 	}

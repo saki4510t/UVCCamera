@@ -23,8 +23,17 @@ package com.serenegiant.glutils;
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 import com.serenegiant.service.IUVCServiceOnFrameAvailable;
 
+import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.graphics.SurfaceTexture.OnFrameAvailableListener;
 import android.opengl.EGL14;
@@ -53,6 +62,7 @@ public class RendererHolder implements Runnable {
 	private final SparseArray<IUVCServiceOnFrameAvailable> mOnFrameAvailables = new SparseArray<IUVCServiceOnFrameAvailable>();
 	private volatile boolean isRunning;
 	private volatile boolean requestDraw;
+	private File mCaptureFile;
 	private EGLBase mMasterEgl;
 	private EGLBase.EglSurface mDummySurface;
 	private int mTexId;
@@ -65,6 +75,7 @@ public class RendererHolder implements Runnable {
 		mCallback = callback;
 		final Thread thread = new Thread(this, TAG);
 		thread.start();
+		new Thread(mCaptureTask, "CaptureTask").start();
 		synchronized (mSync) {
 			if (!isRunning) {
 				try {
@@ -134,6 +145,16 @@ public class RendererHolder implements Runnable {
 		}
 	}
 
+	public void captureStill(String path) {
+		if (DEBUG) Log.v(TAG, "captureStill:" + path);
+		final File file = new File(path);
+		if (DEBUG) Log.v(TAG, "captureStill:canWrite");
+		synchronized (mSync) {
+			mCaptureFile = file;
+			mSync.notifyAll();
+		}
+	}
+
 	public void release() {
 		if (DEBUG) Log.v(TAG, "release:");
 		removeAll();
@@ -172,12 +193,15 @@ public class RendererHolder implements Runnable {
 
 	private void draw() {
 		try {
-//			mDummySurface.makeCurrent();
+			mDummySurface.makeCurrent();
 			mMasterTexture.updateTexImage();
 			mMasterTexture.getTransformMatrix(mTexMatrix);
 		} catch (Exception e) {
 			Log.e(TAG, "draw:thread id =" + Thread.currentThread().getId(), e);
 			return;
+		}
+		synchronized (mCaptureTask) {
+			mCaptureTask.notify();
 		}
 		synchronized (mSync) {
 			final int n = mClients.size();
@@ -241,4 +265,96 @@ public class RendererHolder implements Runnable {
 		if (DEBUG) Log.v(TAG, "finished");
 	}
 
+	private final Runnable mCaptureTask = new Runnable() {
+    	final ByteBuffer buf = ByteBuffer.allocateDirect(640 * 480 * 4);
+    	EGLBase egl; 
+    	EGLBase.EglSurface captureSurface;
+    	GLDrawer2D drawer;
+
+    	@Override
+		public void run() {
+			if (DEBUG) Log.v(TAG, "captureTask start");
+	    	buf.order(ByteOrder.LITTLE_ENDIAN);
+			synchronized (mSync) {
+				if (!isRunning) {
+					try {
+						mSync.wait();
+					} catch (InterruptedException e) {
+					}
+				}
+			}
+			init();
+			File captureFile = null;
+			if (DEBUG) Log.v(TAG, "captureTask loop");
+			while (isRunning) {
+				if (captureFile == null)
+				synchronized (mSync) {
+					if (mCaptureFile == null) {
+						try {
+							mSync.wait();
+						} catch (InterruptedException e) {
+							break;
+						}
+					}
+					if (mCaptureFile != null) {
+						captureFile = mCaptureFile;
+						mCaptureFile = null;
+					}
+				} else {
+					synchronized (mCaptureTask) {
+						try {
+							mCaptureTask.wait();
+						} catch (InterruptedException e) {
+							break;
+						}
+					}
+					if (isRunning && (captureFile != null)) {
+						captureSurface.makeCurrent();
+						drawer.draw(mTexId, mTexMatrix);
+						captureSurface.swap();
+				        buf.clear();
+				        GLES20.glReadPixels(0, 0, 640, 480, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf);
+						// if you save every frame as a Bitmap, app may crash by Out of Memory exception...
+				        if (DEBUG) Log.v(TAG, "save pixels to png file:" + captureFile);
+				        BufferedOutputStream os = null;
+						try {
+					        try {
+					            os = new BufferedOutputStream(new FileOutputStream(captureFile));
+					            final Bitmap bmp = Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888);
+						        buf.clear();
+					            bmp.copyPixelsFromBuffer(buf);
+					            bmp.compress(Bitmap.CompressFormat.PNG, 90, os);
+					            bmp.recycle();
+					        } finally {
+					            if (os != null) os.close();
+					        }
+						} catch (FileNotFoundException e) {
+						} catch (IOException e) {
+						}
+					}
+					captureFile = null;
+				}
+			}	// wnd of while (isRunning)
+			// release resources
+			if (DEBUG) Log.v(TAG, "captureTask finishing");
+			release();
+			if (DEBUG) Log.v(TAG, "captureTask finished");
+		}
+		
+		private final void init() {
+	    	egl = new EGLBase(mMasterEgl.getContext(), false, false); 
+	    	captureSurface = egl.createOffscreen(640,  480);
+	    	drawer = new GLDrawer2D();
+	    	drawer.getMvpMatrxi()[5] *= -1.0f;	// flip up-side down
+		}
+
+		private final void release() {
+			captureSurface.release();
+			captureSurface = null;
+			drawer.release();
+			drawer = null;
+			egl.release();
+			egl = null;
+		}
+	};
 }

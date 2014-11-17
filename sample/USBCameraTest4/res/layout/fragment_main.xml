@@ -72,6 +72,16 @@
         android:layout_marginLeft="@dimen/horizontal_margin"
         android:layout_marginTop="@dimen/vertical_margin"
         android:background="@null"
-        android:src="@android:drawable/ic_menu_camera" />
+        android:src="@drawable/ic_switch_video" />
 
+    <ImageButton
+        android:id="@+id/still_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@id/record_button"
+        android:layout_marginLeft="@dimen/horizontal_margin"
+        android:layout_marginTop="@dimen/vertical_margin"
+        android:background="@null"
+        android:src="@drawable/ic_switch_camera" />
 </RelativeLayout>

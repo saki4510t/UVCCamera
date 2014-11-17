@@ -46,4 +46,5 @@ interface IUVCService {
 	boolean isRecording(int serviceId);
 	void startRecording(int serviceId);
 	void stopRecording(int serviceId);
+	void captureStillImage(int serviceId, String path);
 }

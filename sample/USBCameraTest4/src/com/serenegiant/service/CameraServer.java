@@ -35,6 +35,7 @@ import com.serenegiant.glutils.RendererHolder;
 import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usbcameratest4.R;
+
 import android.content.Context;
 import android.media.AudioManager;
 import android.media.MediaScannerConnection;
@@ -169,6 +170,20 @@ public class CameraServer extends Handler {
 		mRendererHolder.removeSurface(id);
 	}
 
+	public void startRecording() {
+		if (!isRecording())
+			sendEmptyMessage(MSG_CAPTURE_START);
+	}
+
+	public void stopRecording() {
+		if (isRecording())
+			sendEmptyMessage(MSG_CAPTURE_STOP);
+	}
+
+	public void captureStill(String path) {
+		mRendererHolder.captureStill(path);
+		sendMessage(obtainMessage(MSG_CAPTURE_STILL, path));
+	}
 
 //********************************************************************************
 	private void processOnCameraStart() {
@@ -212,20 +227,6 @@ public class CameraServer extends Handler {
 	private static final int MSG_MEDIA_UPDATE = 7;
 	private static final int MSG_RELEASE = 9;
 
-	public void captureStill() {
-		sendEmptyMessage(MSG_CAPTURE_STILL);
-	}
-
-	public void startRecording() {
-		if (!isRecording())
-			sendEmptyMessage(MSG_CAPTURE_START);
-	}
-
-	public void stopRecording() {
-		if (isRecording())
-			sendEmptyMessage(MSG_CAPTURE_STOP);
-	}
-
 	@Override
 	public void handleMessage(Message msg) {
 		final CameraThread thread = mWeakThread.get();
@@ -244,7 +245,7 @@ public class CameraServer extends Handler {
 			thread.handleStopPreview();
 			break;
 		case MSG_CAPTURE_STILL:
-			thread.handleCaptureStill();
+			thread.handleCaptureStill((String)msg.obj);
 			break;
 		case MSG_CAPTURE_START:
 			thread.handleStartRecording();
@@ -264,7 +265,7 @@ public class CameraServer extends Handler {
 	}
 
 	private static final class CameraThread extends Thread {
-		private static final String TAG_THREAD = "CameraServiceThread";
+		private static final String TAG_THREAD = "CameraThread";
 		private final Object mSync = new Object();
 		private boolean mIsRecording;
 	    private final WeakReference<Context> mWeakContext;
@@ -369,10 +370,10 @@ public class CameraServer extends Handler {
 			}
 		}
 
-		public void handleCaptureStill() {
+		public void handleCaptureStill(final String path) {
 			if (DEBUG) Log.d(TAG_THREAD, "handleCaptureStill:");
+
 			mSoundPool.play(mSoundId, 0.2f, 0.2f, 0, 0, 1.0f);	// play shutter sound
-			// FIXME un-implemented yet
 		}
 
 		public void handleStartRecording() {

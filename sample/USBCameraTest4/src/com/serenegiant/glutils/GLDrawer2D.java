@@ -121,7 +121,7 @@ public class GLDrawer2D {
 		GLES20.glUseProgram(hProgram);
 		if (tex_matrix != null)
 			GLES20.glUniformMatrix4fv(muTexMatrixLoc, 1, false, tex_matrix, 0);
-
+        GLES20.glUniformMatrix4fv(muMVPMatrixLoc, 1, false, mMvpMatrix, 0);
 		GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
 		GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, tex_id);
 		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, VERTEX_NUM);
@@ -198,4 +198,7 @@ public class GLDrawer2D {
 		return program;
 	}
 
+	public float[] getMvpMatrxi() {
+		return mMvpMatrix;
+	}
 }
