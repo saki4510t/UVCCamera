@@ -31,18 +31,6 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 
-import com.serenegiant.encoder.MediaAudioEncoder;
-import com.serenegiant.encoder.MediaEncoder;
-import com.serenegiant.encoder.MediaMuxerWrapper;
-import com.serenegiant.encoder.MediaSurfaceEncoder;
-import com.serenegiant.encoder.MediaVideoEncoder;
-import com.serenegiant.usb.USBMonitor;
-import com.serenegiant.usb.UVCCamera;
-import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
-import com.serenegiant.usb.USBMonitor.UsbControlBlock;
-import com.serenegiant.usbcameratest.R;
-import com.serenegiant.widget.CameraViewInterface;
-
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -66,6 +54,17 @@ import android.view.View.OnLongClickListener;
 import android.widget.ImageButton;
 import android.widget.Toast;
 import android.widget.ToggleButton;
+
+import com.serenegiant.encoder.MediaAudioEncoder;
+import com.serenegiant.encoder.MediaEncoder;
+import com.serenegiant.encoder.MediaMuxerWrapper;
+import com.serenegiant.encoder.MediaSurfaceEncoder;
+import com.serenegiant.encoder.MediaVideoEncoder;
+import com.serenegiant.usb.USBMonitor;
+import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
+import com.serenegiant.usb.USBMonitor.UsbControlBlock;
+import com.serenegiant.usb.UVCCamera;
+import com.serenegiant.widget.CameraViewInterface;
 
 public class MainActivity extends Activity {
 	private static final boolean DEBUG = true;	// TODO set false on release

@@ -117,24 +117,6 @@ enum uvc_vc_desc_subtype {
   UVC_VC_EXTENSION_UNIT = 0x06
 };
 
-/** VideoStreaming interface descriptor subtype (A.6) */
-enum uvc_vs_desc_subtype {
-  UVC_VS_UNDEFINED = 0x00,
-  UVC_VS_INPUT_HEADER = 0x01,
-  UVC_VS_OUTPUT_HEADER = 0x02,
-  UVC_VS_STILL_IMAGE_FRAME = 0x03,
-  UVC_VS_FORMAT_UNCOMPRESSED = 0x04,
-  UVC_VS_FRAME_UNCOMPRESSED = 0x05,
-  UVC_VS_FORMAT_MJPEG = 0x06,
-  UVC_VS_FRAME_MJPEG = 0x07,
-  UVC_VS_FORMAT_MPEG2TS = 0x0a,
-  UVC_VS_FORMAT_DV = 0x0c,
-  UVC_VS_COLORFORMAT = 0x0d,
-  UVC_VS_FORMAT_FRAME_BASED = 0x10,
-  UVC_VS_FRAME_FRAME_BASED = 0x11,
-  UVC_VS_FORMAT_STREAM_BASED = 0x12
-};
-
 /** UVC endpoint descriptor subtype (A.7) */
 enum uvc_ep_desc_subtype {
   UVC_EP_UNDEFINED = 0x00,
@@ -203,81 +185,8 @@ enum uvc_status_type {
 #define UVC_CONTROL_CAP_AUTOUPDATE (1 << 3)
 #define UVC_CONTROL_CAP_ASYNCHRONOUS (1 << 4)
 
-struct uvc_format_desc;
-struct uvc_frame_desc;
 struct uvc_streaming_interface;
 struct uvc_device_info;
-
-/** Frame descriptor
- *
- * A "frame" is a configuration of a streaming format
- * for a particular image size at one of possibly several
- * available frame rates.
- */
-typedef struct uvc_frame_desc {
-  struct uvc_format_desc *parent;
-  struct uvc_frame_desc *prev, *next;
-  /** Type of frame, such as JPEG frame or uncompressed frme */
-  enum uvc_vs_desc_subtype bDescriptorSubtype;
-  /** Index of the frame within the list of specs available for this format */
-  uint8_t bFrameIndex;
-  uint8_t bmCapabilities;
-  /** Image width */
-  uint16_t wWidth;
-  /** Image height */
-  uint16_t wHeight;
-  /** Bitrate of corresponding stream at minimal frame rate */
-  uint32_t dwMinBitRate;
-  /** Bitrate of corresponding stream at maximal frame rate */
-  uint32_t dwMaxBitRate;
-  /** Maximum number of bytes for a video frame */
-  uint32_t dwMaxVideoFrameBufferSize;
-  /** Default frame interval (in 100ns units) */
-  uint32_t dwDefaultFrameInterval;
-  /** Minimum frame interval for continuous mode (100ns units) */
-  uint32_t dwMinFrameInterval;
-  /** Maximum frame interval for continuous mode (100ns units) */
-  uint32_t dwMaxFrameInterval;
-  /** Granularity of frame interval range for continuous mode (100ns) */
-  uint32_t dwFrameIntervalStep;
-  /** Available frame rates, zero-terminated (in 100ns units) */
-  uint32_t *intervals;
-} uvc_frame_desc_t;
-
-/** Format descriptor
- *
- * A "format" determines a stream's image type (e.g., raw YUYV or JPEG)
- * and includes many "frame" configurations.
- */
-typedef struct uvc_format_desc {
-  struct uvc_streaming_interface *parent;
-  struct uvc_format_desc *prev, *next;
-  /** Type of image stream, such as JPEG or uncompressed. */
-  enum uvc_vs_desc_subtype bDescriptorSubtype;
-  /** Identifier of this format within the VS interface's format list */
-  uint8_t bFormatIndex;
-  /** Format specifier */
-  union {
-    uint8_t guidFormat[16];
-    uint8_t fourccFormat[4];
-  };
-  /** Format-specific data */
-  union {
-    /** BPP for uncompressed stream */
-    uint8_t bBitsPerPixel;
-    /** Flags for JPEG stream */
-    uint8_t bmFlags;
-  };
-  /** Default {uvc_frame_desc} to choose given this format */
-  uint8_t bDefaultFrameIndex;
-  uint8_t bAspectRatioX;
-  uint8_t bAspectRatioY;
-  uint8_t bmInterlaceFlags;
-  uint8_t bCopyProtect;
-  /** Available frame specifications for this format */
-  struct uvc_frame_desc *frame_descs;
-} uvc_format_desc_t;
-
 
 /** VideoStream interface */
 typedef struct uvc_streaming_interface {
@@ -327,6 +236,18 @@ typedef struct uvc_device_info {
   uvc_streaming_interface_t *stream_ifs;
 } uvc_device_info_t;
 
+/*
+  set a high number of transfer buffers. This uses a lot of ram, but
+  avoids problems with scheduling delays on slow boards causing missed
+  transfers. A better approach may be to make the transfer thread FIFO
+  scheduled (if we have root).
+  We could/should change this to allow reduce it to, say, 5 by default
+  and then allow the user to change the number of buffers as required.
+ */
+#define LIBUVC_NUM_TRANSFER_BUFS 10
+
+#define LIBUVC_XFER_BUF_SIZE	( 16 * 1024 * 1024 )
+
 struct uvc_stream_handle {
   struct uvc_device_handle *devh;
   struct uvc_stream_handle *prev, *next;
@@ -336,9 +257,10 @@ struct uvc_stream_handle {
   uint8_t running;
   /** Current control block */
   struct uvc_stream_ctrl cur_ctrl;
+
   /* listeners may only access hold*, and only when holding a 
    * lock on cb_mutex (probably signaled with cb_cond) */
-  uint8_t bfh_err, hold_bfh_err;	// XXX added to keep STREAM_HEADER_BFH_ERR
+  uint8_t bfh_err, hold_bfh_err;	// XXX added to keep UVC_STREAM_ERR
   uint8_t fid;
   uint32_t seq, hold_seq;
   uint32_t pts, hold_pts;
@@ -352,8 +274,8 @@ struct uvc_stream_handle {
   uint32_t last_polled_seq;
   uvc_frame_callback_t *user_cb;
   void *user_ptr;
-  struct libusb_transfer *transfers[5];
-  uint8_t *transfer_bufs[5];
+  struct libusb_transfer *transfers[LIBUVC_NUM_TRANSFER_BUFS];
+  uint8_t *transfer_bufs[LIBUVC_NUM_TRANSFER_BUFS];
   struct uvc_frame frame;
   enum uvc_frame_format frame_format;
 };
@@ -384,7 +306,7 @@ struct uvc_device_handle {
 struct uvc_context {
   /** Underlying context for USB communication */
   struct libusb_context *usb_ctx;
-  /** True iff libuvc initialized the underlying USB context */
+  /** True if libuvc initialized the underlying USB context */
   uint8_t own_usb_ctx;
   /** List of open devices in this context */
   uvc_device_handle_t *open_devices;
@@ -401,7 +323,6 @@ uvc_error_t uvc_query_stream_ctrl(
 void uvc_start_handler_thread(uvc_context_t *ctx);
 uvc_error_t uvc_claim_if(uvc_device_handle_t *devh, int idx);
 uvc_error_t uvc_release_if(uvc_device_handle_t *devh, int idx);
-
 
 #endif // !def(LIBUVC_INTERNAL_H)
 /** @endcond */

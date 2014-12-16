@@ -36,44 +36,44 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 /**
- \mainpage libuvc: a cross-platform library for USB video devices
+\mainpage libuvc: a cross-platform library for USB video devices
 
- \b libuvc is a library that supports enumeration, control and streaming
- for USB Video Class (UVC) devices, such as consumer webcams.
+\b libuvc is a library that supports enumeration, control and streaming
+for USB Video Class (UVC) devices, such as consumer webcams.
 
- \section features Features
- \li Asynchronous video streaming (device to host) in isochronous mode
- \li Synchronous streaming API (but only isochronous streaming is available)
- \li Read/write access to standard device settings
- \li Conversion between various RGB and YUV formats
- \li Tested on Mac and Linux, portable to Windows and some BSDs
+\section features Features
+\li UVC device \ref device "discovery and management" API
+\li \ref streaming "Video streaming" (device to host) with asynchronous/callback and synchronous/polling modes
+\li Read/write access to standard \ref ctrl "device settings"
+\li \ref frame "Conversion" between various formats: RGB, YUV, JPEG, etc.
+\li Tested on Mac and Linux, portable to Windows and some BSDs
 
- \section roadmap Roadmap
- \li Bulk-mode image capture
- \li One-shot image capture
- \li Improved support for standard settings
- \li Support for "extended" (vendor-defined) settings
+\section roadmap Roadmap
+\li Bulk-mode image capture
+\li One-shot image capture
+\li Improved support for standard settings
+\li Support for "extended" (vendor-defined) settings
 
- \section misc Misc.
- \p The source code can be found at https://github.com/ktossell/libuvc. To build
- the library, install <a href="http://libusb.org/">libusb</a> 1.0+ and run:
+\section misc Misc.
+\p The source code can be found at https://github.com/ktossell/libuvc. To build
+the library, install <a href="http://libusb.org/">libusb</a> 1.0+ and run:
 
- \code
- $ git clone https://github.com/ktossell/libuvc.git
- $ cd libuvc
- $ mkdir build
- $ cd build
- $ cmake -DCMAKE_BUILD_TYPE=Release ..
- $ make && make install
- \endcode
+\code
+$ git clone https://github.com/ktossell/libuvc.git
+$ cd libuvc
+$ mkdir build
+$ cd build
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
+$ make && make install
+\endcode
 
- \section Example
- In this example, libuvc is used to acquire images in a 30 fps, 640x480
- YUV stream from a UVC device such as a standard webcam.
+\section Example
+In this example, libuvc is used to acquire images in a 30 fps, 640x480
+YUV stream from a UVC device such as a standard webcam.
 
- \include example.c
+\include example.c
 
- */
+*/
 
 /**
  * @defgroup init Library initialization/deinitialization

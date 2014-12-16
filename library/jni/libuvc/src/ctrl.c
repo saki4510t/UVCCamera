@@ -362,7 +362,7 @@ uvc_error_t uvc_set_scanning_mode(uvc_device_handle_t *devh, int mode) {
 }
 
 //----------------------------------------------------------------------
-uvc_error_t uvc_get_autofocus(uvc_device_handle_t *devh, uint8_t *autofocus,
+uvc_error_t uvc_get_focus_auto(uvc_device_handle_t *devh, uint8_t *autofocus,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
 	uvc_error_t ret;
@@ -381,7 +381,7 @@ uvc_error_t uvc_get_autofocus(uvc_device_handle_t *devh, uint8_t *autofocus,
 	}
 }
 
-uvc_error_t uvc_set_autofocus(uvc_device_handle_t *devh, uint8_t autofocus) {
+uvc_error_t uvc_set_focus_auto(uvc_device_handle_t *devh, uint8_t autofocus) {
 	uint8_t data[1];
 	uvc_error_t ret;
 
@@ -627,14 +627,14 @@ uvc_error_t uvc_set_zoom_rel(uvc_device_handle_t *devh, int8_t zoom, uint8_t isd
 }
 
 //----------------------------------------------------------------------
-uvc_error_t uvc_get_pantilt_abs(uvc_device_handle_t *devh, int *pan, int *tilt,
-		enum uvc_req_code req_code) {
+uvc_error_t uvc_get_pantilt_abs(uvc_device_handle_t *devh, int32_t *pan, int32_t *tilt,
+	enum uvc_req_code req_code) {
+
 	uint8_t data[8];
 	uvc_error_t ret;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
 			UVC_CT_PANTILT_ABSOLUTE_CONTROL << 8,
-//			1 << 8, /* = fixed ID(00) and wrong VideoControl interface descriptor subtype(UVC_VC_HEADER) on original libuvc */
 			devh->info->ctrl_if.input_term_descs->request,
 			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
 
@@ -647,7 +647,7 @@ uvc_error_t uvc_get_pantilt_abs(uvc_device_handle_t *devh, int *pan, int *tilt,
 	}
 }
 
-uvc_error_t uvc_set_pantilt_abs(uvc_device_handle_t *devh, int pan, int tilt) {
+uvc_error_t uvc_set_pantilt_abs(uvc_device_handle_t *devh, int32_t pan, int32_t tilt) {
 	uint8_t data[8];
 	uvc_error_t ret;
 
@@ -656,7 +656,6 @@ uvc_error_t uvc_set_pantilt_abs(uvc_device_handle_t *devh, int pan, int tilt) {
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
 			UVC_CT_PANTILT_ABSOLUTE_CONTROL << 8,
-//			1 << 8, /* = fixed ID(00) and wrong VideoControl interface descriptor subtype(UVC_VC_HEADER) on original libuvc */
 			devh->info->ctrl_if.input_term_descs->request,
 			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
 
@@ -666,11 +665,335 @@ uvc_error_t uvc_set_pantilt_abs(uvc_device_handle_t *devh, int pan, int tilt) {
 		return ret;
 }
 
-/** @todo pantilt_rel */
+uvc_error_t uvc_get_pantilt_rel(uvc_device_handle_t *devh,
+	int8_t *pan_rel, uint8_t *pan_speed,
+	int8_t* tilt_rel, uint8_t* tilt_speed,
+	enum uvc_req_code req_code) {
 
-/** @todo roll_abs, roll_rel */
+	uint8_t data[4];
+	uvc_error_t ret;
 
-/** @todo privacy */
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_CT_PANTILT_RELATIVE_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*pan_rel = data[0];
+		*pan_speed = data[1];
+		*tilt_rel = data[2];
+		*tilt_speed = data[3];
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+}
+
+uvc_error_t uvc_set_pantilt_rel(uvc_device_handle_t *devh,
+	int8_t pan_rel, uint8_t pan_speed,
+	int8_t tilt_rel, uint8_t tilt_speed) {
+
+	uint8_t data[4];
+	uvc_error_t ret;
+
+	data[0] = pan_rel;
+	data[1] = pan_speed;
+	data[2] = tilt_rel;
+	data[3] = tilt_speed;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_CT_PANTILT_RELATIVE_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_roll_abs(uvc_device_handle_t *devh, int16_t *roll,
+	enum uvc_req_code req_code) {
+
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_CT_ROLL_ABSOLUTE_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*roll = SW_TO_SHORT(data + 0);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+}
+
+uvc_error_t uvc_set_roll_abs(uvc_device_handle_t *devh, int16_t roll) {
+
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(roll, data + 0);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_CT_ROLL_ABSOLUTE_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+/** @ingroup ctrl
+ * @brief Reads the ROLL_RELATIVE control.
+ * @param devh UVC device handle
+ * @param[out] roll_rel TODO
+ * @param[out] speed TODO
+ * @param req_code UVC_GET_* request to execute
+ */
+uvc_error_t uvc_get_roll_rel(uvc_device_handle_t *devh, int8_t *roll_rel, uint8_t *speed,
+	enum uvc_req_code req_code) {
+
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_CT_ROLL_RELATIVE_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*roll_rel = data[0];
+		*speed = data[1];
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+}
+
+
+/** @ingroup ctrl
+ * @brief Sets the ROLL_RELATIVE control.
+ * @param devh UVC device handle
+ * @param roll_rel TODO
+ * @param speed TODO
+ */
+uvc_error_t uvc_set_roll_rel(uvc_device_handle_t *devh, int8_t roll_rel, uint8_t speed) {
+
+	uint8_t data[2];
+	uvc_error_t ret;
+
+	data[0] = roll_rel;
+	data[1] = speed;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_CT_ROLL_RELATIVE_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+/** @ingroup ctrl
+ * @brief Reads the PRIVACY control.
+ * @param devh UVC device handle
+ * @param[out] privacy TODO
+ * @param req_code UVC_GET_* request to execute
+ */
+uvc_error_t uvc_get_privacy(uvc_device_handle_t *devh, uint8_t *privacy,
+	enum uvc_req_code req_code) {
+
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_CT_PRIVACY_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*privacy = data[0];
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+}
+
+
+/** @ingroup ctrl
+ * @brief Sets the PRIVACY control.
+ * @param devh UVC device handle
+ * @param privacy TODO
+ */
+uvc_error_t uvc_set_privacy(uvc_device_handle_t *devh, uint8_t privacy) {
+
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	data[0] = privacy;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_CT_PRIVACY_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+/** @ingroup ctrl
+ * @brief Reads the DIGITAL_WINDOW control.
+ * @param devh UVC device handle
+ * @param[out] window_top TODO
+ * @param[out] window_left TODO
+ * @param[out] window_bottom TODO
+ * @param[out] window_right TODO
+ * @param[out] num_steps TODO
+ * @param[out] num_steps_units TODO
+ * @param req_code UVC_GET_* request to execute
+ */
+uvc_error_t uvc_get_digital_window(uvc_device_handle_t *devh,
+	uint16_t *window_top, uint16_t *window_left,
+	uint16_t *window_bottom, uint16_t *window_right,
+	uint16_t *num_steps, uint16_t *num_steps_units,
+	enum uvc_req_code req_code) {
+
+	uint8_t data[12];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_CT_DIGITAL_WINDOW_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*window_top = SW_TO_SHORT(data + 0);
+		*window_left = SW_TO_SHORT(data + 2);
+		*window_bottom = SW_TO_SHORT(data + 4);
+		*window_right = SW_TO_SHORT(data + 6);
+		*num_steps = SW_TO_SHORT(data + 8);
+		*num_steps_units = SW_TO_SHORT(data + 10);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+}
+
+
+/** @ingroup ctrl
+ * @brief Sets the DIGITAL_WINDOW control.
+ * @param devh UVC device handle
+ * @param window_top TODO
+ * @param window_left TODO
+ * @param window_bottom TODO
+ * @param window_right TODO
+ * @param num_steps TODO
+ * @param num_steps_units TODO
+ */
+uvc_error_t uvc_set_digital_window(uvc_device_handle_t *devh,
+	uint16_t window_top, uint16_t window_left,
+	uint16_t window_bottom, uint16_t window_right,
+	uint16_t num_steps, uint16_t num_steps_units) {
+
+	uint8_t data[12];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(window_top, data + 0);
+	SHORT_TO_SW(window_left, data + 2);
+	SHORT_TO_SW(window_bottom, data + 4);
+	SHORT_TO_SW(window_right, data + 6);
+	SHORT_TO_SW(num_steps, data + 8);
+	SHORT_TO_SW(num_steps_units, data + 10);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_CT_DIGITAL_WINDOW_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+/** @ingroup ctrl
+ * @brief Reads the REGION_OF_INTEREST control.
+ * @param devh UVC device handle
+ * @param[out] roi_top TODO
+ * @param[out] roi_left TODO
+ * @param[out] roi_bottom TODO
+ * @param[out] roi_right TODO
+ * @param[out] auto_controls TODO
+ * @param req_code UVC_GET_* request to execute
+ */
+uvc_error_t uvc_get_digital_roi(uvc_device_handle_t *devh,
+	uint16_t *roi_top, uint16_t *roi_left,
+	uint16_t* roi_bottom, uint16_t *roi_right, uint16_t *auto_controls,
+	enum uvc_req_code req_code) {
+
+	uint8_t data[10];
+	uvc_error_t ret;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_CT_REGION_OF_INTEREST_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data))) {
+		*roi_top = SW_TO_SHORT(data + 0);
+		*roi_left = SW_TO_SHORT(data + 2);
+		*roi_bottom = SW_TO_SHORT(data + 4);
+		*roi_right = SW_TO_SHORT(data + 6);
+		*auto_controls = SW_TO_SHORT(data + 8);
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+}
+
+
+/** @ingroup ctrl
+ * @brief Sets the REGION_OF_INTEREST control.
+ * @param devh UVC device handle
+ * @param roi_top TODO
+ * @param roi_left TODO
+ * @param roi_bottom TODO
+ * @param roi_right TODO
+ * @param auto_controls TODO
+ */
+uvc_error_t uvc_set_digital_roi(uvc_device_handle_t *devh,
+	uint16_t roi_top, uint16_t roi_left,
+	uint16_t roi_bottom, uint16_t roi_right, uint16_t auto_controls) {
+
+	uint8_t data[10];
+	uvc_error_t ret;
+
+	SHORT_TO_SW(roi_top, data + 0);
+	SHORT_TO_SW(roi_left, data + 2);
+	SHORT_TO_SW(roi_bottom, data + 4);
+	SHORT_TO_SW(roi_right, data + 6);
+	SHORT_TO_SW(auto_controls, data + 8);
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_CT_REGION_OF_INTEREST_CONTROL << 8,
+			devh->info->ctrl_if.input_term_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
 
 /***** SELECTOR UNIT CONTROLS *****/
 
@@ -881,8 +1204,8 @@ uvc_error_t uvc_set_powerline_freqency(uvc_device_handle_t *devh, uint8_t freq) 
 	uvc_error_t ret;
 
 	// XXX AUTO(0x03) is only available for UVC1.5.
-	if (((freq & 0xff) == 0xff)
-		|| (((freq & 0x03) == 0x03) && (devh->info->ctrl_if.bcdUVC < 0x0150))) {
+	if ( ((freq & 0xff) == 0xff)
+		|| (((freq & 0x03) == 0x03) && (devh->info->ctrl_if.bcdUVC < 0x0150)) ) {
 
 		ret = uvc_get_powerline_freqency(devh, &freq, UVC_GET_DEF);
 		if (UNLIKELY(ret)) {
@@ -1084,7 +1407,7 @@ uvc_error_t uvc_set_gamma(uvc_device_handle_t *devh, uint16_t gamma) {
 		return ret;
 }
 
-uvc_error_t uvc_get_wb_temperature(uvc_device_handle_t *devh, uint16_t *wb_temperature,
+uvc_error_t uvc_get_white_balance_temperature(uvc_device_handle_t *devh, uint16_t *wb_temperature,
 		enum uvc_req_code req_code) {
 	uint8_t data[2];
 	uvc_error_t ret;
@@ -1103,7 +1426,7 @@ uvc_error_t uvc_get_wb_temperature(uvc_device_handle_t *devh, uint16_t *wb_tempe
 	RETURN(-1, uvc_error_t);
 }
 
-uvc_error_t uvc_set_wb_temperature(uvc_device_handle_t *devh, uint16_t wb_temperature) {
+uvc_error_t uvc_set_white_balance_temperature(uvc_device_handle_t *devh, uint16_t wb_temperature) {
 	uint8_t data[2];
 	uvc_error_t ret;
 
@@ -1120,7 +1443,7 @@ uvc_error_t uvc_set_wb_temperature(uvc_device_handle_t *devh, uint16_t wb_temper
 		return ret;
 }
 
-uvc_error_t uvc_get_wb_temp_auto(uvc_device_handle_t *devh, uint8_t *autoWbTemp,
+uvc_error_t uvc_get_white_balance_temperature_auto(uvc_device_handle_t *devh, uint8_t *autoWbTemp,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
 	uvc_error_t ret;
@@ -1139,7 +1462,7 @@ uvc_error_t uvc_get_wb_temp_auto(uvc_device_handle_t *devh, uint8_t *autoWbTemp,
 	RETURN(-1, uvc_error_t);
 }
 
-uvc_error_t uvc_set_wb_temp_auto(uvc_device_handle_t *devh, uint8_t autoWbTemp) {
+uvc_error_t uvc_set_white_balance_temperature_auto(uvc_device_handle_t *devh, uint8_t autoWbTemp) {
 	uint8_t data[1];
 	uvc_error_t ret;
 
@@ -1156,7 +1479,7 @@ uvc_error_t uvc_set_wb_temp_auto(uvc_device_handle_t *devh, uint8_t autoWbTemp) 
 		return ret;
 }
 
-uvc_error_t uvc_get_wb_compo(uvc_device_handle_t *devh, uint32_t *wb_compo,
+uvc_error_t uvc_get_white_balance_component(uvc_device_handle_t *devh, uint32_t *wb_compo,
 		enum uvc_req_code req_code) {
 	uint8_t data[4];
 	uvc_error_t ret;
@@ -1175,7 +1498,7 @@ uvc_error_t uvc_get_wb_compo(uvc_device_handle_t *devh, uint32_t *wb_compo,
 	RETURN(-1, uvc_error_t);
 }
 
-uvc_error_t uvc_set_wb_compo(uvc_device_handle_t *devh, uint32_t wb_compo) {
+uvc_error_t uvc_set_white_balance_component(uvc_device_handle_t *devh, uint32_t wb_compo) {
 	uint8_t data[4];
 	uvc_error_t ret;
 
@@ -1192,7 +1515,7 @@ uvc_error_t uvc_set_wb_compo(uvc_device_handle_t *devh, uint32_t wb_compo) {
 		return ret;
 }
 
-uvc_error_t uvc_get_wb_compo_auto(uvc_device_handle_t *devh, uint8_t *autoWbCompo,
+uvc_error_t uvc_get_white_balance_component_auto(uvc_device_handle_t *devh, uint8_t *autoWbCompo,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
 	uvc_error_t ret;
@@ -1211,7 +1534,7 @@ uvc_error_t uvc_get_wb_compo_auto(uvc_device_handle_t *devh, uint8_t *autoWbComp
 	RETURN(-1, uvc_error_t);
 }
 
-uvc_error_t uvc_set_wb_comp_auto(uvc_device_handle_t *devh, uint8_t autoWbCompo) {
+uvc_error_t uvc_set_white_balance_component_auto(uvc_device_handle_t *devh, uint8_t autoWbCompo) {
 	uint8_t data[1];
 	uvc_error_t ret;
 
@@ -1264,7 +1587,7 @@ uvc_error_t uvc_set_digital_multiplier(uvc_device_handle_t *devh, uint16_t multi
 		return ret;
 }
 
-uvc_error_t uvc_get_digital_mult_limit(uvc_device_handle_t *devh, uint16_t *limit,
+uvc_error_t uvc_get_digital_multiplier_limit(uvc_device_handle_t *devh, uint16_t *limit,
 		enum uvc_req_code req_code) {
 	uint8_t data[2];
 	uvc_error_t ret;
@@ -1283,7 +1606,7 @@ uvc_error_t uvc_get_digital_mult_limit(uvc_device_handle_t *devh, uint16_t *limi
 	RETURN(-1, uvc_error_t);
 }
 
-uvc_error_t uvc_set_digital_mult_limit(uvc_device_handle_t *devh, uint16_t limit) {
+uvc_error_t uvc_set_digital_multiplier_limit(uvc_device_handle_t *devh, uint16_t limit) {
 	uint8_t data[2];
 	uvc_error_t ret;
 
@@ -1300,7 +1623,7 @@ uvc_error_t uvc_set_digital_mult_limit(uvc_device_handle_t *devh, uint16_t limit
 		return ret;
 }
 
-uvc_error_t uvc_get_analogvideo_standard(uvc_device_handle_t *devh, uint8_t *standard,
+uvc_error_t uvc_get_analog_video_standard(uvc_device_handle_t *devh, uint8_t *standard,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
 	uvc_error_t ret;
@@ -1319,7 +1642,24 @@ uvc_error_t uvc_get_analogvideo_standard(uvc_device_handle_t *devh, uint8_t *sta
 	RETURN(-1, uvc_error_t);
 }
 
-uvc_error_t uvc_get_analogvideo_lockstate(uvc_device_handle_t *devh, uint8_t *lock_state,
+uvc_error_t uvc_set_analog_video_standard(uvc_device_handle_t *devh, uint8_t standard) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	data[1] = standard;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_ANALOG_VIDEO_STANDARD_CONTROL << 8,
+			devh->info->ctrl_if.processing_unit_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
+}
+
+uvc_error_t uvc_get_analog_video_lockstate(uvc_device_handle_t *devh, uint8_t *lock_state,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
 	uvc_error_t ret;
@@ -1336,4 +1676,21 @@ uvc_error_t uvc_get_analogvideo_lockstate(uvc_device_handle_t *devh, uint8_t *lo
 		return ret;
 	}
 	RETURN(-1, uvc_error_t);
+}
+
+uvc_error_t uvc_set_analog_video_lockstate(uvc_device_handle_t *devh, uint8_t lock_state) {
+	uint8_t data[1];
+	uvc_error_t ret;
+
+	data[1] = lock_state;
+
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
+			UVC_PU_ANALOG_LOCK_STATUS_CONTROL << 8,
+			devh->info->ctrl_if.processing_unit_descs->request,
+			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
+		return ret;
 }

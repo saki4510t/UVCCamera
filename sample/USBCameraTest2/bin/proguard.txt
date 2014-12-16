@@ -1,6 +1,0 @@
-# view AndroidManifest.xml #generated:42
--keep class com.serenegiant.usbcameratest2.MainActivity { <init>(...); }
-
-# view res/layout/activity_main.xml #generated:36
--keep class com.serenegiant.widget.UVCCameraTextureView { <init>(...); }
-

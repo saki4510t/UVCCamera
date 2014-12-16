@@ -22,7 +22,7 @@ Files in the jni/libjpeg, jni/libusb and jin/libuvc folders may have a different
 see the respective files.
 
 =========
-How to compile library (tested NDK-r9d 64bit on OSX)
+How to compile library (tested NDK-r9d/NDK-r10c 64bit on OSX)
 If you want to compile this library,
 1. move to library/jni directory
 2. run ndk-build clean
@@ -47,7 +47,9 @@ or later is better. USB host function must be required.
 If you want to try on Android 3.1, you will need some modification(need to remove 
 setPreviewTexture method in UVCCamera.java etc.), but we have not confirm whether the sample
 project run on Android 3.1 yet.
+Some sample projects need API>=18 though.
 
+2014/07/25
 Add some modification to the library and new sample project named "USBCameraTest2".
 This new sample project demonstrate how to capture movie using frame data from
 UVC camera with MediaCodec and MediaMuxer.
@@ -55,6 +57,7 @@ New sample requires at least Android 4.3(API>=18).
 This limitation does not come from the library itself but from the limitation of 
 MediaMuxer and MediaCodec#createInputSurface.
 
+2014/09/01
 Add new sample project named "USBCameraTest3"
 This new sample project demonstrate how to capture audio and movie simultaneously
 using frame data from UVC camera and internal mic with MediaCodec and MediaMuxer.
@@ -63,12 +66,12 @@ save as jpeg) This sample also requires at least Android 4.3(API>=18).
 This limitation does not come from the library itself but from the limitation of 
 MediaMuxer and MediaCodec#createInputSurface.
 
+2014/11/16
 Add new sample project named "USBCameraTest4"
 This new sample project mainly demonstrate how to use offscreen rendering
 and record movie without any display.
 The communication with camera execute as Service and continue working
 even if you stop app. If you stop camera communication, click "stop service" button.
 
-The library itself still works on at least Android 3.1 or later(API >= 12) and recommended
-Android 4.0 or later (API >= 14).
-
+2014/12/17
+Add bulk transfer mode and update sample projects.

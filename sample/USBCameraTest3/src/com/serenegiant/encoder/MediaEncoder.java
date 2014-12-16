@@ -119,6 +119,7 @@ public abstract class MediaEncoder implements Runnable {
             if (!mIsCapturing || mRequestStop) {
                 return false;
             }
+            mHandler.removeMessages(MSG_FRAME_AVAILABLE);
             mHandler.sendEmptyMessage(MSG_FRAME_AVAILABLE);
         }
         return true;

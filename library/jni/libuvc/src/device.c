@@ -79,6 +79,12 @@ uvc_error_t uvc_parse_vs_format_mjpeg(uvc_streaming_interface_t *stream_if,
 uvc_error_t uvc_parse_vs_frame_uncompressed(
 		uvc_streaming_interface_t *stream_if, const unsigned char *block,
 		size_t block_size);
+uvc_error_t uvc_parse_vs_frame_format(uvc_streaming_interface_t *stream_if,
+	    const unsigned char *block,
+	    size_t block_size);
+uvc_error_t uvc_parse_vs_frame_frame(uvc_streaming_interface_t *stream_if,
+	    const unsigned char *block,
+	    size_t block_size);
 uvc_error_t uvc_parse_vs_input_header(uvc_streaming_interface_t *stream_if,
 		const unsigned char *block, size_t block_size);
 
@@ -254,6 +260,7 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 	internal_devh->is_isight = (desc.idVendor == 0x05ac && desc.idProduct == 0x8501);
 
 	if (internal_devh->info->ctrl_if.bEndpointAddress) {
+		UVC_DEBUG("status check transfer:bEndpointAddress=0x%02x", internal_devh->info->ctrl_if.bEndpointAddress);
 		internal_devh->status_xfer = libusb_alloc_transfer(0);
 		if (UNLIKELY(!internal_devh->status_xfer)) {
 			ret = UVC_ERROR_NO_MEM;
@@ -419,7 +426,6 @@ void uvc_free_device_info(uvc_device_info_t *info) {
 	UVC_EXIT_VOID();
 }
 
-
 /**
  * @brief Get a descriptor that contains the general information about
  * a device
@@ -533,6 +539,7 @@ uvc_error_t uvc_get_device_list(uvc_context_t *ctx, uvc_device_t ***list) {
 	int dev_idx;
 	struct libusb_device_handle *usb_devh;
 	struct libusb_config_descriptor *config;
+	struct libusb_device_descriptor desc;
 	uint8_t got_interface;
 
 	/* per interface */
@@ -565,20 +572,28 @@ uvc_error_t uvc_get_device_list(uvc_context_t *ctx, uvc_device_t ***list) {
 		if (libusb_get_config_descriptor(usb_dev, 0, &config) != 0)
 			continue;
 
-		for (interface_idx = 0;
-				!got_interface && interface_idx < config->bNumInterfaces;
-				++interface_idx) {
-			interface = &config->interface[interface_idx];
+		if (libusb_get_device_descriptor (usb_dev, &desc) != LIBUSB_SUCCESS)
+			continue;
 
-			for (altsetting_idx = 0;
-					!got_interface && altsetting_idx < interface->num_altsetting;
-					++altsetting_idx) {
-				if_desc = &interface->altsetting[altsetting_idx];
+		// Special case for Imaging Source cameras
+		if ((0x199e == desc.idVendor) && (0x8101 == desc.idProduct)) {
+			got_interface = 1;
+		} else {
+			for (interface_idx = 0;
+					!got_interface && interface_idx < config->bNumInterfaces;
+					++interface_idx) {
+				interface = &config->interface[interface_idx];
 
-				/* Video, Streaming */
-				if (if_desc->bInterfaceClass == 14
-						&& if_desc->bInterfaceSubClass == 2) {
-					got_interface = 1;
+				for (altsetting_idx = 0;
+						!got_interface && altsetting_idx < interface->num_altsetting;
+						++altsetting_idx) {
+					if_desc = &interface->altsetting[altsetting_idx];
+
+					/* Video, Streaming */
+					if (if_desc->bInterfaceClass == 14
+							&& if_desc->bInterfaceSubClass == 2) {
+						got_interface = 1;
+					}
 				}
 			}
 		}
@@ -857,6 +872,19 @@ uvc_error_t uvc_scan_control(uvc_device_t *dev, uvc_device_info_t *info) {
 			if (if_desc->bInterfaceClass == LIBUSB_CLASS_VIDEO/*14*/ && if_desc->bInterfaceSubClass == 1) // Video, Control
 				break;
 
+			// Another TIS camera hack.
+			if (if_desc->bInterfaceClass == 255 && if_desc->bInterfaceSubClass == 1) {
+				uvc_device_descriptor_t* dev_desc;
+				int haveTISCamera = 0;
+				uvc_get_device_descriptor (dev, &dev_desc);
+				if (dev_desc->idVendor == 0x199e && dev_desc->idProduct == 0x8101) {
+					haveTISCamera = 1;
+				}
+				uvc_free_device_descriptor (dev_desc);
+				if (haveTISCamera) {
+					break;
+				}
+			}
 			if_desc = NULL;
 		}
 	}
@@ -1049,6 +1077,7 @@ uvc_error_t uvc_parse_vc_extension_unit(uvc_device_t *dev,
 	start_of_controls = &block[23 + num_in_pins];
 	unit->request = (unit->bUnitID << 8) | info->ctrl_if.bInterfaceNumber;
 
+	unit->bmControls = 0;	// XXX
 	for (i = size_of_controls - 1; i >= 0; i--)
 		unit->bmControls = start_of_controls[i] + (unit->bmControls << 8);
 
@@ -1223,6 +1252,35 @@ uvc_error_t uvc_parse_vs_format_uncompressed(
 }
 
 /** @internal
+ * @brief Parse a VideoStreaming frame format block.
+ * @ingroup device
+ */
+uvc_error_t uvc_parse_vs_frame_format(uvc_streaming_interface_t *stream_if,
+	const unsigned char *block, size_t block_size) {
+	UVC_ENTER();
+
+	uvc_format_desc_t *format = calloc(1, sizeof(*format));
+
+	format->parent = stream_if;
+	format->bDescriptorSubtype = block[2];
+	format->bFormatIndex = block[3];
+	format->bNumFrameDescriptors = block[4];
+	memcpy(format->guidFormat, &block[5], 16);
+	format->bBitsPerPixel = block[21];
+	format->bDefaultFrameIndex = block[22];
+	format->bAspectRatioX = block[23];
+	format->bAspectRatioY = block[24];
+	format->bmInterlaceFlags = block[25];
+	format->bCopyProtect = block[26];
+	format->bVariableSize = block[27];
+
+	DL_APPEND(stream_if->format_descs, format);
+
+	UVC_EXIT(UVC_SUCCESS);
+	return UVC_SUCCESS;
+}
+
+/** @internal
  * @brief Parse a VideoStreaming MJPEG format block.
  * @ingroup device
  */
@@ -1254,6 +1312,58 @@ uvc_error_t uvc_parse_vs_format_mjpeg(uvc_streaming_interface_t *stream_if,
  * @brief Parse a VideoStreaming uncompressed frame block.
  * @ingroup device
  */
+uvc_error_t uvc_parse_vs_frame_frame(uvc_streaming_interface_t *stream_if,
+					    const unsigned char *block,
+					    size_t block_size) {
+  uvc_format_desc_t *format;
+  uvc_frame_desc_t *frame;
+
+  const unsigned char *p;
+  int i;
+
+  UVC_ENTER();
+
+  format = stream_if->format_descs->prev;
+  frame = calloc(1, sizeof(*frame));
+
+  frame->parent = format;
+
+  frame->bDescriptorSubtype = block[2];
+  frame->bFrameIndex = block[3];
+  frame->bmCapabilities = block[4];
+  frame->wWidth = block[5] + (block[6] << 8);
+  frame->wHeight = block[7] + (block[8] << 8);
+  frame->dwMinBitRate = DW_TO_INT(&block[9]);
+  frame->dwMaxBitRate = DW_TO_INT(&block[13]);
+  frame->dwDefaultFrameInterval = DW_TO_INT(&block[17]);
+  frame->bFrameIntervalType = block[21];
+  frame->dwBytesPerLine = DW_TO_INT(&block[22]);
+
+  if (block[21] == 0) {
+    frame->dwMinFrameInterval = DW_TO_INT(&block[26]);
+    frame->dwMaxFrameInterval = DW_TO_INT(&block[30]);
+    frame->dwFrameIntervalStep = DW_TO_INT(&block[34]);
+  } else {
+    frame->intervals = calloc(block[21] + 1, sizeof(frame->intervals[0]));
+    p = &block[26];
+
+    for (i = 0; i < block[21]; ++i) {
+      frame->intervals[i] = DW_TO_INT(p);
+      p += 4;
+    }
+    frame->intervals[block[21]] = 0;
+  }
+
+  DL_APPEND(format->frame_descs, frame);
+
+  UVC_EXIT(UVC_SUCCESS);
+  return UVC_SUCCESS;
+}
+
+/** @internal
+ * @brief Parse a VideoStreaming uncompressed frame block.
+ * @ingroup device
+ */
 uvc_error_t uvc_parse_vs_frame_uncompressed(
 		uvc_streaming_interface_t *stream_if, const unsigned char *block,
 		size_t block_size) {
@@ -1279,7 +1389,7 @@ uvc_error_t uvc_parse_vs_frame_uncompressed(
 	frame->dwMaxBitRate = DW_TO_INT(&block[13]);
 	frame->dwMaxVideoFrameBufferSize = DW_TO_INT(&block[17]);
 	frame->dwDefaultFrameInterval = DW_TO_INT(&block[21]);
-	// frame->bFrameIntervalType = block[25];
+	frame->bFrameIntervalType = block[25];
 
 	if (block[25] == 0) {
 		frame->dwMinFrameInterval = DW_TO_INT(&block[26]);
@@ -1321,9 +1431,8 @@ uvc_error_t uvc_parse_vs(uvc_device_t *dev, uvc_device_info_t *info,
 	case UVC_VS_INPUT_HEADER:
 		ret = uvc_parse_vs_input_header(stream_if, block, block_size);
 		break;
-	case UVC_VS_STILL_IMAGE_FRAME:
-		// FIXME unsupported now
-		break;
+//	case UVC_VS_STILL_IMAGE_FRAME:	// FIXME unsupported now
+//		break;
 	case UVC_VS_FORMAT_UNCOMPRESSED:
 		ret = uvc_parse_vs_format_uncompressed(stream_if, block, block_size);
 		break;
@@ -1334,9 +1443,14 @@ uvc_error_t uvc_parse_vs(uvc_device_t *dev, uvc_device_info_t *info,
 	case UVC_VS_FRAME_MJPEG:
 		ret = uvc_parse_vs_frame_uncompressed(stream_if, block, block_size);
 		break;
-	case UVC_VS_COLORFORMAT:
-		// FIXME unsupported now
+	case UVC_VS_FORMAT_FRAME_BASED:
+		ret = uvc_parse_vs_frame_format(stream_if, block, block_size );
 		break;
+	case UVC_VS_FRAME_FRAME_BASED:
+		ret = uvc_parse_vs_frame_frame(stream_if, block, block_size );
+		break;
+//	case UVC_VS_COLORFORMAT:	// FIXME unsupported now
+//		break;
 	default:
 		/** @todo handle JPEG and maybe still frames or even DV... */
 		LOGV("unsupported descriptor_subtype(0x%02x)", descriptor_subtype);
@@ -1578,4 +1692,15 @@ void uvc_set_status_callback(uvc_device_handle_t *devh,
 	devh->status_user_ptr = user_ptr;
 
 	UVC_EXIT_VOID();
+}
+
+/**
+ * @brief Get format descriptions for the open device.
+ *
+ * @note Do not modify the returned structure.
+ *
+ * @param devh Device handle to an open UVC device
+ */
+const uvc_format_desc_t *uvc_get_format_descs(uvc_device_handle_t *devh) {
+  return devh->info->stream_ifs->format_descs;
 }

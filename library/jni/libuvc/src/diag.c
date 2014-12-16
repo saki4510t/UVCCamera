@@ -153,7 +153,11 @@ void uvc_print_stream_ctrl(uvc_stream_ctrl_t *ctrl, FILE *stream) {
 	FPRINTF(stream, "bmSettings: %d\n", ctrl->bmSettings);
 	FPRINTF(stream, "bMaxNumberOfRefFramesPlus1: %d\n", ctrl->bMaxNumberOfRefFramesPlus1);
 	FPRINTF(stream, "bmRateControlModes: %d\n", ctrl->bmRateControlModes);
+#if !defined(__LP64__)
 	FPRINTF(stream, "bmLayoutPerStream: %llx\n", ctrl->bmLayoutPerStream);
+#else
+	FPRINTF(stream, "bmLayoutPerStream: %lx\n", ctrl->bmLayoutPerStream);
+#endif
 }
 
 static const char *_uvc_name_for_desc_type(const uint8_t type) {

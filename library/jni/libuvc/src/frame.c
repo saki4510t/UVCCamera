@@ -83,7 +83,7 @@ uvc_frame_t *uvc_allocate_frame(size_t data_bytes) {
 
 #ifndef __ANDROID__
 	// XXX in many case, it is not neccesary to clear because all fields are set before use
-	// therefore we remove this to improve performace, but be care not to faoget to set fields before use
+	// therefore we remove this to improve performace, but be care not to forget to set fields before use
 	memset(frame, 0, sizeof(*frame));	// bzero(frame, sizeof(*frame)); // bzero is deprecated
 #endif
 //	frame->library_owns_data = 1;	// XXX moved to lower

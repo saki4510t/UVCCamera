@@ -247,7 +247,11 @@ static int _get_usbfs_fd(struct libusb_device *device, mode_t mode, int silent) 
 	else {
 		// fall back to original _get_usbfs_fd function
 		// but this call will fail on Android devices without root
+#if !defined(__LP64__)
 		usbi_dbg("fd have not set yet. device=%x,fd=%d", (int )device, dpriv->fd);
+#else
+		usbi_dbg("fd have not set yet. device=%x,fd=%d", (long )device, dpriv->fd);
+#endif
 		return __get_usbfs_fd(device, mode, silent);
 	}
 #else
@@ -1938,7 +1942,9 @@ static int submit_bulk_transfer(struct usbi_transfer *itransfer) {
 		if (is_out && i == num_urbs - 1
 				&& transfer->flags & LIBUSB_TRANSFER_ADD_ZERO_PACKET)
 			urb->flags |= USBFS_URB_ZERO_PACKET;
-
+#if LOCAL_DEBUG
+		dump_urb(i, dpriv->fd, urb);
+#endif
 		r = ioctl(dpriv->fd, IOCTL_USBFS_SUBMITURB, urb);
 		if (UNLIKELY(r < 0)) {
 			if (errno == ENODEV) {
