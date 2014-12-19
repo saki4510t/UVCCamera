@@ -105,6 +105,7 @@ public class MediaAudioEncoder extends MediaEncoder {
     private class AudioThread extends Thread {
     	@Override
     	public void run() {
+//    		android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
     		try {
 	            final int buf_sz = AudioRecord.getMinBufferSize(
 	            	SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT) * 4;

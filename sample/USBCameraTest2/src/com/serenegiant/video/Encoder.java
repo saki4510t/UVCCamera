@@ -24,32 +24,56 @@ package com.serenegiant.video;
 */
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
+import java.nio.ByteBuffer;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
+import android.media.MediaFormat;
+import android.media.MediaMuxer;
 import android.util.Log;
 
-public abstract class Encoder {
+public abstract class Encoder implements Runnable {
+	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "Encoder";
 
+	protected static final int TIMEOUT_USEC = 10000;	// 10[msec]   
+
+	protected final Object mSync = new Object();
+	/**
+	 * Flag that indicate this encoder is capturing now.
+	 */
+    protected volatile boolean mIsCapturing;
+	/**
+	 * Flag that indicate the frame data will be available soon.
+	 */
+	private int mRequestDrain;
+    /**
+     * Flag to request stop capturing
+     */
+    protected volatile boolean mRequestStop;
+    /**
+     * Flag that indicate encoder received EOS(End Of Stream)
+     */
+    protected boolean mIsEOS;
+    /**
+     * Flag the indicate the muxer is running
+     */
+    protected boolean mMuxerStarted;
+    /**
+     * Track Number
+     */
+    protected int mTrackIndex;
+    /**
+     * MediaCodec instance for encoding
+     */
+    protected MediaCodec mMediaCodec;				// API >= 16(Android4.1.2)
     protected EncodeListener mEncodeListener;   
-    protected volatile boolean mMuxerStarted;
-	protected volatile boolean mIsCapturing;
     protected MediaCodec.BufferInfo mBufferInfo;	// API >= 16(Android4.1.2)
-    protected MediaCodec mCodec;					// API >= 16(Android4.1.2)
 	protected String mOutputPath;
  
-    private static final int MSG_FRAME_AVAILABLE = 1;
-    private static final int MSG_SEND_EOS = 2;
-    private static final int MSG_STOP_RECORDING = 3;
+	protected MediaMuxer mMuxer;					// API >= 18
 
-    private EncoderThread mEncoderThread;
-    
     public interface EncodeListener {
     	/**
     	 * callback after finishing initialization of encoder
@@ -66,131 +90,303 @@ public abstract class Encoder {
 //********************************************************************************
     public Encoder() {
     	// create and start encoder thread
-    	mEncoderThread = new EncoderThread(this);
-    	mEncoderThread.start();
+        synchronized (mSync) {
+            new Thread(this, getClass().getSimpleName()).start();
+            try {
+                // wait for starting thread
+            	mSync.wait();
+            } catch (InterruptedException e) {
+            }
+        }
     }
     
 //********************************************************************************
     public boolean isCapturing() {
     	return mIsCapturing;
     }
-    
-    /**
-     * request stop encoding
-     */
-    public void stopRecording() {
-    	final EncoderHandler handler = mEncoderThread.getHandler();
-    	// remove drain request in the queue.
-    	handler.removeMessages(MSG_FRAME_AVAILABLE);
-    	// request drain onece to signalEndOfInputStream
-        handler.sendMessage(handler.obtainMessage(MSG_FRAME_AVAILABLE));
-        // request sending EOS
-        handler.sendMessage(handler.obtainMessage(MSG_SEND_EOS));
-        // request stop and release encoder
-        handler.sendMessage(handler.obtainMessage(MSG_STOP_RECORDING));
-    }
 
-    /**
-     * notify to frame data will arrive soon or already arrived.
-     * (request to process frame data)
-     */
-    public void frameAvailable() {
-    	final EncoderHandler handler = mEncoderThread.getHandler();
-    	handler.sendMessage(handler.obtainMessage(MSG_FRAME_AVAILABLE));
-    }
+	public void startRecording() {
+   	if (DEBUG) Log.v(TAG, "startRecording");
+		synchronized (mSync) {
+			mIsCapturing = true;
+			mRequestStop = false;
+			mSync.notifyAll();
+		}
+	}
 
-//********************************************************************************
-    private static final class EncoderThread extends Thread {
-    	private final Object mReadySync = new Object();
-        private final WeakReference<Encoder> mWeakEncoder;
-    	private EncoderHandler mHandler;
-        private boolean mReady;
-        
-        public EncoderThread(Encoder encoder) {
-        	mWeakEncoder = new 	WeakReference<Encoder>(encoder);
-        }
-        @Override
-        public void run() {
-            // Prepare Looper and create Hander to access to this thread
-            Looper.prepare();
-            synchronized (mReadySync) {
-                mHandler = new EncoderHandler(mWeakEncoder.get());
-                mReady = true;
-                mReadySync.notify();
-            }
-            Looper.loop();
+   /**
+    * the method to request stop encoding
+    */
+	public void stopRecording() {
+		if (DEBUG) Log.v(TAG, "stopRecording");
+		synchronized (mSync) {
+			if (!mIsCapturing || mRequestStop) {
+				return;
+			}
+			mRequestStop = true;	// for rejecting newer frame
+			mSync.notifyAll();
+	        // We can not know when the encoding and writing finish.
+	        // so we return immediately after request to avoid delay of caller thread
+		}
+	}
 
-            synchronized (mReadySync) {
-                mReady = false;
-                mHandler = null;
-            }
-        }
-
-        public EncoderHandler getHandler() {
-            synchronized (mReadySync) {
-                while (!mReady) {
-                    try {
-                        mReadySync.wait();
-                    } catch (InterruptedException e) {
-                        // ignore
-                    }
-                }
-            }
-        	return mHandler;
-        }
-    }
-
-    /**
-     * Message handler class of asynchronusly message processing for encoder thread
-     * all messages are processed on encoder thread
-     */
-    private static final class EncoderHandler extends Handler {
-        private final WeakReference<Encoder> mWeakEncoder;
-
-        public EncoderHandler(Encoder encoder) {
-            mWeakEncoder = new WeakReference<Encoder>(encoder);
-        }
-
-        @Override
-        public void handleMessage(Message inputMessage) {
-
-            final Encoder encoder = mWeakEncoder.get();
-            if (encoder == null) {
-                Log.w(TAG, "EncoderHandler.handleMessage: encoder is null");
-                return;
-            }
-
-            switch (inputMessage.what) {
-                case MSG_FRAME_AVAILABLE:
-                    encoder.drain();
-                    break;
-                case MSG_SEND_EOS:
-                	encoder.signalEndOfInputStream();
-                	break;
-                case MSG_STOP_RECORDING:
-                    encoder.drain();
-                    encoder.release();
-                    Looper.myLooper().quit();
-                    break;
-                default:
-                    throw new RuntimeException("Unhandled msg what=" + inputMessage.what);
-            }
-        }
-    }
-
-//********************************************************************************
     public void setOutputFile(String filePath) {
 		mOutputPath = filePath;
 	}
 	
 	public abstract void prepare()  throws IOException;
-	protected abstract void release();
-	protected abstract void drain();
-	protected abstract void signalEndOfInputStream();
 
 	public void setEncodeListener(EncodeListener listener) {
 		mEncodeListener = listener;
 	}
+
+    /**
+     * notify to frame data will arrive soon or already arrived.
+     * (request to process frame data)
+     */
+    public boolean frameAvailable() {
+//    	if (DEBUG) Log.v(TAG, "frameAvailable:");
+        synchronized (mSync) {
+            if (!mIsCapturing || mRequestStop) {
+                return false;
+            }
+            mRequestDrain++;
+            mSync.notifyAll();
+        }
+        return true;
+    }
+
+    /**
+     * encoding loop on private thread
+     */
+	@Override
+	public void run() {
+		if (DEBUG) Log.d(TAG, "Encoder thread starting");
+//		android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
+        synchronized (mSync) {
+            mRequestStop = false;
+    		mRequestDrain = 0;
+            mSync.notify();
+        }
+        boolean isRunning = true;
+        boolean localRequestStop;
+        boolean localRequestDrain;
+        while (isRunning) {
+        	synchronized (mSync) {
+        		localRequestStop = mRequestStop;
+        		localRequestDrain = (mRequestDrain > 0);
+        		if (localRequestDrain)
+        			mRequestDrain--;
+        	}
+	        if (localRequestStop) {
+	           	drain();
+	           	// request stop recording
+	           	signalEndOfInputStream();
+	           	// process output data again for EOS signale
+	           	drain();
+	           	// release all related objects
+	           	release();
+	           	break;
+	        }
+	        if (localRequestDrain) {
+	        	drain();
+	        } else {
+	        	synchronized (mSync) {
+		        	try {
+						mSync.wait();
+					} catch (InterruptedException e) {
+						break;
+					}
+	        	}
+        	}
+        } // end of while
+		if (DEBUG) Log.d(TAG, "Encoder thread exiting");
+        synchronized (mSync) {
+        	mRequestStop = true;
+            mIsCapturing = false;
+        }
+	}
+
+//********************************************************************************
+
+    /**
+     * Release all releated objects
+     */
+    protected void release() {
+		if (DEBUG) Log.d(TAG, "release:");
+		try {
+			mEncodeListener.onRelease(this);
+		} catch (Exception e) {
+			Log.e(TAG, "failed onStopped", e);
+		}
+		mIsCapturing = false;
+        if (mMediaCodec != null) {
+			try {
+	            mMediaCodec.stop();
+	            mMediaCodec.release();
+	            mMediaCodec = null;
+			} catch (Exception e) {
+				Log.e(TAG, "failed releasing MediaCodec", e);
+			}
+        }
+        if (mMuxerStarted) {
+       		if (mMuxer != null) {
+       			try {
+       				mMuxer.stop();
+    			} catch (Exception e) {
+    				Log.e(TAG, "failed stopping muxer", e);
+    			}
+       		}
+        }
+        mBufferInfo = null;
+    }
+
+    protected void signalEndOfInputStream() {
+		if (DEBUG) Log.d(TAG, "sending EOS to encoder");
+        // signalEndOfInputStream is only avairable for video encoding with surface
+        // and equivalent sending a empty buffer with BUFFER_FLAG_END_OF_STREAM flag.
+//		mMediaCodec.signalEndOfInputStream();	// API >= 18
+        encode(null, 0, getPTSUs());
+	}
+
+    /**
+     * Method to set byte array to the MediaCodec encoder
+     * @param buffer
+     * @param length　length of byte array, zero means EOS.
+     * @param presentationTimeUs
+     */
+    protected void encode(byte[] buffer, int length, long presentationTimeUs) {
+    	if (!mIsCapturing) return;
+    	int ix = 0, sz;
+        final ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
+        while (mIsCapturing && ix < length) {
+	        final int inputBufferIndex = mMediaCodec.dequeueInputBuffer(TIMEOUT_USEC);
+	        if (inputBufferIndex >= 0) {
+	            final ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
+	            inputBuffer.clear();
+	            sz = inputBuffer.remaining();
+	            sz = (ix + sz < length) ? sz : length - ix; 
+	            if (sz > 0 && (buffer != null)) {
+	            	inputBuffer.put(buffer, ix, sz);
+	            }
+	            ix += sz;
+//	            if (DEBUG) Log.v(TAG, "encode:queueInputBuffer");
+	            if (length <= 0) {
+	            	// send EOS
+	            	mIsEOS = true;
+	            	if (DEBUG) Log.i(TAG, "send BUFFER_FLAG_END_OF_STREAM");
+	            	mMediaCodec.queueInputBuffer(inputBufferIndex, 0, 0,
+	            		presentationTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+		            break;
+	            } else {
+	            	mMediaCodec.queueInputBuffer(inputBufferIndex, 0, sz,
+	            		presentationTimeUs, 0);
+	            }
+	        } else if (inputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+	        	// wait for MediaCodec encoder is ready to encode
+	        	// nothing to do here because MediaCodec#dequeueInputBuffer(TIMEOUT_USEC)
+	        	// will wait for maximum TIMEOUT_USEC(10msec) on each call
+	        }
+        }
+    }
+
+    /**
+     * drain encoded data and write them to muxer
+     */
+    protected void drain() {
+    	if (mMediaCodec == null) return;
+        ByteBuffer[] encoderOutputBuffers = mMediaCodec.getOutputBuffers();
+        int encoderStatus, count = 0;
+        if (mMuxer == null) {
+//        	throw new NullPointerException("muxer is unexpectedly null");
+        	Log.w(TAG, "muxer is unexpectedly null");
+        	return;
+        }
+LOOP:	while (mIsCapturing) {
+			// get encoded data with maximum timeout duration of TIMEOUT_USEC(=10[msec])
+            encoderStatus = mMediaCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);
+            if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                // wait 5 counts(=TIMEOUT_USEC x 5 = 50msec) until data/EOS come
+                if (!mIsEOS) {
+                	if (++count > 5)	
+                		break LOOP;		// out of while
+                }
+            } else if (encoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+            	if (DEBUG) Log.v(TAG, "INFO_OUTPUT_BUFFERS_CHANGED");
+                // this shoud not come when encoding
+                encoderOutputBuffers = mMediaCodec.getOutputBuffers();
+            } else if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+            	if (DEBUG) Log.v(TAG, "INFO_OUTPUT_FORMAT_CHANGED");
+            	// this status indicate the output format of codec is changed
+                // this should come only once before actual encoded data
+            	// but this status never come on Android4.3 or less
+            	// and in that case, you should treat when MediaCodec.BUFFER_FLAG_CODEC_CONFIG come.
+                if (mMuxerStarted) {	// second time request is error
+                    throw new RuntimeException("format changed twice");
+                }
+				// get output format from codec and pass them to muxer
+				// getOutputFormat should be called after INFO_OUTPUT_FORMAT_CHANGED otherwise crash.
+                final MediaFormat format = mMediaCodec.getOutputFormat(); // API >= 16
+               	mTrackIndex = mMuxer.addTrack(format);
+               	mMuxerStarted = true;
+               	mMuxer.start();
+            } else if (encoderStatus < 0) {
+            	// unexpected status
+            	if (DEBUG) Log.w(TAG, "drain:unexpected result from encoder#dequeueOutputBuffer: " + encoderStatus);
+            } else {
+                final ByteBuffer encodedData = encoderOutputBuffers[encoderStatus];
+                if (encodedData == null) {
+                	// this never should come...may be a MediaCodec internal error
+                    throw new RuntimeException("encoderOutputBuffer " + encoderStatus + " was null");
+                }
+                if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
+                	// You shoud set output format to muxer here when you target Android4.3 or less
+                	// but MediaCodec#getOutputFormat can not call here(because INFO_OUTPUT_FORMAT_CHANGED don't come yet)
+                	// therefor we should expand and prepare output format from buffer data.
+                	// This sample is for API>=18(>=Android 4.3), just ignore this flag here
+					if (DEBUG) Log.d(TAG, "drain:BUFFER_FLAG_CODEC_CONFIG");
+					mBufferInfo.size = 0;
+                }
+
+                if (mBufferInfo.size != 0) {
+                	// encoded data is ready, clear waiting counter
+            		count = 0;
+                    if (!mMuxerStarted) {
+                    	// muxer is not ready...this will prrograming failure.
+                        throw new RuntimeException("drain:muxer hasn't started");
+                    }
+                    // write encoded data to muxer(need to adjust presentationTimeUs.
+                   	mBufferInfo.presentationTimeUs = getPTSUs();
+                   	mMuxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
+					prevOutputPTSUs = mBufferInfo.presentationTimeUs;
+                }
+                // return buffer to encoder
+                mMediaCodec.releaseOutputBuffer(encoderStatus, false);
+                if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                	// when EOS come.
+               		mMuxerStarted = mIsCapturing = false;
+                    break;      // out of while
+                }
+            }
+        }
+    }
+
+    /**
+     * previous presentationTimeUs for writing
+     */
+	private long prevOutputPTSUs = 0;
+	/**
+	 * get next encoding presentationTimeUs
+	 * @return
+	 */
+    protected long getPTSUs() {
+		long result = System.nanoTime() / 1000L;
+		// presentationTimeUs should be monotonic
+		// otherwise muxer fail to write
+		if (result < prevOutputPTSUs)
+			result = (prevOutputPTSUs - result) + result;
+		return result;
+    }
 
     /**
      * select primary codec for encoding from the available list which MIME is specific type

@@ -76,7 +76,7 @@ public class MainActivity extends Activity {
 	 *  by almost same way as USBCameratest2)
 	 * set false if you want to record movie using MediaVideoEncoder
 	 */
-    private static final boolean USE_SURFACE_ENCODER = true;
+    private static final boolean USE_SURFACE_ENCODER = false;
 	/**
 	 * for accessing USB
 	 */

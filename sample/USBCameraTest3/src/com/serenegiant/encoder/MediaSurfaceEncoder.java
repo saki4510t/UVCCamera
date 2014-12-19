@@ -42,7 +42,7 @@ public class MediaSurfaceEncoder extends MediaEncoder {
     private static final int VIDEO_WIDTH = 640;
     private static final int VIDEO_HEIGHT = 480;
     private static final int FRAME_RATE = 15;
-    private static final float BPP = 0.125f;
+    private static final float BPP = 0.50f;
  
     private Surface mSurface;
 	

@@ -24,7 +24,6 @@ package com.serenegiant.video;
 */
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
@@ -34,21 +33,17 @@ import android.util.Log;
 import android.view.Surface;
 
 public class SurfaceEncoder extends Encoder {
-	private static final boolean DEBUG = false;	// set false when releasing
+	private static final boolean DEBUG = true;	// set false when releasing
 	private static final String TAG = "SurfaceEncoder";
 
 	private static final String MIME_TYPE = "video/avc";
 	private static final int IFRAME_INTERVAL = 10;
-	private static final int TIMEOUT_USEC = 10000;	// 10ミリ秒
 	private static final int FRAME_WIDTH = 640;
 	private static final int FRAME_HEIGHT = 480;
 	private static final int CAPTURE_FPS = 15;
 	private static final int BIT_RATE = 1000000;
 
 	protected Surface mInputSurface;
-	protected MediaMuxer mMuxer;				// API >= 18
-	protected int mTrackIndex;
-	private boolean mIsEOS;
 
 	public SurfaceEncoder(String filePath) {
 		super();
@@ -89,11 +84,11 @@ public class SurfaceEncoder extends Encoder {
 		if (DEBUG) Log.i(TAG, "format: " + format);
 
 		// create a MediaCodec encoder with specific configuration
-		mCodec = MediaCodec.createEncoderByType(MIME_TYPE);
-		mCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+		mMediaCodec = MediaCodec.createEncoderByType(MIME_TYPE);
+		mMediaCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 		// get Surface for input to encoder
-		mInputSurface = mCodec.createInputSurface();	// API >= 18
-		mCodec.start();
+		mInputSurface = mMediaCodec.createInputSurface();	// API >= 18
+		mMediaCodec.start();
 
 		// create MediaMuxer. You should never call #start here
 		if (DEBUG) Log.i(TAG, "output will go to " + mOutputPath);
@@ -114,105 +109,11 @@ public class SurfaceEncoder extends Encoder {
 	@Override
 	protected void release() {
 		if (DEBUG) Log.i(TAG, "release:");
-		if (mEncodeListener != null) {
-			try {
-				mEncodeListener.onRelease(this);
-			} catch (Exception e) {
-				if (DEBUG) Log.w(TAG, e);
-			}
-		}
+		super.release();
 		if (mInputSurface != null) {
 			mInputSurface.release();
 			mInputSurface = null;
 		}
-		if (mCodec != null) {
-			mCodec.stop();
-			mCodec.release();
-			mCodec = null;
-		}
-		if (mMuxer != null) {
-			if (mMuxerStarted)
-				mMuxer.stop();
-			mMuxer.release();
-			mMuxer = null;
-		}
 	}
 
-	@Override
-	protected void signalEndOfInputStream() {
-		if (DEBUG) Log.i(TAG, "signalEndOfInputStream:");
-		mIsEOS = true;
-		mCodec.signalEndOfInputStream();	// API >= 18
-	}
-
-	@Override
-	protected void drain() {
-		if (DEBUG) Log.i(TAG, "drain:");
-		ByteBuffer[] encoderOutputBuffers = mCodec.getOutputBuffers();
-		int encoderStatus, count = 0;
-LOOP:	while (mIsCapturing) {
-			encoderStatus = mCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);	// wait maximum TIMEOUT_USEC(10 msec)
-			if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
-				if (DEBUG) Log.i(TAG, "INFO_TRY_AGAIN_LATER:count=" + count);
-				// when no output available
-				if (!mIsEOS) {
-					if (++count > 5)	// TIMEOUT_USEC x 5 = 50msec
-						break LOOP;
-				}
-			} else if (encoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-				// not expected for an encoder
-				encoderOutputBuffers = mCodec.getOutputBuffers();
-				if (DEBUG) Log.i(TAG, "INFO_OUTPUT_BUFFERS_CHANGED");
-			} else if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-				if (DEBUG) Log.i(TAG, "INFO_OUTPUT_FORMAT_CHANGED");
-				// this should come only once before receiving output buffers
-				if (mMuxerStarted) {
-					throw new RuntimeException("format changed twice");
-				}
-				final MediaFormat newFormat = mCodec.getOutputFormat();	// API >= 16
-				mTrackIndex = mMuxer.addTrack(newFormat);
-				mMuxer.start();
-				mMuxerStarted = true;
-			} else if (encoderStatus < 0) {
-				// skip when unexpected result came from #dequeueOutputBuffer
-				if (DEBUG) Log.i(TAG, "unexpected result came from #dequeueOutputBuffer");
-			} else {
-				if (DEBUG) Log.i(TAG, "encoderStatus=" + encoderStatus);
-				final ByteBuffer encodedData = encoderOutputBuffers[encoderStatus];
-				if (encodedData == null) {
-					throw new RuntimeException("encoderOutputBuffer[" + encoderStatus + "] was null");
-				}
-
-				if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-					// the configulation is already set to muxer when INFO_OUTPUT_FORMAT_CHANGED come.
-					// ignore this.
-					mBufferInfo.size = 0;
-				}
-
-				if (mBufferInfo.size > 0) {
-					count = 0;
-					if (!mMuxerStarted) {
-						throw new RuntimeException("muxer hasn't started");
-					}
-
-					// adjust the ByteBuffer values to match BufferInfo(this is not necessary for current implementation of MediaMuxer)
-					encodedData.position(mBufferInfo.offset);
-					encodedData.limit(mBufferInfo.offset + mBufferInfo.size);
-
-					mMuxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
-				}
-
-				mCodec.releaseOutputBuffer(encoderStatus, false);
-
-				if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-					// when EOS came
-					if (!mIsEOS) {
-						if (DEBUG) Log.w(TAG, "reached end of stream unexpectedly");
-					}
-					mIsCapturing = false;
-					break LOOP;
-				}
-			}
-		}
-	}
 }

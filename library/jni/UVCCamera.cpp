@@ -38,9 +38,10 @@
 //
 //**********************************************************************
 UVCCamera::UVCCamera()
-:	  mDevice(NULL),
-	  mDeviceHandle(NULL),
-	  mPreview(NULL) {
+:	mFd(0),
+	mDevice(NULL),
+	mDeviceHandle(NULL),
+	mPreview(NULL) {
 
 	ENTER();
 	uvc_error_t result = uvc_init(&mContext, NULL);
@@ -60,7 +61,8 @@ UVCCamera::~UVCCamera() {
 int UVCCamera::connect(int vid, int pid, int fd) {
 	ENTER();
 	uvc_error_t result = UVC_ERROR_BUSY;
-	if (!mDeviceHandle) {
+	if (!mDeviceHandle && fd) {
+		fd = dup(fd);
 		result = uvc_find_device2(mContext, &mDevice, vid, pid, NULL, fd);
 		if (LIKELY(!result)) {
 			result = uvc_open(mDevice, &mDeviceHandle);
@@ -68,15 +70,18 @@ int UVCCamera::connect(int vid, int pid, int fd) {
 #if LOCAL_DEBUG
 				uvc_print_diag(mDeviceHandle, stderr);
 #endif
+				mFd = fd;
 				mPreview = new UVCPreview(mDeviceHandle);
 			} else {
 				LOGE("could not open camera:err=%d", result);
 				uvc_unref_device(mDevice);
 				SAFE_DELETE(mDevice);
 				mDeviceHandle = NULL;
+				close(fd);
 			}
 		} else {
 			LOGE("could not find camera:err=%d", result);
+			close(fd);
 		}
 	} else {
 		LOGW("camera is already opened. you should release first");
@@ -95,6 +100,10 @@ int UVCCamera::release() {
 	if (LIKELY(mDevice)) {
 		uvc_unref_device(mDevice);
 		mDevice = NULL;
+	}
+	if (LIKELY(mFd)) {
+		close(mFd);
+		mFd = 0;
 	}
 	RETURN(0, int);
 }

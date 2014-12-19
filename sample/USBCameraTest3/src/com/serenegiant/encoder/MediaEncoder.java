@@ -29,9 +29,6 @@ import java.nio.ByteBuffer;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.util.Log;
 
 public abstract class MediaEncoder implements Runnable {
@@ -52,6 +49,10 @@ public abstract class MediaEncoder implements Runnable {
 	 * Flag that indicate this encoder is capturing now.
 	 */
     protected volatile boolean mIsCapturing;
+	/**
+	 * Flag that indicate the frame data will be available soon.
+	 */
+	private int mRequestDrain;
     /**
      * Flag to request stop capturing
      */
@@ -80,10 +81,7 @@ public abstract class MediaEncoder implements Runnable {
      * BufferInfo instance for dequeuing
      */
     private MediaCodec.BufferInfo mBufferInfo;		// API >= 16(Android4.1.2)
-    /**
-     * Handler of encoding thread
-     */
-    private EncoderHandler mHandler;
+
     protected final MediaEncoderListener mListener;
 
     public MediaEncoder(MediaMuxerWrapper muxer, MediaEncoderListener listener) {
@@ -95,7 +93,7 @@ public abstract class MediaEncoder implements Runnable {
         synchronized (mSync) {
             // create BufferInfo here for effectiveness(to reduce GC)
             mBufferInfo = new MediaCodec.BufferInfo();
-            // wait for Handler is ready
+            // wait for starting thread
             new Thread(this, getClass().getSimpleName()).start();
             try {
             	mSync.wait();
@@ -119,32 +117,59 @@ public abstract class MediaEncoder implements Runnable {
             if (!mIsCapturing || mRequestStop) {
                 return false;
             }
-            mHandler.removeMessages(MSG_FRAME_AVAILABLE);
-            mHandler.sendEmptyMessage(MSG_FRAME_AVAILABLE);
+            mRequestDrain++;
+            mSync.notifyAll();
         }
         return true;
     }
 
     /**
-     * Message loop for encoding thread
-     * Prepare Looper/Handler and execute message loop and wait terminating.
+     * encoding loop on private thread
      */
 	@Override
 	public void run() {
-        // create Looper and Handler to access to this thread
-    	Looper.prepare();
+//		android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
         synchronized (mSync) {
-            mHandler = new EncoderHandler(this);
             mRequestStop = false;
+    		mRequestDrain = 0;
             mSync.notify();
         }
-        Looper.loop();
-
+        boolean isRunning = true;
+        boolean localRequestStop;
+        boolean localRequestDrain;
+        while (isRunning) {
+        	synchronized (mSync) {
+        		localRequestStop = mRequestStop;
+        		localRequestDrain = (mRequestDrain > 0);
+        		if (localRequestDrain)
+        			mRequestDrain--;
+        	}
+	        if (localRequestStop) {
+	           	drain();
+	           	// request stop recording
+	           	signalEndOfInputStream();
+	           	// process output data again for EOS signale
+	           	drain();
+	           	// release all related objects
+	           	release();
+	           	break;
+	        }
+	        if (localRequestDrain) {
+	        	drain();
+	        } else {
+	        	synchronized (mSync) {
+		        	try {
+						mSync.wait();
+					} catch (InterruptedException e) {
+						break;
+					}
+	        	}
+        	}
+        } // end of while
 		if (DEBUG) Log.d(TAG, "Encoder thread exiting");
         synchronized (mSync) {
+        	mRequestStop = true;
             mIsCapturing = false;
-            mRequestStop = true;
-            mHandler = null;
         }
 	}
 
@@ -175,9 +200,6 @@ public abstract class MediaEncoder implements Runnable {
 			}
 			mRequestStop = true;	// for rejecting newer frame
 			mSync.notifyAll();
-            mHandler.removeMessages(MSG_FRAME_AVAILABLE);
-	        // request endoder handler to stop encoding 
-	        mHandler.sendEmptyMessage(MSG_STOP_RECORDING);
 	        // We can not know when the encoding and writing finish.
 	        // so we return immediately after request to avoid delay of caller thread
 		}
@@ -185,22 +207,6 @@ public abstract class MediaEncoder implements Runnable {
 
 //********************************************************************************
 //********************************************************************************
-    /**
-     * Method to request stop recording
-     * this method is called from message hander of EncoderHandler
-     */
-    private final void handleStopRecording() {
-		if (DEBUG) Log.d(TAG, "handleStopRecording");
-		// process all available output data
-    	drain();
-    	// request stop recording
-        signalEndOfInputStream();
-        // process output data again for EOS signale
-        drain();
-        // release all related objects
-        release();
-    }
-
     /**
      * Release all releated objects
      */
@@ -390,41 +396,6 @@ LOOP:	while (mIsCapturing) {
 		if (result < prevOutputPTSUs)
 			result = (prevOutputPTSUs - result) + result;
 		return result;
-    }
-
-    /**
-     * Handler class to handle the asynchronous request to encoder thread
-     */
-    private static final class EncoderHandler extends Handler {
-        private final WeakReference<MediaEncoder> mWeakEncoder;
-
-        public EncoderHandler(MediaEncoder encoder) {
-            mWeakEncoder = new WeakReference<MediaEncoder>(encoder);
-        }
-
-        /**
-         * message handler
-         */
-        @Override 
-        public void handleMessage(Message inputMessage) {
-            final int what = inputMessage.what;
-            final MediaEncoder encoder = mWeakEncoder.get();
-            if (encoder == null) {
-                Log.w(TAG, "EncoderHandler#handleMessage: encoder is null");
-                return;
-            }
-            switch (what) {
-                case MSG_FRAME_AVAILABLE:
-               		encoder.drain();
-                    break;
-                case MSG_STOP_RECORDING:
-                    encoder.handleStopRecording();
-                    Looper.myLooper().quit();
-                    break;
-                default:
-                    throw new RuntimeException("unknown message what=" + what);
-            }
-        }
     }
 
 }

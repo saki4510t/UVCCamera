@@ -34,6 +34,7 @@
 
 class UVCCamera {
 	uvc_context_t *mContext;
+	int mFd;
 	uvc_device_t *mDevice;
 	uvc_device_handle_t *mDeviceHandle;
 	UVCPreview *mPreview;

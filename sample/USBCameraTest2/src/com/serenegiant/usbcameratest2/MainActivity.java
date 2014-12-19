@@ -33,21 +33,13 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import com.serenegiant.usb.USBMonitor;
-import com.serenegiant.usb.UVCCamera;
-import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
-import com.serenegiant.usb.USBMonitor.UsbControlBlock;
-import com.serenegiant.video.Encoder;
-import com.serenegiant.video.Encoder.EncodeListener;
-import com.serenegiant.video.SurfaceEncoder;
-import com.serenegiant.widget.UVCCameraTextureView;
-
 import android.app.Activity;
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
 import android.os.Environment;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView.SurfaceTextureListener;
 import android.view.View;
@@ -59,7 +51,18 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import com.serenegiant.usb.USBMonitor;
+import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
+import com.serenegiant.usb.USBMonitor.UsbControlBlock;
+import com.serenegiant.usb.UVCCamera;
+import com.serenegiant.video.Encoder;
+import com.serenegiant.video.Encoder.EncodeListener;
+import com.serenegiant.video.SurfaceEncoder;
+import com.serenegiant.widget.UVCCameraTextureView;
+
 public class MainActivity extends Activity {
+	private static final boolean DEBUG = true;	// set false when releasing
+	private static final String TAG = "MainActivity";
 
     // for thread pool
     private static final int CORE_POOL_SIZE = 1;		// initial/minimum threads
@@ -227,7 +230,6 @@ public class MainActivity extends Activity {
 
 		@Override
 		public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-			
 		}
 
 		@Override
@@ -241,10 +243,10 @@ public class MainActivity extends Activity {
 
 		@Override
 		public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-			if (mEncoder != null && mCaptureState == CAPTURE_RUNNING)
+			if (mEncoder != null && mCaptureState == CAPTURE_RUNNING) {
 				mEncoder.frameAvailable();
+			}
 		}
-		
 	};
 	
 	private Encoder mEncoder;
@@ -252,6 +254,7 @@ public class MainActivity extends Activity {
 	 * start capturing
 	 */
 	private final void startCapture() {
+		if (DEBUG) Log.v(TAG, "startCapture:");
 		if (mEncoder == null && (mCaptureState == CAPTURE_STOP)) {
 			mCaptureState = CAPTURE_PREPARE;
 			EXECUTER.execute(new Runnable() {
@@ -263,6 +266,7 @@ public class MainActivity extends Activity {
 						mEncoder.setEncodeListener(mEncodeListener);
 						try {
 							mEncoder.prepare();
+							mEncoder.startRecording();
 						} catch (IOException e) {
 							mCaptureState = CAPTURE_STOP;
 						}
@@ -278,6 +282,7 @@ public class MainActivity extends Activity {
 	 * stop capture if capturing
 	 */
 	private final void stopCapture() {
+		if (DEBUG) Log.v(TAG, "stopCapture:");
 		if (mEncoder != null) {
 			mEncoder.stopRecording();
 			mEncoder = null;
@@ -290,11 +295,13 @@ public class MainActivity extends Activity {
     private final EncodeListener mEncodeListener = new EncodeListener() {
 		@Override
 		public void onPreapared(Encoder encoder) {
+			if (DEBUG) Log.v(TAG, "onPreapared:");
 			mUVCCamera.startCapture(((SurfaceEncoder)encoder).getInputSurface());
 			mCaptureState = CAPTURE_RUNNING;
 		}
 		@Override
 		public void onRelease(Encoder encoder) {
+			if (DEBUG) Log.v(TAG, "onRelease:");
 			mUVCCamera.stopCapture();
 			mCaptureState = CAPTURE_STOP;
 			updateItems();

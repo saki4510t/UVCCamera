@@ -23,11 +23,6 @@ package com.serenegiant.widget;
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
 
-import com.serenegiant.encoder.MediaEncoder;
-import com.serenegiant.encoder.MediaVideoEncoder;
-import com.serenegiant.glutils.EGLBase;
-import com.serenegiant.glutils.GLDrawer2D;
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
@@ -37,6 +32,11 @@ import android.os.Message;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.TextureView;
+
+import com.serenegiant.encoder.MediaEncoder;
+import com.serenegiant.encoder.MediaVideoEncoder;
+import com.serenegiant.glutils.EGLBase;
+import com.serenegiant.glutils.GLDrawer2D;
 
 /**
  * change the view size with keeping the specified aspect ratio.
@@ -294,7 +294,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 
 		private static final class RenderThread extends Thread {
 	    	private final Object mSync = new Object();
-	    	private SurfaceTexture mSurface;
+	    	private final SurfaceTexture mSurface;
 	    	private RenderHandler mHandler;
 	    	private EGLBase mEgl;
 	    	private EGLBase.EglSurface mEglSurface;
@@ -484,7 +484,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 			private final void init() {
 				if (DEBUG) Log.v(TAG, "RenderThread#init:");
 				// create EGLContext for this thread
-	            mEgl = new EGLBase(null, false);
+	            mEgl = new EGLBase(null, false, false);
 	    		mEglSurface = mEgl.createFromSurface(mSurface);
 	    		mEglSurface.makeCurrent();
 	    		// create drawing object

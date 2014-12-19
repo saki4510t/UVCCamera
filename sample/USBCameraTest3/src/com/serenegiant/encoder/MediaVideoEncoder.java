@@ -25,8 +25,6 @@ package com.serenegiant.encoder;
 
 import java.io.IOException;
 
-import com.serenegiant.glutils.RenderHandler;
-
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
@@ -34,6 +32,8 @@ import android.media.MediaFormat;
 import android.opengl.EGLContext;
 import android.util.Log;
 import android.view.Surface;
+
+import com.serenegiant.glutils.RenderHandler;
 
 public class MediaVideoEncoder extends MediaEncoder {
 	private static final boolean DEBUG = true;	// TODO set false on release
@@ -45,7 +45,7 @@ public class MediaVideoEncoder extends MediaEncoder {
     private static final int VIDEO_WIDTH = 640;
     private static final int VIDEO_HEIGHT = 480;
     private static final int FRAME_RATE = 15;
-    private static final float BPP = 0.125f;
+    private static final float BPP = 0.50f;
  
     private RenderHandler mRenderHandler;
     private Surface mSurface;
@@ -53,7 +53,7 @@ public class MediaVideoEncoder extends MediaEncoder {
 	public MediaVideoEncoder(MediaMuxerWrapper muxer, MediaEncoderListener listener) {
 		super(muxer, listener);
 		if (DEBUG) Log.i(TAG, "MediaVideoEncoder: ");
-		mRenderHandler = RenderHandler.createHandler("MediaVideoEncoder:Renderer");
+		mRenderHandler = RenderHandler.createHandler(TAG);
 	}
 
 	public boolean frameAvailableSoon(final float[] tex_matrix) {
@@ -62,14 +62,7 @@ public class MediaVideoEncoder extends MediaEncoder {
 			mRenderHandler.draw(tex_matrix);
 		return result;
 	}
-
-	public boolean frameAvailableSoon(final int tex_id, final float[] tex_matrix) {
-		boolean result;
-		if (result = super.frameAvailableSoon())
-			mRenderHandler.draw(tex_id, tex_matrix);
-		return result;
-	}
-
+	
 	@Override
 	public boolean frameAvailableSoon() {
 		boolean result;
@@ -115,12 +108,12 @@ public class MediaVideoEncoder extends MediaEncoder {
 	}
 
 	public void setEglContext(EGLContext shared_context, int tex_id) {
-		mRenderHandler.setEglContext(shared_context, tex_id, mSurface);
+		mRenderHandler.setEglContext(shared_context, tex_id, mSurface, true);
 	}
 
 	@Override
     protected void release() {
-		if (DEBUG) Log.i(TAG, "release: ");
+		if (DEBUG) Log.i(TAG, "release:");
 		if (mSurface != null) {
 			mSurface.release();
 			mSurface = null;
