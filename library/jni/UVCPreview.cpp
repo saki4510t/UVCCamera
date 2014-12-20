@@ -286,9 +286,13 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 	uvc_error_t result;
 
 	ENTER();
-	result = uvc_get_stream_ctrl_format_size(mDeviceHandle, ctrl,
+//	result = uvc_get_stream_ctrl_format_size(mDeviceHandle, ctrl,
+//		UVC_FRAME_FORMAT_YUYV,
+//		requestWidth, requestHeight, requestFps
+//	);
+	result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, ctrl,
 		UVC_FRAME_FORMAT_YUYV,
-		requestWidth, requestHeight, requestFps
+		requestWidth, requestHeight, 1, 30
 	);
 	if (LIKELY(!result)) {
 #if LOCAL_DEBUG

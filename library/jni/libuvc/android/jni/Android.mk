@@ -61,10 +61,10 @@ LOCAL_EXPORT_LDLIBS := -llog
 
 LOCAL_ARM_MODE := arm
 
-LOCAL_STATIC_LIBRARIES += usb1.0_static
+#LOCAL_STATIC_LIBRARIES += usb1.0_static
 LOCAL_STATIC_LIBRARIES += jpeg_static
 #if you want to use shared library of libusb & libjpeg
-#LOCAL_SHARED_LIBRARIES += usb1.0
+LOCAL_SHARED_LIBRARIES += usb100
 #LOCAL_SHARED_LIBRARIES += jpeg
 
 LOCAL_SRC_FILES := \

@@ -59,19 +59,19 @@ LOCAL_CFLAGS += -O3 -fstrict-aliasing -fprefetch-loop-arrays
 LOCAL_EXPORT_LDLIBS += -llog
 LOCAL_ARM_MODE := arm
 
-LOCAL_MODULE := libusb1.0_static
+LOCAL_MODULE := libusb100_static
 include $(BUILD_STATIC_LIBRARY)
 
 ######################################################################
 # libusb.so
 ######################################################################
-#include $(CLEAR_VARS)
-#LOCAL_MODULE_TAGS := optional
-#LOCAL_EXPORT_LDLIBS += -llog
-#LOCAL_EXPORT_C_INCLUDES := \
-#	$(LIBUSB_ROOT)/libusb
-#
-#LOCAL_WHOLE_STATIC_LIBRARIES = libusb1.0_static
-#
-#LOCAL_MODULE := libusb1.0
-#include $(BUILD_SHARED_LIBRARY)
+include $(CLEAR_VARS)
+LOCAL_MODULE_TAGS := optional
+LOCAL_EXPORT_LDLIBS += -llog
+LOCAL_EXPORT_C_INCLUDES := \
+	$(LIBUSB_ROOT)/libusb
+
+LOCAL_WHOLE_STATIC_LIBRARIES = libusb100_static
+
+LOCAL_MODULE := libusb100
+include $(BUILD_SHARED_LIBRARY)
