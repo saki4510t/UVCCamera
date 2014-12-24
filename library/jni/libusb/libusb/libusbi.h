@@ -514,6 +514,7 @@ struct usbi_os_backend {
 	 * Return 0 on success, or a LIBUSB_ERROR code on failure.
 	 */
 	int (*init)(struct libusb_context *ctx);
+	int (*init2)(struct libusb_context *ctx, const char *usbfs);
 
 	/* Deinitialization. Optional. This function should destroy anything
 	 * that was set up by init.

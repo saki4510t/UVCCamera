@@ -500,6 +500,7 @@ typedef struct uvc_stream_ctrl {
 } uvc_stream_ctrl_t;
 
 uvc_error_t uvc_init(uvc_context_t **ctx, struct libusb_context *usb_ctx);
+uvc_error_t uvc_init2(uvc_context_t **ctx, struct libusb_context *usb_ctx, const char *usbfs);
 void uvc_exit(uvc_context_t *ctx);
 
 uvc_error_t uvc_get_device_list(uvc_context_t *ctx, uvc_device_t ***list);

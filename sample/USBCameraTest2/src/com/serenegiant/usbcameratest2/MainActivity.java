@@ -2,23 +2,23 @@ package com.serenegiant.usbcameratest2;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
+ *
  * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
  * File name: MainActivity.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license,
  * see the respective files.
@@ -71,7 +71,7 @@ public class MainActivity extends Activity {
     protected static final ThreadPoolExecutor EXECUTER
 		= new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE, KEEP_ALIVE_TIME,
 			TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-	
+
     private static final int CAPTURE_STOP = 0;
     private static final int CAPTURE_PREPARE = 1;
     private static final int CAPTURE_RUNNING = 2;
@@ -87,13 +87,13 @@ public class MainActivity extends Activity {
 
 	private int mCaptureState = 0;
 	private Surface mPreviewSurface;
-	
+
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.activity_main);
-			
+
 		mCameraButton = (ToggleButton)findViewById(R.id.camera_button);
 		mCameraButton.setOnCheckedChangeListener(mOnCheckedChangeListener);
 
@@ -144,7 +144,7 @@ public class MainActivity extends Activity {
 
 	private final OnCheckedChangeListener mOnCheckedChangeListener = new OnCheckedChangeListener() {
 		@Override
-		public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+		public void onCheckedChanged(final CompoundButton buttonView, final boolean isChecked) {
 			if (isChecked && mUVCCamera == null) {
 				CameraDialog.showDialog(MainActivity.this);
 			} else if (mUVCCamera != null) {
@@ -157,23 +157,23 @@ public class MainActivity extends Activity {
 
 	private final OnClickListener mOnClickListener = new OnClickListener() {
 		@Override
-		public void onClick(View v) {
+		public void onClick(final View v) {
 			if (mCaptureState == CAPTURE_STOP) {
-				startCapture();			
+				startCapture();
 			} else {
 				stopCapture();
 			}
 		}
 	};
-	
+
 	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
 		@Override
-		public void onAttach(UsbDevice device) {
+		public void onAttach(final UsbDevice device) {
 			Toast.makeText(MainActivity.this, "USB_DEVICE_ATTACHED", Toast.LENGTH_SHORT).show();
 		}
 
 		@Override
-		public void onConnect(UsbDevice device, final UsbControlBlock ctrlBlock, boolean createNew) {
+		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, final boolean createNew) {
 			if (mUVCCamera != null)
 				mUVCCamera.destroy();
 			mUVCCamera = new UVCCamera();
@@ -185,7 +185,7 @@ public class MainActivity extends Activity {
 						mPreviewSurface.release();
 						mPreviewSurface = null;
 					}
-					final SurfaceTexture st = mUVCCameraView.getSurfaceTexture(); 
+					final SurfaceTexture st = mUVCCameraView.getSurfaceTexture();
 					if (st != null)
 						mPreviewSurface = new Surface(st);
 					mUVCCamera.setPreviewDisplay(mPreviewSurface);
@@ -195,7 +195,7 @@ public class MainActivity extends Activity {
 		}
 
 		@Override
-		public void onDisconnect(UsbDevice device, UsbControlBlock ctrlBlock) {
+		public void onDisconnect(final UsbDevice device, final UsbControlBlock ctrlBlock) {
 			// XXX you should check whether the comming device equal to camera device that currently using
 			if (mUVCCamera != null) {
 				mUVCCamera.close();
@@ -207,10 +207,13 @@ public class MainActivity extends Activity {
 		}
 
 		@Override
-		public void onDettach(UsbDevice device) {
+		public void onDettach(final UsbDevice device) {
 			Toast.makeText(MainActivity.this, "USB_DEVICE_DETACHED", Toast.LENGTH_SHORT).show();
 		}
 
+		@Override
+		public void onCancel() {
+		}
 	};
 
 	/**
@@ -225,15 +228,15 @@ public class MainActivity extends Activity {
 	private final SurfaceTextureListener mSurfaceTextureListener = new SurfaceTextureListener() {
 
 		@Override
-		public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+		public void onSurfaceTextureAvailable(final SurfaceTexture surface, final int width, final int height) {
 		}
 
 		@Override
-		public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+		public void onSurfaceTextureSizeChanged(final SurfaceTexture surface, final int width, final int height) {
 		}
 
 		@Override
-		public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+		public boolean onSurfaceTextureDestroyed(final SurfaceTexture surface) {
 			if (mPreviewSurface != null) {
 				mPreviewSurface.release();
 				mPreviewSurface = null;
@@ -242,13 +245,13 @@ public class MainActivity extends Activity {
 		}
 
 		@Override
-		public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+		public void onSurfaceTextureUpdated(final SurfaceTexture surface) {
 			if (mEncoder != null && mCaptureState == CAPTURE_RUNNING) {
 				mEncoder.frameAvailable();
 			}
 		}
 	};
-	
+
 	private Encoder mEncoder;
 	/**
 	 * start capturing
@@ -267,7 +270,7 @@ public class MainActivity extends Activity {
 						try {
 							mEncoder.prepare();
 							mEncoder.startRecording();
-						} catch (IOException e) {
+						} catch (final IOException e) {
 							mCaptureState = CAPTURE_STOP;
 						}
 					} else
@@ -277,7 +280,7 @@ public class MainActivity extends Activity {
 			updateItems();
 		}
 	}
-	
+
 	/**
 	 * stop capture if capturing
 	 */
@@ -294,13 +297,13 @@ public class MainActivity extends Activity {
      */
     private final EncodeListener mEncodeListener = new EncodeListener() {
 		@Override
-		public void onPreapared(Encoder encoder) {
+		public void onPreapared(final Encoder encoder) {
 			if (DEBUG) Log.v(TAG, "onPreapared:");
 			mUVCCamera.startCapture(((SurfaceEncoder)encoder).getInputSurface());
 			mCaptureState = CAPTURE_RUNNING;
 		}
 		@Override
-		public void onRelease(Encoder encoder) {
+		public void onRelease(final Encoder encoder) {
 			if (DEBUG) Log.v(TAG, "onRelease:");
 			mUVCCamera.stopCapture();
 			mCaptureState = CAPTURE_STOP;
@@ -324,7 +327,7 @@ public class MainActivity extends Activity {
      * @param ext .mp4 / .png
      * @return return null if can not write to storage
      */
-    private static final String getCaptureFile(String type, String ext) {
+    private static final String getCaptureFile(final String type, final String ext) {
 		final File dir = new File(Environment.getExternalStoragePublicDirectory(type), "USBCameraTest");
 		dir.mkdirs();	// create directories if they do not exist
         if (dir.canWrite()) {

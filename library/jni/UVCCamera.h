@@ -33,6 +33,7 @@
 #include "UVCPreview.h"
 
 class UVCCamera {
+	char *mUsbFs;
 	uvc_context_t *mContext;
 	int mFd;
 	uvc_device_t *mDevice;
@@ -42,7 +43,7 @@ public:
 	UVCCamera();
 	~UVCCamera();
 
-	int connect(int vid, int pid, int fd);
+	int connect(int vid, int pid, int fd, const char *usbfs);
 	int release();
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int startPreview();

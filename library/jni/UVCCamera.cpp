@@ -39,29 +39,44 @@
 //**********************************************************************
 UVCCamera::UVCCamera()
 :	mFd(0),
+	mUsbFs(NULL),
+	mContext(NULL),
 	mDevice(NULL),
 	mDeviceHandle(NULL),
 	mPreview(NULL) {
 
 	ENTER();
-	uvc_error_t result = uvc_init(&mContext, NULL);
-	if (UNLIKELY(result < 0)) {
-		LOGD("failed to init libuvc");
-	}
 	EXIT();
 }
 
 UVCCamera::~UVCCamera() {
 	ENTER();
 	release();
-	uvc_exit(mContext);
+	if (mContext) {
+		uvc_exit(mContext);
+		mContext = NULL;
+	}
+	if (mUsbFs) {
+		free(mUsbFs);
+		mUsbFs = NULL;
+	}
 	EXIT();
 }
 
-int UVCCamera::connect(int vid, int pid, int fd) {
+int UVCCamera::connect(int vid, int pid, int fd, const char *usbfs) {
 	ENTER();
 	uvc_error_t result = UVC_ERROR_BUSY;
 	if (!mDeviceHandle && fd) {
+		if (mUsbFs)
+			free(mUsbFs);
+		mUsbFs = strdup(usbfs);
+		if (!mContext) {
+			result = uvc_init2(&mContext, NULL, mUsbFs);
+			if (UNLIKELY(result < 0)) {
+				LOGD("failed to init libuvc");
+				RETURN(result, int);
+			}
+		}
 		fd = dup(fd);
 		result = uvc_find_device2(mContext, &mDevice, vid, pid, NULL, fd);
 		if (LIKELY(!result)) {

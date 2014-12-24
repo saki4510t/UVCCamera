@@ -93,14 +93,16 @@ static void nativeDestroy(JNIEnv *env, jobject thiz,
 
 static jint nativeConnect(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera,
-	jint vid, jint pid, jint fd) {
+	jint vid, jint pid, jint fd,  jstring usbfs_str) {
 
 	ENTER();
 	int result = JNI_ERR;
 	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	const char *c_usbfs = env->GetStringUTFChars(usbfs_str, JNI_FALSE);
 	if (LIKELY(camera && (fd > 0))) {
-		 result =  camera->connect(vid, pid, fd);
+		 result =  camera->connect(vid, pid, fd, c_usbfs);
 	}
+	env->ReleaseStringUTFChars(usbfs_str, c_usbfs);
 	RETURN(result, jint);
 }
 
@@ -187,7 +189,7 @@ static JNINativeMethod methods[] = {
 	{ "nativeCreate",			"()J", (void *) nativeCreate },
 	{ "nativeDestroy",			"(J)V", (void *) nativeDestroy },
 
-	{ "nativeConnect",			"(JIII)I", (void *) nativeConnect },
+	{ "nativeConnect",			"(JIIILjava/lang/String;)I", (void *) nativeConnect },
 	{ "nativeRelease",			"(J)I", (void *) nativeRelease },
 
 	{ "nativeStartPreview",		"(J)I", (void *) nativeStartPreview },

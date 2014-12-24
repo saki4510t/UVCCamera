@@ -1,24 +1,24 @@
 package com.serenegiant.usb;
 /*
- * USBMonitor
+ * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
+ *
  * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
- * File name: ICameraClientCallback.java
- * 
+ *
+ * File name: USBMonitor.java
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
@@ -46,7 +46,7 @@ import android.util.SparseArray;
 
 public final class USBMonitor {
 
-	private static final boolean DEBUG = true;	// TODO set false on production
+	private static final boolean DEBUG = false;	// TODO set false on production
 	private static final String TAG = "USBMonitor";
 
 	private static final String ACTION_USB_PERMISSION_BASE = "com.serenegiant.USB_PERMISSION.";
@@ -54,7 +54,7 @@ public final class USBMonitor {
 
 	private final ConcurrentHashMap<UsbDevice, UsbControlBlock> mCtrlBlocks = new ConcurrentHashMap<UsbDevice, UsbControlBlock>();
 
-	private final WeakReference<Context> mContext;
+	private final WeakReference<Context> mWeakContext;
 	private final UsbManager mUsbManager;
 	private final OnDeviceConnectListener mOnDeviceConnectListener;
 	private PendingIntent mPermissionIntent = null;
@@ -96,7 +96,7 @@ public final class USBMonitor {
 		if (DEBUG) Log.v(TAG, "USBMonitor:Constructor");
 /*		if (listener == null)
 			throw new IllegalArgumentException("OnDeviceConnectListener should not null."); */
-		mContext = new WeakReference<Context>(context);
+		mWeakContext = new WeakReference<Context>(context);
 		mUsbManager = (UsbManager)context.getSystemService(Context.USB_SERVICE);
 		mOnDeviceConnectListener = listener;
 		if (DEBUG) Log.v(TAG, "USBMonitor:mUsbManager=" + mUsbManager);
@@ -127,7 +127,7 @@ public final class USBMonitor {
 	public synchronized void register() {
 		if (mPermissionIntent == null) {
 			if (DEBUG) Log.i(TAG, "register:");
-			final Context context = mContext.get();
+			final Context context = mWeakContext.get();
 			if (context != null) {
 				mPermissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), 0);
 				final IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
@@ -146,7 +146,7 @@ public final class USBMonitor {
 	public synchronized void unregister() {
 		if (mPermissionIntent != null) {
 			if (DEBUG) Log.i(TAG, "unregister:");
-			final Context context = mContext.get();
+			final Context context = mWeakContext.get();
 			if (context != null) {
 				context.unregisterReceiver(mUsbReceiver);
 			}
@@ -204,9 +204,20 @@ public final class USBMonitor {
 		}
 		return result;
 	}
+	/**
+	 * get USB device list
+	 * @return
+	 */
+	public Iterator<UsbDevice> getDevices() {
+		Iterator<UsbDevice> iterator = null;
+		final HashMap<String, UsbDevice> list = mUsbManager.getDeviceList();
+		if (list != null)
+			iterator = list.values().iterator();
+		return iterator;
+	}
 
 	/**
-	 * dump device list to logCat
+	 * output device list to LogCat
 	 */
 	public final void dumpDevices() {
 		final HashMap<String, UsbDevice> list = mUsbManager.getDeviceList();
@@ -230,13 +241,18 @@ public final class USBMonitor {
 			Log.i(TAG, "no device");
 		}
 	}
-	
-	public final boolean hasPermission(UsbDevice device) {
+
+	/**
+	 * return whether the specific Usb device has permission
+	 * @param device
+	 * @return
+	 */
+	public boolean hasPermission(final UsbDevice device) {
 		return mUsbManager.hasPermission(device);
 	}
 
 	/**
-	 * request permission to access to USB device 
+	 * request permission to access to USB device
 	 * @param device
 	 */
 	public synchronized void requestPermission(UsbDevice device) {
@@ -260,8 +276,9 @@ public final class USBMonitor {
 	 * BroadcastReceiver for USB permission
 	 */
 	private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
-		
-		public void onReceive(Context context, Intent intent) {
+
+		@Override
+		public void onReceive(final Context context, final Intent intent) {
 			final String action = intent.getAction();
 			if (ACTION_USB_PERMISSION.equals(action)) {
 				synchronized (USBMonitor.this) {
@@ -379,7 +396,7 @@ public final class USBMonitor {
 		 * @param monitor
 		 * @param device
 		 */
-		public UsbControlBlock(USBMonitor monitor, UsbDevice device) {
+		public UsbControlBlock(final USBMonitor monitor, final UsbDevice device) {
 			if (DEBUG) Log.i(TAG, "UsbControlBlock:constructor");
 			mWeakMonitor = new WeakReference<USBMonitor>(monitor);
 			mWeakDevice = new WeakReference<UsbDevice>(device);
@@ -400,13 +417,21 @@ public final class USBMonitor {
 			return mWeakDevice.get();
 		}
 
-		public UsbDeviceConnection getConnection() {
-			if (DEBUG) Log.v(TAG, "getConnection:connection=" + mConnection);
+		public String getDeviceName() {
+			final UsbDevice device = mWeakDevice.get();
+			return device != null ? device.getDeviceName() : "";
+		}
+
+		public UsbDeviceConnection getUsbDeviceConnection() {
 			return mConnection;
 		}
 
 		public synchronized int getFileDescriptor() {
 			return mConnection != null ? mConnection.getFileDescriptor() : -1;
+		}
+
+		public byte[] getRawDescriptors() {
+			return mConnection != null ? mConnection.getRawDescriptors() : null;
 		}
 
 		public int getVenderId() {
@@ -448,7 +473,7 @@ public final class USBMonitor {
 		 * close specified interface. USB device itself still keep open.
 		 * @param interfaceIndex
 		 */
-		public void close(int interfaceIndex) {
+		public void close(final int interfaceIndex) {
 			UsbInterface intf = null;
 			synchronized (mInterfaces) {
 				intf = mInterfaces.get(interfaceIndex);
@@ -488,6 +513,11 @@ public final class USBMonitor {
 			}
 		}
 
+/*		@Override
+		protected void finalize() throws Throwable {
+			close();
+			super.finalize();
+		} */
 	}
 
 }

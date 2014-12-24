@@ -2,23 +2,23 @@ package com.serenegiant.usbcameratest3;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
+ *
  * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
  * File name: MainActivity.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
@@ -99,7 +99,7 @@ public class MainActivity extends Activity {
 	private ImageButton mCaptureButton;
 
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		if (DEBUG) Log.v(TAG, "onCreate:");
 		if (USE_SURFACE_ENCODER)
@@ -165,7 +165,7 @@ public class MainActivity extends Activity {
 	 */
 	private final OnClickListener mOnClickListener = new OnClickListener() {
 		@Override
-		public void onClick(View view) {
+		public void onClick(final View view) {
 			switch (view.getId()) {
 			case R.id.camera_button:
 				if (!mHandler.isCameraOpened()) {
@@ -177,7 +177,7 @@ public class MainActivity extends Activity {
 				break;
 			case R.id.capture_button:
 				if (mHandler.isCameraOpened()) {
-					if (!mHandler.isRecording()) { 
+					if (!mHandler.isRecording()) {
 						mCaptureButton.setColorFilter(0xffff0000);	// turn red
 						mHandler.startRecording();
 					} else {
@@ -191,11 +191,11 @@ public class MainActivity extends Activity {
 	};
 
 	/**
-	 * capture still image when you long click on preview image(not on buttons) 
+	 * capture still image when you long click on preview image(not on buttons)
 	 */
 	private final OnLongClickListener mOnLongClickListener = new OnLongClickListener() {
 		@Override
-		public boolean onLongClick(View view) {
+		public boolean onLongClick(final View view) {
 			switch (view.getId()) {
 			case R.id.camera_view:
 				mHandler.captureStill();
@@ -206,7 +206,7 @@ public class MainActivity extends Activity {
 	};
 
 	private void startPreview() {
-		final SurfaceTexture st = mUVCCameraView.getSurfaceTexture(); 
+		final SurfaceTexture st = mUVCCameraView.getSurfaceTexture();
 		mHandler.startPreview(new Surface(st));
 		runOnUiThread(new Runnable() {
 			@Override
@@ -218,19 +218,19 @@ public class MainActivity extends Activity {
 
 	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
 		@Override
-		public void onAttach(UsbDevice device) {
+		public void onAttach(final UsbDevice device) {
 			Toast.makeText(MainActivity.this, "USB_DEVICE_ATTACHED", Toast.LENGTH_SHORT).show();
 		}
 
 		@Override
-		public void onConnect(UsbDevice device, final UsbControlBlock ctrlBlock, boolean createNew) {
+		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, final boolean createNew) {
 			if (DEBUG) Log.v(TAG, "onConnect:");
 			mHandler.openCamera(ctrlBlock);
 			startPreview();
 		}
 
 		@Override
-		public void onDisconnect(UsbDevice device, UsbControlBlock ctrlBlock) {
+		public void onDisconnect(final UsbDevice device, final UsbControlBlock ctrlBlock) {
 			if (DEBUG) Log.v(TAG, "onDisconnect:");
 			if (mHandler != null) {
 				mHandler.closeCamera();
@@ -244,8 +244,12 @@ public class MainActivity extends Activity {
 			}
 		}
 		@Override
-		public void onDettach(UsbDevice device) {
+		public void onDettach(final UsbDevice device) {
 			Toast.makeText(MainActivity.this, "USB_DEVICE_DETACHED", Toast.LENGTH_SHORT).show();
+		}
+
+		@Override
+		public void onCancel() {
 		}
 	};
 
@@ -258,7 +262,7 @@ public class MainActivity extends Activity {
 	}
 
 	/**
-	 * Handler class to execute camera releated methods sequentially on private thread 
+	 * Handler class to execute camera releated methods sequentially on private thread
 	 */
 	private static final class CameraHandler extends Handler {
 		private static final int MSG_OPEN = 0;
@@ -273,13 +277,13 @@ public class MainActivity extends Activity {
 
 		private final WeakReference<CameraThread> mWeakThread;
 
-		public static final CameraHandler createHandler(MainActivity parent, CameraViewInterface cameraView) {
-			CameraThread thread = new CameraThread(parent, cameraView);
+		public static final CameraHandler createHandler(final MainActivity parent, final CameraViewInterface cameraView) {
+			final CameraThread thread = new CameraThread(parent, cameraView);
 			thread.start();
-			return thread.getHandler(); 
+			return thread.getHandler();
 		}
 
-		private CameraHandler(CameraThread thread) {
+		private CameraHandler(final CameraThread thread) {
 			mWeakThread = new WeakReference<CameraThread>(thread);
 		}
 
@@ -293,7 +297,7 @@ public class MainActivity extends Activity {
 			return thread != null ? thread.isRecording() :false;
 		}
 
-		public void openCamera(UsbControlBlock ctrlBlock) {
+		public void openCamera(final UsbControlBlock ctrlBlock) {
 			sendMessage(obtainMessage(MSG_OPEN, ctrlBlock));
 		}
 
@@ -302,7 +306,7 @@ public class MainActivity extends Activity {
 			sendEmptyMessage(MSG_CLOSE);
 		}
 
-		public void startPreview(Surface sureface) {
+		public void startPreview(final Surface sureface) {
 			if (sureface != null)
 				sendMessage(obtainMessage(MSG_PREVIEW_START, sureface));
 		}
@@ -318,7 +322,7 @@ public class MainActivity extends Activity {
 				// therefore this method will take a time to execute
 				try {
 					thread.mSync.wait();
-				} catch (InterruptedException e) {
+				} catch (final InterruptedException e) {
 				}
 			}
 		}
@@ -340,7 +344,7 @@ public class MainActivity extends Activity {
 		} */
 
 		@Override
-		public void handleMessage(Message msg) {
+		public void handleMessage(final Message msg) {
 			final CameraThread thread = mWeakThread.get();
 			if (thread == null) return;
 			switch (msg.what) {
@@ -390,7 +394,7 @@ public class MainActivity extends Activity {
 			private int mSoundId;
 			private CameraHandler mHandler;
 			/**
-			 * for accessing UVC camera 
+			 * for accessing UVC camera
 			 */
 			private UVCCamera mUVCCamera;
 			/**
@@ -398,7 +402,7 @@ public class MainActivity extends Activity {
 			 */
 			private MediaMuxerWrapper mMuxer;
 
-			private CameraThread(MainActivity parent, CameraViewInterface cameraView) {
+			private CameraThread(final MainActivity parent, final CameraViewInterface cameraView) {
 				super("CameraThread");
 				mWeakParent = new WeakReference<MainActivity>(parent);
 				mWeakCameraView = new WeakReference<CameraViewInterface>(cameraView);
@@ -417,7 +421,7 @@ public class MainActivity extends Activity {
 					if (mHandler == null)
 					try {
 						mSync.wait();
-					} catch (InterruptedException e) {
+					} catch (final InterruptedException e) {
 					}
 				}
 				return mHandler;
@@ -435,7 +439,7 @@ public class MainActivity extends Activity {
 				}
 			}
 
-			public void handleOpen(UsbControlBlock ctrlBlock) {
+			public void handleOpen(final UsbControlBlock ctrlBlock) {
 				if (DEBUG) Log.v(TAG_THREAD, "handleOpen:");
 				handleClose();
 				final UVCCamera camera = new UVCCamera();
@@ -459,7 +463,7 @@ public class MainActivity extends Activity {
 				}
 			}
 
-			public void handleStartPreview(Surface surface) {
+			public void handleStartPreview(final Surface surface) {
 				if (DEBUG) Log.v(TAG_THREAD, "handleStartPreview:");
 				synchronized (mSync) {
 					if (mUVCCamera == null) return;
@@ -488,20 +492,20 @@ public class MainActivity extends Activity {
 					// get buffered output stream for saving a captured still image as a file on external storage.
 					// the file name is came from current time.
 					// You should use extension name as same as CompressFormat when calling Bitmap#compress.
-					final File outputFile = MediaMuxerWrapper.getCaptureFile(Environment.DIRECTORY_DCIM, ".png"); 
+					final File outputFile = MediaMuxerWrapper.getCaptureFile(Environment.DIRECTORY_DCIM, ".png");
 					final BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(outputFile));
 					try {
 						try {
 							bitmap.compress(CompressFormat.PNG, 100, os);
 							os.flush();
 							mHandler.sendMessage(mHandler.obtainMessage(MSG_MEDIA_UPDATE, outputFile.getPath()));
-						} catch (IOException e) {
+						} catch (final IOException e) {
 						}
 					} finally {
 						os.close();
 					}
-				} catch (FileNotFoundException e) {
-				} catch (IOException e) {
+				} catch (final FileNotFoundException e) {
+				} catch (final IOException e) {
 				}
 			}
 
@@ -513,10 +517,10 @@ public class MainActivity extends Activity {
 						mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
 					}
 					if (USE_SURFACE_ENCODER) {
-						// for video capturing using MediaSurfaceEncoder 
+						// for video capturing using MediaSurfaceEncoder
 						new MediaSurfaceEncoder(mMuxer, mMediaEncoderListener);
 					} else {
-						// for video capturing using MediaVideoEncoder 
+						// for video capturing using MediaVideoEncoder
 						new MediaVideoEncoder(mMuxer, mMediaEncoderListener);
 					}
 					if (true) {
@@ -525,7 +529,7 @@ public class MainActivity extends Activity {
 					}
 					mMuxer.prepare();
 					mMuxer.startRecording();
-				} catch (IOException e) {
+				} catch (final IOException e) {
 					Log.e(TAG, "startCapture:", e);
 				}
 			}
@@ -550,7 +554,7 @@ public class MainActivity extends Activity {
 					try {
 						if (DEBUG) Log.i(TAG, "MediaScannerConnection#scanFile");
 						MediaScannerConnection.scanFile(parent.getApplicationContext(), new String[]{ path }, null, null);
-					} catch (Exception e) {
+					} catch (final Exception e) {
 						Log.e(TAG, "handleUpdateMedia:", e);
 					}
 					if (parent.isDestroyed())
@@ -558,7 +562,7 @@ public class MainActivity extends Activity {
 				} else {
 					Log.w(TAG, "MainActivity already destroyed");
 					// give up to add this movice to MediaStore now.
-					// Seeing this movie on Gallery app etc. will take a lot of time. 
+					// Seeing this movie on Gallery app etc. will take a lot of time.
 					handleRelease();
 				}
 			}
@@ -572,26 +576,26 @@ public class MainActivity extends Activity {
 
 			private final MediaEncoder.MediaEncoderListener mMediaEncoderListener = new MediaEncoder.MediaEncoderListener() {
 				@Override
-				public void onPrepared(MediaEncoder encoder) {
+				public void onPrepared(final MediaEncoder encoder) {
 					if (DEBUG) Log.v(TAG, "onPrepared:encoder=" + encoder);
 					mIsRecording = true;
 					if (encoder instanceof MediaVideoEncoder)
 					try {
 						mWeakCameraView.get().setVideoEncoder(encoder);
-					} catch (Exception e) {
+					} catch (final Exception e) {
 						Log.e(TAG, "onPrepared:", e);
 					}
 					if (encoder instanceof MediaSurfaceEncoder)
 					try {
 						mWeakCameraView.get().setVideoEncoder(encoder);
 						mUVCCamera.startCapture(((MediaSurfaceEncoder)encoder).getInputSurface());
-					} catch (Exception e) {
+					} catch (final Exception e) {
 						Log.e(TAG, "onPrepared:", e);
 					}
 				}
 
 				@Override
-				public void onStopped(MediaEncoder encoder) {
+				public void onStopped(final MediaEncoder encoder) {
 					if (DEBUG) Log.v(TAG_THREAD, "onStopped:encoder=" + encoder);
 					if ((encoder instanceof MediaVideoEncoder)
 						|| (encoder instanceof MediaSurfaceEncoder))
@@ -608,7 +612,7 @@ public class MainActivity extends Activity {
 								handleRelease();
 							}
 						}
-					} catch (Exception e) {
+					} catch (final Exception e) {
 						Log.e(TAG, "onPrepared:", e);
 					}
 				}
@@ -617,20 +621,20 @@ public class MainActivity extends Activity {
 			/**
 			 * prepare and load shutter sound for still image capturing
 			 */
-			private void loadSutterSound(Context context) {
+			private void loadSutterSound(final Context context) {
 		    	// get system stream type using refrection
 		        int streamType;
 		        try {
 		            final Class<?> audioSystemClass = Class.forName("android.media.AudioSystem");
 		            final Field sseField = audioSystemClass.getDeclaredField("STREAM_SYSTEM_ENFORCED");
 		            streamType = sseField.getInt(null);
-		        } catch (Exception e) {
+		        } catch (final Exception e) {
 		        	streamType = AudioManager.STREAM_SYSTEM;	// set appropriate according to your app policy
 		        }
 		        if (mSoundPool != null) {
 		        	try {
 		        		mSoundPool.release();
-		        	} catch (Exception e) {
+		        	} catch (final Exception e) {
 		        	}
 		        	mSoundPool = null;
 		        }

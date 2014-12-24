@@ -2,23 +2,23 @@ package com.serenegiant.usbcameratest0;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
+ *
  * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
  * File name: MainActivity.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
@@ -55,8 +55,8 @@ public class MainActivity extends Activity {
     protected static final ThreadPoolExecutor EXECUTER
 		= new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE, KEEP_ALIVE_TIME,
 			TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-	
-    private final Object mSync = new Object(); 
+
+    private final Object mSync = new Object();
     // for accessing USB and USB camera
     private USBMonitor mUSBMonitor;
 	private UVCCamera mUVCCamera;
@@ -67,7 +67,7 @@ public class MainActivity extends Activity {
 	private boolean isActive, isPreview;
 
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		mCameraButton = (ImageButton)findViewById(R.id.camera_button);
@@ -114,7 +114,7 @@ public class MainActivity extends Activity {
 
 	private final OnClickListener mOnClickListener = new OnClickListener() {
 		@Override
-		public void onClick(View view) {
+		public void onClick(final View view) {
 			if (mUVCCamera == null) {
 				// XXX calling CameraDialog.showDialog is necessary at only first time(only when app has no permission).
 				CameraDialog.showDialog(MainActivity.this);
@@ -130,13 +130,13 @@ public class MainActivity extends Activity {
 
 	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
 		@Override
-		public void onAttach(UsbDevice device) {
+		public void onAttach(final UsbDevice device) {
 			if (DEBUG) Log.v(TAG, "onAttach:");
 			Toast.makeText(MainActivity.this, "USB_DEVICE_ATTACHED", Toast.LENGTH_SHORT).show();
 		}
 
 		@Override
-		public void onConnect(UsbDevice device, final UsbControlBlock ctrlBlock, boolean createNew) {
+		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, final boolean createNew) {
 			if (DEBUG) Log.v(TAG, "onConnect:");
 			synchronized (mSync) {
 				if (mUVCCamera != null)
@@ -161,7 +161,7 @@ public class MainActivity extends Activity {
 		}
 
 		@Override
-		public void onDisconnect(UsbDevice device, UsbControlBlock ctrlBlock) {
+		public void onDisconnect(final UsbDevice device, final UsbControlBlock ctrlBlock) {
 			if (DEBUG) Log.v(TAG, "onDisconnect:");
 			// XXX you should check whether the comming device equal to camera device that currently using
 			synchronized (mSync) {
@@ -177,11 +177,14 @@ public class MainActivity extends Activity {
 		}
 
 		@Override
-		public void onDettach(UsbDevice device) {
+		public void onDettach(final UsbDevice device) {
 			if (DEBUG) Log.v(TAG, "onDettach:");
 			Toast.makeText(MainActivity.this, "USB_DEVICE_DETACHED", Toast.LENGTH_SHORT).show();
 		}
 
+		@Override
+		public void onCancel() {
+		}
 	};
 
 	/**
@@ -194,12 +197,12 @@ public class MainActivity extends Activity {
 
 	private final SurfaceHolder.Callback mSurfaceViewCallback = new SurfaceHolder.Callback() {
 		@Override
-		public void surfaceCreated(SurfaceHolder holder) {
+		public void surfaceCreated(final SurfaceHolder holder) {
 			if (DEBUG) Log.v(TAG, "surfaceCreated:");
 		}
 
 		@Override
-		public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+		public void surfaceChanged(final SurfaceHolder holder, final int format, final int width, final int height) {
 			if ((width == 0) || (height == 0)) return;
 			if (DEBUG) Log.v(TAG, "surfaceChanged:");
 			mPreviewSurface = holder.getSurface();
@@ -213,7 +216,7 @@ public class MainActivity extends Activity {
 		}
 
 		@Override
-		public void surfaceDestroyed(SurfaceHolder holder) {
+		public void surfaceDestroyed(final SurfaceHolder holder) {
 			if (DEBUG) Log.v(TAG, "surfaceDestroyed:");
 			synchronized (mSync) {
 				if (mUVCCamera != null) {

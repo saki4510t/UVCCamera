@@ -183,7 +183,7 @@ uvc_error_t uvc_find_device2(uvc_context_t *ctx, uvc_device_t **device, int vid,
 	struct libusb_device *usb_dev = libusb_find_device(ctx->usb_ctx, vid, pid, sn, fd);
 
 	if (usb_dev) {
-		*device = malloc(sizeof(*device));
+		*device = malloc(sizeof(uvc_device_t/* *device */));
 		(*device)->ctx = ctx;
 		(*device)->ref = 0;
 		(*device)->usb_dev = usb_dev;

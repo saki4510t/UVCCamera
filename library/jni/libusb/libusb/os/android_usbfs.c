@@ -182,10 +182,19 @@ struct linux_transfer_priv {
 };
 
 #if LOCAL_DEBUG
-static void dump_urb(int ix, struct usbfs_urb *urb) {
-	LOGI("%d:type=%d,endpopint=%d,status=%d,flag=%d", ix, urb->type, urb->endpoint, urb->status, urb->flags);
-	LOGI("%d:buffer_length=%d,actual_length=%d,start_frame=%d", ix, urb->buffer_length, urb->actual_length, urb->start_frame);
+static void dump_urb(int ix, int fd, struct usbfs_urb *urb) {
+	LOGI("%d:fd=%d", ix, fd);
+	int ret = fcntl(fd, F_GETFL);
+	if (UNLIKELY(ret == -1)) {
+		LOGE("Failed to get fd flags: %d", errno);
+	}
+	LOGI("ファイフディスクリプタフラグ:%x", ret);
+	LOGI("O_ACCMODE:%x", ret & O_ACCMODE);				// 0:読み込み専用, 1:書き込み専用, 2;読み書き可
+	LOGI("ノンブロッキングかどうか:%d", ret & O_NONBLOCK);	// 0:ブロッキング
+	LOGI("%d:type=%d,endpopint=0x%02x,status=%d,flag=%d", ix, urb->type, urb->endpoint, urb->status, urb->flags);
+	LOGI("%d:buffer=%p,buffer_length=%d,actual_length=%d,start_frame=%d", ix, urb->buffer, urb->buffer_length, urb->actual_length, urb->start_frame);
 	LOGI("%d:number_of_packets=%d,error_count=%d,signr=%d", ix, urb->number_of_packets, urb->error_count, urb->signr);
+	LOGI("%d:usercontext=%p,iso_frame_desc=%p", ix, urb->usercontext, urb->iso_frame_desc);
 }
 #endif
 
@@ -392,7 +401,110 @@ static int kernel_version_ge(int major, int minor, int sublevel) {
 	return ksublevel >= sublevel;
 }
 
+static int op_init2(struct libusb_context *ctx, const char *usbfs) {	// XXX
+	struct stat statbuf;
+	int r;
+
+	if (!usbfs || !strlen(usbfs)) {
+		usbfs_path = find_usbfs_path();
+	} else {
+		usbfs_path = usbfs;
+	}
+	if (UNLIKELY(!usbfs_path)) {
+		usbi_err(ctx, "could not find usbfs");
+		return LIBUSB_ERROR_OTHER;
+	}
+
+	if (monotonic_clkid == -1)
+		monotonic_clkid = find_monotonic_clock();
+
+	if (supports_flag_bulk_continuation == -1) {
+		/* bulk continuation URB flag available from Linux 2.6.32 */
+		supports_flag_bulk_continuation = kernel_version_ge(2, 6, 32);
+		if (supports_flag_bulk_continuation == -1) {
+			LOGE("error checking for bulk continuation support");
+			usbi_err(ctx, "error checking for bulk continuation support");
+			return LIBUSB_ERROR_OTHER;
+		}
+	}
+
+	if (supports_flag_bulk_continuation)
+		usbi_dbg("bulk continuation flag supported");
+
+	if (-1 == supports_flag_zero_packet) {
+		/* zero length packet URB flag fixed since Linux 2.6.31 */
+		supports_flag_zero_packet = kernel_version_ge(2, 6, 31);
+		if (-1 == supports_flag_zero_packet) {
+			LOGE("error checking for zero length packet support");
+			usbi_err(ctx, "error checking for zero length packet support");
+			return LIBUSB_ERROR_OTHER;
+		}
+	}
+
+	if (supports_flag_zero_packet)
+		usbi_dbg("zero length packet flag supported");
+
+	if (-1 == sysfs_has_descriptors) {
+		/* sysfs descriptors has all descriptors since Linux 2.6.26 */
+		sysfs_has_descriptors = kernel_version_ge(2, 6, 26);
+		if (UNLIKELY(-1 == sysfs_has_descriptors)) {
+			LOGE("error checking for sysfs descriptors");
+			usbi_err(ctx, "error checking for sysfs descriptors");
+			return LIBUSB_ERROR_OTHER;
+		}
+	}
+
+	if (-1 == sysfs_can_relate_devices) {
+		/* sysfs has busnum since Linux 2.6.22 */
+		sysfs_can_relate_devices = kernel_version_ge(2, 6, 22);
+		if (UNLIKELY(-1 == sysfs_can_relate_devices)) {
+			LOGE("error checking for sysfs busnum");
+			usbi_err(ctx, "error checking for sysfs busnum");
+			return LIBUSB_ERROR_OTHER;
+		}
+	}
+
+	if (sysfs_can_relate_devices || sysfs_has_descriptors) {
+		r = stat(SYSFS_DEVICE_PATH, &statbuf);
+		if (r != 0 || !S_ISDIR(statbuf.st_mode)) {
+			usbi_warn(ctx, "sysfs not mounted");
+			sysfs_can_relate_devices = 0;
+			sysfs_has_descriptors = 0;
+		}
+	}
+
+	if (sysfs_can_relate_devices)
+		usbi_dbg("sysfs can relate devices");
+
+	if (sysfs_has_descriptors)
+		usbi_dbg("sysfs has complete descriptors");
+
+	usbi_mutex_static_lock(&linux_hotplug_startstop_lock);
+	r = LIBUSB_SUCCESS;
+	if (init_count == 0) {
+		/* start up hotplug event handler */
+		int r = linux_start_event_monitor();
+		if (r != LIBUSB_SUCCESS) {
+			usbi_err(ctx, "warning: error starting hotplug event monitor");
+		}
+	}
+	if (r == LIBUSB_SUCCESS) {
+		r = linux_scan_devices(ctx);
+		if (r == LIBUSB_SUCCESS)
+			init_count++;
+		else if (init_count == 0)
+			linux_stop_event_monitor();
+	} else {
+		usbi_err(ctx, "error starting hotplug event monitor");
+	}
+	usbi_mutex_static_unlock(&linux_hotplug_startstop_lock);
+
+	return r;
+}
+
 static int op_init(struct libusb_context *ctx) {
+	return op_init2(ctx, NULL);
+#if 0
 	struct stat statbuf;
 	int r;
 
@@ -479,7 +591,9 @@ static int op_init(struct libusb_context *ctx) {
 	usbi_mutex_static_unlock(&linux_hotplug_startstop_lock);
 
 	return r;
+#endif
 }
+
 
 static void op_exit(void) {
 	usbi_mutex_static_lock(&linux_hotplug_startstop_lock);
@@ -2720,6 +2834,7 @@ const struct usbi_os_backend android_usbfs_backend = {
 	.name = "Android usbfs",
 	.caps = USBI_CAP_HAS_HID_ACCESS | USBI_CAP_SUPPORTS_DETACH_KERNEL_DRIVER,
 	.init = op_init,
+	.init2 = op_init2,	// XXX
 	.exit = op_exit,
 	.get_device_list = NULL,
 	.hotplug_poll = op_hotplug_poll,

@@ -2,23 +2,23 @@ package com.serenegiant.usbcameratest;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
+ *
  * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
  * File name: MainActivity.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
@@ -26,12 +26,6 @@ package com.serenegiant.usbcameratest;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-
-import com.serenegiant.usb.USBMonitor;
-import com.serenegiant.usb.UVCCamera;
-import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
-import com.serenegiant.usb.USBMonitor.UsbControlBlock;
-import com.serenegiant.widget.UVCCameraTextureView;
 
 import android.app.Activity;
 import android.graphics.SurfaceTexture;
@@ -43,6 +37,12 @@ import android.view.View.OnClickListener;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
+import com.serenegiant.usb.USBMonitor;
+import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
+import com.serenegiant.usb.USBMonitor.UsbControlBlock;
+import com.serenegiant.usb.UVCCamera;
+import com.serenegiant.widget.UVCCameraTextureView;
+
 public class MainActivity extends Activity {
 
     // for thread pool
@@ -52,7 +52,7 @@ public class MainActivity extends Activity {
     protected static final ThreadPoolExecutor EXECUTER
 		= new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE, KEEP_ALIVE_TIME,
 			TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-	
+
     // for accessing USB and USB camera
     private USBMonitor mUSBMonitor;
 	private UVCCamera mUVCCamera;
@@ -62,7 +62,7 @@ public class MainActivity extends Activity {
 	private Surface mPreviewSurface;
 
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		mCameraButton = (ImageButton)findViewById(R.id.camera_button);
@@ -107,7 +107,7 @@ public class MainActivity extends Activity {
 
 	private final OnClickListener mOnClickListener = new OnClickListener() {
 		@Override
-		public void onClick(View view) {
+		public void onClick(final View view) {
 			if (mUVCCamera == null)
 				CameraDialog.showDialog(MainActivity.this);
 			else {
@@ -119,12 +119,12 @@ public class MainActivity extends Activity {
 
 	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
 		@Override
-		public void onAttach(UsbDevice device) {
+		public void onAttach(final UsbDevice device) {
 			Toast.makeText(MainActivity.this, "USB_DEVICE_ATTACHED", Toast.LENGTH_SHORT).show();
 		}
 
 		@Override
-		public void onConnect(UsbDevice device, final UsbControlBlock ctrlBlock, boolean createNew) {
+		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, final boolean createNew) {
 			if (mUVCCamera != null)
 				mUVCCamera.destroy();
 			mUVCCamera = new UVCCamera();
@@ -137,7 +137,7 @@ public class MainActivity extends Activity {
 						mPreviewSurface.release();
 						mPreviewSurface = null;
 					}
-					final SurfaceTexture st = mUVCCameraView.getSurfaceTexture(); 
+					final SurfaceTexture st = mUVCCameraView.getSurfaceTexture();
 					if (st != null)
 						mPreviewSurface = new Surface(st);
 					mUVCCamera.setPreviewDisplay(mPreviewSurface);
@@ -147,7 +147,7 @@ public class MainActivity extends Activity {
 		}
 
 		@Override
-		public void onDisconnect(UsbDevice device, UsbControlBlock ctrlBlock) {
+		public void onDisconnect(final UsbDevice device, final UsbControlBlock ctrlBlock) {
 			// XXX you should check whether the comming device equal to camera device that currently using
 			if (mUVCCamera != null) {
 				mUVCCamera.close();
@@ -159,10 +159,13 @@ public class MainActivity extends Activity {
 		}
 
 		@Override
-		public void onDettach(UsbDevice device) {
+		public void onDettach(final UsbDevice device) {
 			Toast.makeText(MainActivity.this, "USB_DEVICE_DETACHED", Toast.LENGTH_SHORT).show();
 		}
 
+		@Override
+		public void onCancel() {
+		}
 	};
 
 	/**

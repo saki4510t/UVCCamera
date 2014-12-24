@@ -1359,6 +1359,7 @@ enum libusb_log_level {
 };
 
 int LIBUSB_CALL libusb_init(libusb_context **ctx);
+int LIBUSB_CALL libusb_init2(libusb_context **ctx, const char *usbfs);
 void LIBUSB_CALL libusb_exit(libusb_context *ctx);
 void LIBUSB_CALL libusb_set_debug(libusb_context *ctx, int level);
 const struct libusb_version * LIBUSB_CALL libusb_get_version(void);
