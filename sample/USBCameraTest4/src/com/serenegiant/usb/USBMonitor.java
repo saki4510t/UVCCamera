@@ -81,7 +81,7 @@ public final class USBMonitor {
 		 */
 		public void onConnect(UsbDevice device, UsbControlBlock ctrlBlock, boolean createNew);
 		/**
-		 * called when USB device removed or its power off (this callback is called before device closing)
+		 * called when USB device removed or its power off (this callback is called after device closing)
 		 * @param device
 		 * @param ctrlBlock
 		 */
@@ -492,14 +492,6 @@ public final class USBMonitor {
 			if (DEBUG) Log.i(TAG, "UsbControlBlock#close:");
 
 			if (mConnection != null) {
-				final USBMonitor monitor = mWeakMonitor.get();
-				if (monitor != null) {
-					if (monitor.mOnDeviceConnectListener != null) {
-						final UsbDevice device = mWeakDevice.get();
-						monitor.mOnDeviceConnectListener.onDisconnect(device, this);
-					}
-					monitor.mCtrlBlocks.remove(getDevice());
-				}
 				final int n = mInterfaces.size();
 				int key;
 				UsbInterface intf;
@@ -510,6 +502,14 @@ public final class USBMonitor {
 				}
 				mConnection.close();
 				mConnection = null;
+				final USBMonitor monitor = mWeakMonitor.get();
+				if (monitor != null) {
+					if (monitor.mOnDeviceConnectListener != null) {
+						final UsbDevice device = mWeakDevice.get();
+						monitor.mOnDeviceConnectListener.onDisconnect(device, this);
+					}
+					monitor.mCtrlBlocks.remove(getDevice());
+				}
 			}
 		}
 
