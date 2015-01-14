@@ -75,3 +75,6 @@ even if you stop app. If you stop camera communication, click "stop service" but
 
 2014/12/17
 Add bulk transfer mode and update sample projects.
+
+2014/01/12
+Add wiki page, [HowTo](https://github.com/saki4510t/UVCCamera/wiki/howto "HowTo")
