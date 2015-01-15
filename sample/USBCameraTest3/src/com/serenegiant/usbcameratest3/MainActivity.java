@@ -198,8 +198,10 @@ public class MainActivity extends Activity {
 		public boolean onLongClick(final View view) {
 			switch (view.getId()) {
 			case R.id.camera_view:
-				mHandler.captureStill();
-				return true;
+				if (mHandler.isCameraOpened()) {
+					mHandler.captureStill();
+					return true;
+				}
 			}
 			return false;
 		}
