@@ -77,6 +77,11 @@ public class MainActivity extends Activity {
 	 * set false if you want to record movie using MediaVideoEncoder
 	 */
     private static final boolean USE_SURFACE_ENCODER = false;
+
+    private static final int PREVIEW_WIDTH = 640;
+    private static final int PREVIEW_HEIGHT = 480;
+    private static final int PREVIEW_MODE = 0;
+
 	/**
 	 * for accessing USB
 	 */
@@ -114,7 +119,7 @@ public class MainActivity extends Activity {
 		final View view = findViewById(R.id.camera_view);
 		view.setOnLongClickListener(mOnLongClickListener);
 		mUVCCameraView = (CameraViewInterface)view;
-		mUVCCameraView.setAspectRatio(640 / 480.f);
+		mUVCCameraView.setAspectRatio(PREVIEW_WIDTH / (float)PREVIEW_HEIGHT);
 
 		mUSBMonitor = new USBMonitor(this, mOnDeviceConnectListener);
 		mHandler = CameraHandler.createHandler(this, mUVCCameraView);
@@ -469,6 +474,7 @@ public class MainActivity extends Activity {
 				if (DEBUG) Log.v(TAG_THREAD, "handleStartPreview:");
 				synchronized (mSync) {
 					if (mUVCCamera == null) return;
+					mUVCCamera.setPreviewSize(PREVIEW_WIDTH, PREVIEW_HEIGHT, PREVIEW_MODE);
 					mUVCCamera.setPreviewDisplay(surface);
 					mUVCCamera.startPreview();
 				}

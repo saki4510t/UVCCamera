@@ -123,6 +123,15 @@ int UVCCamera::release() {
 	RETURN(0, int);
 }
 
+int UVCCamera::setPreviewSize(int width, int height, int mode) {
+	ENTER();
+	int result = EXIT_FAILURE;
+	if (mPreview) {
+		result = mPreview->setPreviewSize(width, height, mode);
+	}
+	RETURN(result, int);
+}
+
 int UVCCamera::setPreviewDisplay(ANativeWindow *preview_window) {
 	ENTER();
 	int result = EXIT_FAILURE;

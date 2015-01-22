@@ -35,6 +35,9 @@ public class UVCCamera {
 
 	private static final String TAG = UVCCamera.class.getSimpleName();
 	private static final String DEFAULT_USBFS = "/dev/bus/usb";
+	private static final int DEFAULT_PREVIEW_WIDTH = 640;
+	private static final int DEFAULT_PREVIEW_HEIGHT = 480;
+	private static final int DEFAULT_PREVIEW_MODE = 0;
 
 	private static boolean isLoaded;
 	static {
@@ -68,6 +71,7 @@ public class UVCCamera {
 			mCtrlBlock.getVenderId(), mCtrlBlock.getProductId(),
 			mCtrlBlock.getFileDescriptor(),
 			getUSBFSName(mCtrlBlock));
+		nativeSetPreviewSize(mNativePtr, DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT, DEFAULT_PREVIEW_MODE);
     }
 
     /**
@@ -79,6 +83,22 @@ public class UVCCamera {
     	}
    		mCtrlBlock = null;
     }
+
+	/**
+	 * Set preview size and preview mode
+	 * @param width
+	   @param height
+	   @param mode 0:yuyv, other:MJPEG
+	 */
+	public void setPreviewSize(final int width, final int height, final int mode) {
+		if ((width == 0) || (height == 0))
+			throw new IllegalArgumentException("invalid preview size");
+		if (mNativePtr != 0) {
+			final int result = nativeSetPreviewSize(mNativePtr, width, height, mode);
+			if (result != 0)
+				throw new IllegalArgumentException("Failed to set preview size");
+		}
+	}
 
     /**
      * set preview surface with SurfaceHolder</br>
@@ -160,6 +180,7 @@ public class UVCCamera {
     private static final native int nativeConnect(long id_camera, int venderId, int productId, int fileDescriptor, String usbfs);
     private static final native int nativeRelease(long id_camera);
 
+    private static final native int nativeSetPreviewSize(long id_camera, int width, int height, int mode);
     private static final native int nativeStartPreview(long id_camera);
     private static final native int nativeStopPreview(long id_camera);
     private static final native int nativeSetPreviewDisplay(long id_camera, Surface surface);

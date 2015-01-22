@@ -39,9 +39,11 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	requestWidth(DEFAULT_PREVIEW_WIDTH),
 	requestHeight(DEFAULT_PREVIEW_HEIGHT),
 	requestFps(DEFAULT_PREVIEW_FPS),
+	requestMode(DEFAULT_PREVIEW_MODE),
 	frameWidth(DEFAULT_PREVIEW_WIDTH),
 	frameHeight(DEFAULT_PREVIEW_HEIGHT),
 	frameBytes(DEFAULT_PREVIEW_WIDTH * DEFAULT_PREVIEW_HEIGHT * 2),	// YUYV
+	frameMode(0),
 	previewBytes(DEFAULT_PREVIEW_WIDTH * DEFAULT_PREVIEW_HEIGHT * PREVIEW_PIXEL_BYTES),
 	previewFormat(WINDOW_FORMAT_RGBA_8888),
 	mIsRunning(false),
@@ -76,6 +78,24 @@ UVCPreview::~UVCPreview() {
 }
 
 inline const bool UVCPreview::isRunning() const {return mIsRunning; }
+
+int UVCPreview::setPreviewSize(int width, int height, int mode) {
+	ENTER();
+	
+	int result = 0;
+	if ((requestWidth != width) || (requestHeight != height) || (requestMode != mode)) {
+		requestWidth = width;
+		requestHeight = height;
+		requestMode = mode;
+
+		uvc_stream_ctrl_t ctrl;
+		result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
+			!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
+			requestWidth, requestHeight, 1, 30);
+	}
+	
+	RETURN(result, int);
+}
 
 int UVCPreview::setPreviewDisplay(ANativeWindow *preview_window) {
 	ENTER();
@@ -291,7 +311,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 //		requestWidth, requestHeight, requestFps
 //	);
 	result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, ctrl,
-		UVC_FRAME_FORMAT_YUYV,
+		!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
 		requestWidth, requestHeight, 1, 30
 	);
 	if (LIKELY(!result)) {
@@ -303,9 +323,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 		if (LIKELY(!result)) {
 			frameWidth = frame_desc->wWidth;
 			frameHeight = frame_desc->wHeight;
-#if LOCAL_DEBUG
-			LOGI("frameSize=(%d,%d)", frameWidth, frameHeight);
-#endif
+			LOGI("frameSize=(%d,%d)@%s", frameWidth, frameHeight, (!requestMode ? "YUYV" : "MJPEG"));
 			pthread_mutex_lock(&preview_mutex);
 			if (LIKELY(mPreviewWindow)) {
 				ANativeWindow_setBuffersGeometry(mPreviewWindow,
@@ -316,7 +334,8 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 			frameWidth = requestWidth;
 			frameHeight = requestHeight;
 		}
-		frameBytes = frameWidth * frameHeight * 2;	// YUYV
+		frameMode = requestMode;
+		frameBytes = frameWidth * frameHeight * (!requestMode ? 2 : 4);
 		previewBytes = frameWidth * frameHeight * PREVIEW_PIXEL_BYTES;
 	} else {
 		LOGE("could not negotiate with camera:err=%d", result);
@@ -328,6 +347,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 	ENTER();
 
 	uvc_frame_t *frame = NULL;
+	uvc_frame_t *frame_mjpeg = NULL;
 	uvc_error_t result = uvc_start_iso_streaming(
 		mDeviceHandle, ctrl, uvc_preview_frame_callback, (void *)this);
 
@@ -338,11 +358,30 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 #if LOCAL_DEBUG
 		LOGI("Streaming...");
 #endif
-		while (LIKELY(isRunning())) {
-			frame = waitPreviewFrame();
-			if (LIKELY(frame)) {
-				frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
-				addCaptureFrame(frame);
+		if (frameMode) {
+			// MJPEG mode
+			while (LIKELY(isRunning())) {
+				frame_mjpeg = waitPreviewFrame();
+				if (LIKELY(frame_mjpeg)) {
+					frame = uvc_allocate_frame(frame_mjpeg->width * frame_mjpeg->height * 2);
+					result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
+					uvc_free_frame(frame_mjpeg);
+					if (LIKELY(!result)) {
+						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+						addCaptureFrame(frame);
+					} else {
+						uvc_free_frame(frame);
+					}
+				}
+			}
+		} else {
+			// yuvyv mode
+			while (LIKELY(isRunning())) {
+				frame = waitPreviewFrame();
+				if (LIKELY(frame)) {
+					frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+					addCaptureFrame(frame);
+				}
 			}
 		}
 		pthread_cond_signal(&capture_sync);

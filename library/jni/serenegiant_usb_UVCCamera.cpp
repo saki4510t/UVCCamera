@@ -118,6 +118,17 @@ static jint nativeRelease(JNIEnv *env, jobject thiz,
 	RETURN(result, jint);
 }
 
+static jint nativeSetPreviewSize(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jint width, jint height, jint mode) {
+
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		return camera->setPreviewSize(width, height, mode);
+	}
+	RETURN(JNI_ERR, jint);
+}
+
 static jint nativeStartPreview(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera) {
 
@@ -192,6 +203,7 @@ static JNINativeMethod methods[] = {
 	{ "nativeConnect",			"(JIIILjava/lang/String;)I", (void *) nativeConnect },
 	{ "nativeRelease",			"(J)I", (void *) nativeRelease },
 
+	{ "nativeSetPreviewSize",	"(JIII)I", (void *) nativeSetPreviewSize },
 	{ "nativeStartPreview",		"(J)I", (void *) nativeStartPreview },
 	{ "nativeStopPreview",		"(J)I", (void *) nativeStopPreview },
 	{ "nativeSetPreviewDisplay","(JLandroid/view/Surface;)I", (void *) nativeSetPreviewDisplay },

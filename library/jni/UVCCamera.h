@@ -45,6 +45,7 @@ public:
 
 	int connect(int vid, int pid, int fd, const char *usbfs);
 	int release();
+	int setPreviewSize(int width, int height, int mode);
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int startPreview();
 	int stopPreview();

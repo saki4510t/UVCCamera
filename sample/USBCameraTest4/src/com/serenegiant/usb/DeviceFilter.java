@@ -1,14 +1,16 @@
 package com.serenegiant.usb;
-
 /*
+ * UVCCamera
+ * library and sample to access to UVC web camera on non-rooted Android device
+ *
  * Fixed the issue when reading filter definition from xml file
  * that undefined null filter(that match all device) is generateed.
  * Copyright (C) 2014 saki (t_saki@serenegiant.com)
- * 
+ *
  * This class originally came from
  * com.android.server.usb.UsbSettingsManager.DeviceFilter
  * in UsbSettingsManager.java in Android SDK
- * 
+ *
  * Copyright (C) 2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,8 +62,8 @@ public final class DeviceFilter {
 	// USB device serial number string (or null for unspecified)
 	public final String mSerialNumber;
 
-	public DeviceFilter(int vid, int pid, int clasz, int subclass,
-			int protocol, String manufacturer, String product, String serialnum) {
+	public DeviceFilter(final int vid, final int pid, final int clasz, final int subclass,
+			final int protocol, final String manufacturer, final String product, final String serialnum) {
 		mVendorId = vid;
 		mProductId = pid;
 		mClass = clasz;
@@ -74,7 +76,7 @@ public final class DeviceFilter {
 			mVendorId, mProductId, mClass, mSubclass, mProtocol)); */
 	}
 
-	public DeviceFilter(UsbDevice device) {
+	public DeviceFilter(final UsbDevice device) {
 		mVendorId = device.getVendorId();
 		mProductId = device.getProductId();
 		mClass = device.getDeviceClass();
@@ -93,29 +95,29 @@ public final class DeviceFilter {
 	 * @param deviceFilterXmlId
 	 * @return
 	 */
-	public static List<DeviceFilter> getDeviceFilters(Context context, int deviceFilterXmlId) {
+	public static List<DeviceFilter> getDeviceFilters(final Context context, final int deviceFilterXmlId) {
 		final XmlPullParser parser = context.getResources().getXml(deviceFilterXmlId);
 		final List<DeviceFilter> deviceFilters = new ArrayList<DeviceFilter>();
 		try {
 			int eventType = parser.getEventType();
 			while (eventType != XmlPullParser.END_DOCUMENT) {
 	            if (eventType == XmlPullParser.START_TAG) {
-					DeviceFilter deviceFilter = read(context, parser);
+					final DeviceFilter deviceFilter = read(context, parser);
 					if (deviceFilter != null) {
 						deviceFilters.add(deviceFilter);
 					}
 	            }
 				eventType = parser.next();
 			}
-		} catch (XmlPullParserException e) {
+		} catch (final XmlPullParserException e) {
 			Log.d(TAG, "XmlPullParserException", e);
-		} catch (IOException e) {
+		} catch (final IOException e) {
 			Log.d(TAG, "IOException", e);
 		}
-		
+
 		return Collections.unmodifiableList(deviceFilters);
 	}
-	
+
 	/**
 	 * read as integer values with default value from xml(w/o exception throws)
 	 * resource integer id is also resolved into integer
@@ -125,10 +127,10 @@ public final class DeviceFilter {
 	 * @param defaultValue
 	 * @return
 	 */
-	private static final int getAttributeInteger(Context context, XmlPullParser parser, String namespace, String name, int defaultValue) {
+	private static final int getAttributeInteger(final Context context, final XmlPullParser parser, final String namespace, final String name, final int defaultValue) {
 		int result = defaultValue;
 		try {
-			String v = parser.getAttributeValue(namespace, name);
+			final String v = parser.getAttributeValue(namespace, name);
 			if (!TextUtils.isEmpty(v) && v.startsWith("@")) {
 				final String r = v.substring(1);
 				final int resId = context.getResources().getIdentifier(r, null, context.getPackageName());
@@ -138,11 +140,11 @@ public final class DeviceFilter {
 			} else {
 				result = Integer.parseInt(v);
 			}
-		} catch (NotFoundException e) {
+		} catch (final NotFoundException e) {
 			result = defaultValue;
-		} catch (NumberFormatException e) {
+		} catch (final NumberFormatException e) {
 			result = defaultValue;
-		} catch (NullPointerException e) {
+		} catch (final NullPointerException e) {
 			result = defaultValue;
 		}
 		return result;
@@ -157,7 +159,7 @@ public final class DeviceFilter {
 	 * @param defaultValue
 	 * @return
 	 */
-	private static final String getAttributeString(Context context, XmlPullParser parser, String namespace, String name, String defaultValue) {
+	private static final String getAttributeString(final Context context, final XmlPullParser parser, final String namespace, final String name, final String defaultValue) {
 		String result = defaultValue;
 		try {
 			result = parser.getAttributeValue(namespace, name);
@@ -169,17 +171,17 @@ public final class DeviceFilter {
 				if (resId > 0)
 					result = context.getResources().getString(resId);
 			}
-		} catch (NotFoundException e) {
+		} catch (final NotFoundException e) {
 			result = defaultValue;
-		} catch (NumberFormatException e) {
+		} catch (final NumberFormatException e) {
 			result = defaultValue;
-		} catch (NullPointerException e) {
+		} catch (final NullPointerException e) {
 			result = defaultValue;
 		}
 		return result;
 	}
 
-	public static DeviceFilter read(Context context, XmlPullParser parser)
+	public static DeviceFilter read(final Context context, final XmlPullParser parser)
 			throws XmlPullParserException, IOException {
 		int vendorId = -1;
 		int productId = -1;
@@ -250,12 +252,12 @@ public final class DeviceFilter {
 		serializer.endTag(null, "usb-device");
 	} */
 
-	private boolean matches(int clasz, int subclass, int protocol) {
+	private boolean matches(final int clasz, final int subclass, final int protocol) {
 		return ((mClass == -1 || clasz == mClass)
 				&& (mSubclass == -1 || subclass == mSubclass) && (mProtocol == -1 || protocol == mProtocol));
 	}
 
-	public boolean matches(UsbDevice device) {
+	public boolean matches(final UsbDevice device) {
 		if (mVendorId != -1 && device.getVendorId() != mVendorId)
 			return false;
 		if (mProductId != -1 && device.getProductId() != mProductId)
@@ -282,9 +284,9 @@ public final class DeviceFilter {
 			return true;
 
 		// if device doesn't match, check the interfaces
-		int count = device.getInterfaceCount();
+		final int count = device.getInterfaceCount();
 		for (int i = 0; i < count; i++) {
-			UsbInterface intf = device.getInterface(i);
+			final UsbInterface intf = device.getInterface(i);
 			if (matches(intf.getInterfaceClass(), intf.getInterfaceSubclass(),
 					intf.getInterfaceProtocol()))
 				return true;
@@ -293,7 +295,7 @@ public final class DeviceFilter {
 		return false;
 	}
 
-	public boolean matches(DeviceFilter f) {
+	public boolean matches(final DeviceFilter f) {
 		if (mVendorId != -1 && f.mVendorId != mVendorId)
 			return false;
 		if (mProductId != -1 && f.mProductId != mProductId)
@@ -319,14 +321,14 @@ public final class DeviceFilter {
 	}
 
 	@Override
-	public boolean equals(Object obj) {
+	public boolean equals(final Object obj) {
 		// can't compare if we have wildcard strings
 		if (mVendorId == -1 || mProductId == -1 || mClass == -1
 				|| mSubclass == -1 || mProtocol == -1) {
 			return false;
 		}
 		if (obj instanceof DeviceFilter) {
-			DeviceFilter filter = (DeviceFilter) obj;
+			final DeviceFilter filter = (DeviceFilter) obj;
 
 			if (filter.mVendorId != mVendorId
 					|| filter.mProductId != mProductId
@@ -353,7 +355,7 @@ public final class DeviceFilter {
 			return (true);
 		}
 		if (obj instanceof UsbDevice) {
-			UsbDevice device = (UsbDevice) obj;
+			final UsbDevice device = (UsbDevice) obj;
 			if (device.getVendorId() != mVendorId
 					|| device.getProductId() != mProductId
 					|| device.getDeviceClass() != mClass

@@ -35,6 +35,7 @@
 #define DEFAULT_PREVIEW_WIDTH 640
 #define DEFAULT_PREVIEW_HEIGHT 480
 #define DEFAULT_PREVIEW_FPS 30
+#define DEFAULT_PREVIEW_MODE 0
 
 typedef uvc_error_t (*convFunc_t)(uvc_frame_t *in, uvc_frame_t *out);
 
@@ -43,8 +44,9 @@ private:
 	uvc_device_handle_t *mDeviceHandle;
 	ANativeWindow *mPreviewWindow;
 	volatile bool mIsRunning;
-	int requestWidth, requestHeight, requestFps;
+	int requestWidth, requestHeight, requestMode, requestFps;
 	int frameWidth, frameHeight;
+	int frameMode;
 	size_t frameBytes;
 	pthread_t preview_thread;
 	pthread_mutex_t preview_mutex;
@@ -81,7 +83,7 @@ public:
 	~UVCPreview();
 
 	inline const bool isRunning() const;
-	int setPreviewSize(int width, int height, int fps);
+	int setPreviewSize(int width, int height, int mode);
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int startPreview();
 	int stopPreview();

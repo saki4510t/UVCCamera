@@ -77,11 +77,11 @@ public final class USBMonitor {
 		 * called after device opend
 		 * @param device
 		 * @param connection
-		 * @param createNew 
+		 * @param createNew
 		 */
 		public void onConnect(UsbDevice device, UsbControlBlock ctrlBlock, boolean createNew);
 		/**
-		 * called when USB device removed or its power off (this callback is called before device closing)
+		 * called when USB device removed or its power off (this callback is called after device closing)
 		 * @param device
 		 * @param ctrlBlock
 		 */
@@ -91,8 +91,8 @@ public final class USBMonitor {
 		 */
 		public void onCancel();
 	}
-	
-	public USBMonitor(Context context, OnDeviceConnectListener listener) {
+
+	public USBMonitor(final Context context, final OnDeviceConnectListener listener) {
 		if (DEBUG) Log.v(TAG, "USBMonitor:Constructor");
 /*		if (listener == null)
 			throw new IllegalArgumentException("OnDeviceConnectListener should not null."); */
@@ -109,17 +109,17 @@ public final class USBMonitor {
 		if (keys != null) {
 			UsbControlBlock ctrlBlock;
 			try {
-				for (UsbDevice key: keys) {
+				for (final UsbDevice key: keys) {
 					ctrlBlock = mCtrlBlocks.remove(key);
 					ctrlBlock.close();
 				}
-			} catch (Exception e) {
+			} catch (final Exception e) {
 				Log.e(TAG, "destroy:", e);
 			}
 			mCtrlBlocks.clear();
 		}
 	}
-	
+
 	/**
 	 * register BroadcastReceiver to monitor USB events
 	 * @param context
@@ -138,7 +138,7 @@ public final class USBMonitor {
 			mHandler.postDelayed(mDeviceCheckRunnable, 1000);
 		}
 	}
-	
+
 	/**
 	 * unregister BroadcastReceiver
 	 * @param context
@@ -164,18 +164,18 @@ public final class USBMonitor {
 	 * set device filter
 	 * @param filter
 	 */
-	public void setDeviceFilter(DeviceFilter filter) {
+	public void setDeviceFilter(final DeviceFilter filter) {
 		mDeviceFilter = filter;
 	}
-	
+
 	/**
 	 * return the number of connected USB devices that matched device filter
 	 * @return
 	 */
 	public int getDeviceCount() {
-		return getDeviceList().size(); 
+		return getDeviceList().size();
 	}
-	
+
 	/**
 	 * return device list, return empty list if no device matched
 	 * @return
@@ -189,7 +189,7 @@ public final class USBMonitor {
 	 * @param filter
 	 * @return
 	 */
-	public List<UsbDevice> getDeviceList(DeviceFilter filter) {
+	public List<UsbDevice> getDeviceList(final DeviceFilter filter) {
 		final HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
 		final List<UsbDevice> result = new ArrayList<UsbDevice>();
 		if (deviceList != null) {
@@ -224,8 +224,8 @@ public final class USBMonitor {
 		if (list != null) {
 			final Set<String> keys = list.keySet();
 			if (keys != null && keys.size() > 0) {
-				StringBuilder sb = new StringBuilder(); 
-				for (String key: keys) {
+				final StringBuilder sb = new StringBuilder();
+				for (final String key: keys) {
 					final UsbDevice device = list.get(key);
 					final int num_interface = device != null ? device.getInterfaceCount() : 0;
 					sb.setLength(0);
@@ -255,7 +255,7 @@ public final class USBMonitor {
 	 * request permission to access to USB device
 	 * @param device
 	 */
-	public synchronized void requestPermission(UsbDevice device) {
+	public synchronized void requestPermission(final UsbDevice device) {
 		if (DEBUG) Log.v(TAG, "requestPermission:device=" + device);
 		if (mPermissionIntent != null) {
 			if (device != null) {
@@ -308,7 +308,7 @@ public final class USBMonitor {
 			}
 		}
 	};
-	
+
 	private volatile int mDeviceCounts = 0;
 
 	private final Runnable mDeviceCheckRunnable = new Runnable() {
@@ -333,7 +333,7 @@ public final class USBMonitor {
 			public void run() {
 				UsbControlBlock ctrlBlock;
 				final boolean createNew;
-				ctrlBlock = mCtrlBlocks.get(device); 
+				ctrlBlock = mCtrlBlocks.get(device);
 				if (ctrlBlock == null) {
 					ctrlBlock = new UsbControlBlock(USBMonitor.this, device);
 					mCtrlBlocks.put(device, ctrlBlock);
@@ -348,7 +348,7 @@ public final class USBMonitor {
 			}
 		});
 	}
-	
+
 	private final void processCancel(final UsbDevice device) {
 		if (DEBUG) Log.v(TAG, "processCancel:");
 		if (mOnDeviceConnectListener != null) {
@@ -453,7 +453,7 @@ public final class USBMonitor {
 		 * @param interfaceIndex
 		 * @return
 		 */
-		public synchronized UsbInterface open(int interfaceIndex) {
+		public synchronized UsbInterface open(final int interfaceIndex) {
 			if (DEBUG) Log.i(TAG, "UsbControlBlock#open:" + interfaceIndex);
 			final UsbDevice device = mWeakDevice.get();
 			UsbInterface intf = null;
@@ -492,14 +492,6 @@ public final class USBMonitor {
 			if (DEBUG) Log.i(TAG, "UsbControlBlock#close:");
 
 			if (mConnection != null) {
-				final USBMonitor monitor = mWeakMonitor.get();
-				if (monitor != null) {
-					if (monitor.mOnDeviceConnectListener != null) {
-						final UsbDevice device = mWeakDevice.get();
-						monitor.mOnDeviceConnectListener.onDisconnect(device, this);
-					}
-					monitor.mCtrlBlocks.remove(getDevice());
-				}
 				final int n = mInterfaces.size();
 				int key;
 				UsbInterface intf;
@@ -510,6 +502,14 @@ public final class USBMonitor {
 				}
 				mConnection.close();
 				mConnection = null;
+				final USBMonitor monitor = mWeakMonitor.get();
+				if (monitor != null) {
+					if (monitor.mOnDeviceConnectListener != null) {
+						final UsbDevice device = mWeakDevice.get();
+						monitor.mOnDeviceConnectListener.onDisconnect(device, this);
+					}
+					monitor.mCtrlBlocks.remove(getDevice());
+				}
 			}
 		}
 
