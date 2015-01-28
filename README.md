@@ -21,13 +21,14 @@ All files in the folder are under this Apache License, Version 2.0.
 Files in the jni/libjpeg, jni/libusb and jin/libuvc folders may have a different license,
 see the respective files.
 
-How to compile library (tested NDK-r9d/NDK-r10c 64bit on OSX)
+How to compile library  
 =========
 If you want to compile this library,
  1. move to library/jni directory
  2. run ndk-build clean
  3. run ndk-build
 
+(tested NDK-r9d/NDK-r10c 64bit on OSX)  
 The libraries are saved into libs/`architecture name` directory, for example libs/armeabi-v7a
 Only library for armeabi-v7a architecture is compiled with the default setting.
 If you want to compile for other architecture, you need change APP_ABI flag in the
