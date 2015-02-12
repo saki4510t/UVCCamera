@@ -2,23 +2,23 @@ package com.serenegiant.service;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
- * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ *
  * File name: CameraServer.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
@@ -26,15 +26,6 @@ package com.serenegiant.service;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
-
-import com.serenegiant.encoder.MediaAudioEncoder;
-import com.serenegiant.encoder.MediaEncoder;
-import com.serenegiant.encoder.MediaMuxerWrapper;
-import com.serenegiant.encoder.MediaSurfaceEncoder;
-import com.serenegiant.glutils.RendererHolder;
-import com.serenegiant.usb.UVCCamera;
-import com.serenegiant.usb.USBMonitor.UsbControlBlock;
-import com.serenegiant.usbcameratest4.R;
 
 import android.content.Context;
 import android.media.AudioManager;
@@ -50,10 +41,19 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.Surface;
 
-public class CameraServer extends Handler {
+import com.serenegiant.encoder.MediaAudioEncoder;
+import com.serenegiant.encoder.MediaEncoder;
+import com.serenegiant.encoder.MediaMuxerWrapper;
+import com.serenegiant.encoder.MediaSurfaceEncoder;
+import com.serenegiant.glutils.RendererHolder;
+import com.serenegiant.usb.USBMonitor.UsbControlBlock;
+import com.serenegiant.usb.UVCCamera;
+import com.serenegiant.usbcameratest4.R;
+
+public final class CameraServer extends Handler {
 	private static final boolean DEBUG = true;
 	private static final String TAG = "CameraServer";
-	
+
     private static class CallbackCookie {
 		boolean isConnected;
 	}
@@ -65,14 +65,14 @@ public class CameraServer extends Handler {
 	private RendererHolder mRendererHolder;
 	private final WeakReference<CameraThread> mWeakThread;
 
-	public static CameraServer createServer(Context context, UsbControlBlock ctrlBlock, int vid, int pid) {
+	public static CameraServer createServer(final Context context, final UsbControlBlock ctrlBlock, final int vid, final int pid) {
 		if (DEBUG) Log.d(TAG, "createServer:");
 		final CameraThread thread = new CameraThread(context, ctrlBlock);
 		thread.start();
 		return thread.getHandler();
 	}
 
-	private CameraServer(CameraThread thread) {
+	private CameraServer(final CameraThread thread) {
 		if (DEBUG) Log.d(TAG, "Constructor:");
 		mWeakThread = new WeakReference<CameraThread>(thread);
 		mRegisteredCallbackCount = 0;
@@ -86,13 +86,13 @@ public class CameraServer extends Handler {
 		super.finalize();
 	}
 
-	public void registerCallback(IUVCServiceCallback callback) {
+	public void registerCallback(final IUVCServiceCallback callback) {
 		if (DEBUG) Log.d(TAG, "registerCallback:");
 		mCallbacks.register(callback, new CallbackCookie());
 		mRegisteredCallbackCount++;
 	}
 
-	public boolean unregisterCallback(IUVCServiceCallback callback) {
+	public boolean unregisterCallback(final IUVCServiceCallback callback) {
 		if (DEBUG) Log.d(TAG, "unregisterCallback:");
 		mCallbacks.unregister(callback);
 		mRegisteredCallbackCount--;
@@ -144,7 +144,7 @@ public class CameraServer extends Handler {
 			// therefore this method will take a time to execute
 			try {
 				thread.mSync.wait();
-			} catch (InterruptedException e) {
+			} catch (final InterruptedException e) {
 			}
 		}
 		sendEmptyMessage(MSG_CLOSE);
@@ -160,12 +160,12 @@ public class CameraServer extends Handler {
 		return (thread != null) && thread.isRecording();
 	}
 
-	public void addSurface(int id, Surface surface, boolean isRecordable, IUVCServiceOnFrameAvailable onFrameAvailableListener) {
+	public void addSurface(final int id, final Surface surface, final boolean isRecordable, final IUVCServiceOnFrameAvailable onFrameAvailableListener) {
 		if (DEBUG) Log.d(TAG, "addSurface:id=" + id +",surface=" + surface);
 		mRendererHolder.addSurface(id, surface, isRecordable, onFrameAvailableListener);
 	}
 
-	public void removeSurface(int id) {
+	public void removeSurface(final int id) {
 		if (DEBUG) Log.d(TAG, "removeSurface:id=" + id);
 		mRendererHolder.removeSurface(id);
 	}
@@ -180,7 +180,7 @@ public class CameraServer extends Handler {
 			sendEmptyMessage(MSG_CAPTURE_STOP);
 	}
 
-	public void captureStill(String path) {
+	public void captureStill(final String path) {
 		mRendererHolder.captureStill(path);
 		sendMessage(obtainMessage(MSG_CAPTURE_STILL, path));
 	}
@@ -194,7 +194,7 @@ public class CameraServer extends Handler {
 			try {
 				mCallbacks.getBroadcastItem(i).onConnected();
 				((CallbackCookie)mCallbacks.getBroadcastCookie(i)).isConnected = true;
-			} catch (Exception e) {
+			} catch (final Exception e) {
 				Log.e(TAG, "failed to call IOverlayCallback#onFrameAvailable");
 			}
 		}
@@ -209,7 +209,7 @@ public class CameraServer extends Handler {
 			try {
 				mCallbacks.getBroadcastItem(i).onDisConnected();
 				((CallbackCookie)mCallbacks.getBroadcastCookie(i)).isConnected = false;
-			} catch (Exception e) {
+			} catch (final Exception e) {
 				Log.e(TAG, "failed to call IOverlayCallback#onDisConnected");
 			}
 		}
@@ -228,7 +228,7 @@ public class CameraServer extends Handler {
 	private static final int MSG_RELEASE = 9;
 
 	@Override
-	public void handleMessage(Message msg) {
+	public void handleMessage(final Message msg) {
 		final CameraThread thread = mWeakThread.get();
 		if (thread == null) return;
 		switch (msg.what) {
@@ -278,7 +278,7 @@ public class CameraServer extends Handler {
 		private CameraServer mHandler;
 		private UsbControlBlock mCtrlBlock;
 		/**
-		 * for accessing UVC camera 
+		 * for accessing UVC camera
 		 */
 		private UVCCamera mUVCCamera;
 		/**
@@ -287,7 +287,7 @@ public class CameraServer extends Handler {
 		private MediaMuxerWrapper mMuxer;
 		private MediaSurfaceEncoder mVideoEncoder;
 
-		private CameraThread(Context context, UsbControlBlock ctrlBlock) {
+		private CameraThread(final Context context, final UsbControlBlock ctrlBlock) {
 			super("CameraThread");
 			if (DEBUG) Log.d(TAG_THREAD, "Constructor:");
 			mWeakContext = new WeakReference<Context>(context);
@@ -307,65 +307,65 @@ public class CameraServer extends Handler {
 				if (mHandler == null)
 				try {
 					mSync.wait();
-				} catch (InterruptedException e) {
+				} catch (final InterruptedException e) {
 				}
 			}
 			return mHandler;
 		}
 
 		public boolean isCameraOpened() {
-			synchronized (mSync) {
-				return mUVCCamera != null;
-			}
+			return mUVCCamera != null;
 		}
 
 		public boolean isRecording() {
-			synchronized (mSync) {
-				return (mUVCCamera != null) && (mMuxer != null);
-			}
+			return (mUVCCamera != null) && (mMuxer != null);
 		}
 
 		public void handleOpen() {
 			if (DEBUG) Log.d(TAG_THREAD, "handleOpen:");
 			handleClose();
-			final UVCCamera camera = new UVCCamera();
-			camera.open(mCtrlBlock);
-			synchronized (mSync) {
-				mUVCCamera = camera;
-			}
+			mUVCCamera = new UVCCamera();
+			mUVCCamera.open(mCtrlBlock);
 			mHandler.processOnCameraStart();
 		}
 
 		public void handleClose() {
 			if (DEBUG) Log.d(TAG_THREAD, "handleClose:");
 			handleStopRecording();
-			final UVCCamera camera;
-			synchronized (mSync) {
-				camera = mUVCCamera;
+			if (mUVCCamera != null) {
+				mUVCCamera.stopPreview();
+				mUVCCamera.destroy();
 				mUVCCamera = null;
-			}
-			if (camera != null) {
-				camera.stopPreview();
-				camera.destroy();
 				mHandler.processOnCameraStop();
 			}
 		}
 
-		public void handleStartPreview(Surface surface) {
+		public void handleStartPreview(final Surface surface) {
 			if (DEBUG) Log.d(TAG_THREAD, "handleStartPreview:");
-			synchronized (mSync) {
-				if (mUVCCamera == null) return;
-				mUVCCamera.setPreviewDisplay(surface);
-				mUVCCamera.startPreview();
+			if (mUVCCamera == null) return;
+			try {
+				mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
+			} catch (final IllegalArgumentException e) {
+				try {
+					// fallback to YUV mode
+					mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
+				} catch (final IllegalArgumentException e1) {
+					mUVCCamera.destroy();
+					mUVCCamera = null;
+				}
 			}
+			if (mUVCCamera == null) return;
+//				mUVCCamera.setFrameCallback(mIFrameCallback, UVCCamera.PIXEL_FORMAT_YUV);
+			mUVCCamera.setPreviewDisplay(surface);
+			mUVCCamera.startPreview();
 		}
 
 		public void handleStopPreview() {
 			if (DEBUG) Log.d(TAG_THREAD, "handleStopPreview:");
+			if (mUVCCamera != null) {
+				mUVCCamera.stopPreview();
+			}
 			synchronized (mSync) {
-				if (mUVCCamera != null) {
-					mUVCCamera.stopPreview();
-				}
 				mSync.notifyAll();
 			}
 		}
@@ -379,10 +379,8 @@ public class CameraServer extends Handler {
 		public void handleStartRecording() {
 			if (DEBUG) Log.d(TAG_THREAD, "handleStartRecording:");
 			try {
-				synchronized (mSync) {
-					if ((mUVCCamera == null) || (mMuxer != null)) return;
-					mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
-				}
+				if ((mUVCCamera == null) || (mMuxer != null)) return;
+				mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
 				new MediaSurfaceEncoder(mMuxer, mMediaEncoderListener);
 				if (true) {
 					// for audio capturing
@@ -390,20 +388,16 @@ public class CameraServer extends Handler {
 				}
 				mMuxer.prepare();
 				mMuxer.startRecording();
-			} catch (IOException e) {
+			} catch (final IOException e) {
 				Log.e(TAG, "startCapture:", e);
 			}
 		}
 
 		public void handleStopRecording() {
 			if (DEBUG) Log.d(TAG_THREAD, "handleStopRecording:mMuxer=" + mMuxer);
-			final MediaMuxerWrapper muxer;
-			synchronized (mSync) {
-				muxer = mMuxer;
+			if (mMuxer != null) {
+				mMuxer.stopRecording();
 				mMuxer = null;
-			}
-			if (muxer != null) {
-				muxer.stopRecording();
 				// you should not wait here
 			}
 		}
@@ -415,13 +409,13 @@ public class CameraServer extends Handler {
 				try {
 					if (DEBUG) Log.i(TAG, "MediaScannerConnection#scanFile");
 					MediaScannerConnection.scanFile(context, new String[]{ path }, null, null);
-				} catch (Exception e) {
+				} catch (final Exception e) {
 					Log.e(TAG, "handleUpdateMedia:", e);
 				}
 			} else {
 				Log.w(TAG, "MainActivity already destroyed");
 				// give up to add this movice to MediaStore now.
-				// Seeing this movie on Gallery app etc. will take a lot of time. 
+				// Seeing this movie on Gallery app etc. will take a lot of time.
 				handleRelease();
 			}
 		}
@@ -436,6 +430,13 @@ public class CameraServer extends Handler {
 			if (!mIsRecording)
 				Looper.myLooper().quit();
 		}
+
+/*		// if you need frame data as ByteBuffer on Java side, you can use this callback method with UVCCamera#setFrameCallback
+		private final IFrameCallback mIFrameCallback = new IFrameCallback() {
+			@Override
+			public void onFrame(final ByteBuffer frame) {
+			}
+		}; */
 
 		private final IUVCServiceOnFrameAvailable mOnFrameAvailable = new IUVCServiceOnFrameAvailable() {
 			@Override
@@ -453,7 +454,7 @@ public class CameraServer extends Handler {
 
 		private final MediaEncoder.MediaEncoderListener mMediaEncoderListener = new MediaEncoder.MediaEncoderListener() {
 			@Override
-			public void onPrepared(MediaEncoder encoder) {
+			public void onPrepared(final MediaEncoder encoder) {
 				if (DEBUG) Log.d(TAG, "onPrepared:encoder=" + encoder);
 				mIsRecording = true;
 				if (encoder instanceof MediaSurfaceEncoder)
@@ -462,13 +463,13 @@ public class CameraServer extends Handler {
 					final Surface encoderSurface = mVideoEncoder.getInputSurface();
 					mEncoderSurfaceId = encoderSurface.hashCode();
 					mHandler.mRendererHolder.addSurface(mEncoderSurfaceId, encoderSurface, true, mOnFrameAvailable);
-				} catch (Exception e) {
+				} catch (final Exception e) {
 					Log.e(TAG, "onPrepared:", e);
 				}
 			}
 
 			@Override
-			public void onStopped(MediaEncoder encoder) {
+			public void onStopped(final MediaEncoder encoder) {
 				if (DEBUG) Log.v(TAG_THREAD, "onStopped:encoder=" + encoder);
 				if ((encoder instanceof MediaSurfaceEncoder))
 				try {
@@ -482,7 +483,7 @@ public class CameraServer extends Handler {
 					if (!TextUtils.isEmpty(path)) {
 						mHandler.sendMessageDelayed(mHandler.obtainMessage(MSG_MEDIA_UPDATE, path), 1000);
 					}
-				} catch (Exception e) {
+				} catch (final Exception e) {
 					Log.e(TAG, "onPrepared:", e);
 				}
 			}
@@ -491,7 +492,8 @@ public class CameraServer extends Handler {
 		/**
 		 * prepare and load shutter sound for still image capturing
 		 */
-		private void loadSutterSound(Context context) {
+		@SuppressWarnings("deprecation")
+		private void loadSutterSound(final Context context) {
 			if (DEBUG) Log.d(TAG_THREAD, "loadSutterSound:");
 	    	// get system stream type using refrection
 	        int streamType;
@@ -499,13 +501,13 @@ public class CameraServer extends Handler {
 	            final Class<?> audioSystemClass = Class.forName("android.media.AudioSystem");
 	            final Field sseField = audioSystemClass.getDeclaredField("STREAM_SYSTEM_ENFORCED");
 	            streamType = sseField.getInt(null);
-	        } catch (Exception e) {
+	        } catch (final Exception e) {
 	        	streamType = AudioManager.STREAM_SYSTEM;	// set appropriate according to your app policy
 	        }
 	        if (mSoundPool != null) {
 	        	try {
 	        		mSoundPool.release();
-	        	} catch (Exception e) {
+	        	} catch (final Exception e) {
 	        	}
 	        	mSoundPool = null;
 	        }

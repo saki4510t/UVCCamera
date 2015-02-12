@@ -40,7 +40,7 @@ jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     }
     // register native methods
     int result = register_uvccamera(env);
-
+	setVM(vm);
 #if LOCAL_DEBUG
     LOGD("JNI_OnLoad:finshed:result=%d", result);
 #endif

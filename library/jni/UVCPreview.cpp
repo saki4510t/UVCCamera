@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <linux/time.h>
 #include <unistd.h>
+#include "utilbase.h"
 #include "UVCPreview.h"
 #include "libuvc_internal.h"
 
@@ -48,7 +49,10 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	previewFormat(WINDOW_FORMAT_RGBA_8888),
 	mIsRunning(false),
 	mIsCapturing(false),
-	captureQueu(NULL) {
+	captureQueu(NULL),
+	mFrameCallbackObj(NULL),
+	mFrameCallbackFunc(NULL),
+	callbackPixelBytes(2) {
 
 	ENTER();
 	pthread_cond_init(&preview_sync, NULL);
@@ -115,6 +119,80 @@ int UVCPreview::setPreviewDisplay(ANativeWindow *preview_window) {
 	RETURN(0, int);
 }
 
+int UVCPreview::setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format) {
+	
+	ENTER();
+	pthread_mutex_lock(&capture_mutex);
+	{
+		if (isRunning() && isCapturing()) {
+			mIsCapturing = false;
+			if (mFrameCallbackObj) {
+				pthread_cond_signal(&capture_sync);
+				pthread_cond_wait(&capture_sync, &capture_mutex);	// wait finishing capturing
+			}
+		}
+		if (!env->IsSameObject(mFrameCallbackObj, frame_callback_obj))	{
+			iframecallback_fields.onFrame = NULL;
+			if (mFrameCallbackObj) {
+				env->DeleteGlobalRef(mFrameCallbackObj);
+			}
+			mFrameCallbackObj = frame_callback_obj;
+			if (frame_callback_obj) {
+				// get method IDs of Java object for callback
+				jclass clazz = env->GetObjectClass(frame_callback_obj);
+				if (LIKELY(clazz)) {
+					iframecallback_fields.onFrame = env->GetMethodID(clazz,
+						"onFrame",	"(Ljava/nio/ByteBuffer;)V");
+				} else {
+					LOGW("failed to get object class");
+				}
+				env->ExceptionClear();
+				if (!iframecallback_fields.onFrame) {
+					LOGE("Can't find IFrameCallback#onFrame");
+					env->DeleteGlobalRef(frame_callback_obj);
+					mFrameCallbackObj = frame_callback_obj = NULL;
+				}
+			}
+		}
+		if (frame_callback_obj) {
+			mPixelFormat = pixel_format;
+			callbackPixelFormatChanged();
+		}
+	}
+	pthread_mutex_unlock(&capture_mutex);
+	RETURN(0, int);
+}
+
+void UVCPreview::callbackPixelFormatChanged() {
+	mFrameCallbackFunc = NULL;
+	const size_t sz = requestWidth * requestHeight;
+	switch (mPixelFormat) {
+	  case PIXEL_FORMAT_RAW:
+		LOGI("PIXEL_FORMAT_RAW:");
+		callbackPixelBytes = sz * 2;
+		break;
+	  case PIXEL_FORMAT_YUV:
+		LOGI("PIXEL_FORMAT_YUV:");
+		callbackPixelBytes = sz * 2;
+		break;
+	  case PIXEL_FORMAT_RGB565:
+		LOGI("PIXEL_FORMAT_RGB565:");
+		mFrameCallbackFunc = uvc_any2rgb565;
+		callbackPixelBytes = sz * 2;
+		break;
+	  case PIXEL_FORMAT_RGBX:
+		LOGI("PIXEL_FORMAT_RGBX:");
+		mFrameCallbackFunc = uvc_any2rgbx;
+		callbackPixelBytes = sz * 4;
+		break;
+	  case PIXEL_FORMAT_NV21:
+		LOGI("PIXEL_FORMAT_NV21:");
+		mFrameCallbackFunc = uvc_yuyv2yuv420SP;
+		callbackPixelBytes = (sz * 3) / 2;
+		break;
+	}
+}
+
 void UVCPreview::clearDisplay() {
 	ENTER();
 
@@ -160,10 +238,10 @@ int UVCPreview::startPreview() {
 
 	int result = EXIT_FAILURE;
 	if (!isRunning()) {
+		mIsRunning = true;
 		pthread_mutex_lock(&preview_mutex);
 		{
 			if (LIKELY(mPreviewWindow)) {
-				mIsRunning = true;
 				result = pthread_create(&preview_thread, NULL, preview_thread_func, (void *)this);
 			}
 		}
@@ -306,10 +384,6 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 	uvc_error_t result;
 
 	ENTER();
-//	result = uvc_get_stream_ctrl_format_size(mDeviceHandle, ctrl,
-//		UVC_FRAME_FORMAT_YUYV,
-//		requestWidth, requestHeight, requestFps
-//	);
 	result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, ctrl,
 		!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
 		requestWidth, requestHeight, 1, 30
@@ -457,11 +531,9 @@ int copyToSurface(uvc_frame_t *frame, ANativeWindow **window) {
 	return result; //RETURN(result, int);
 }
 
+// changed to return original frame instead of returning converted frame even if convert_func is not null.
 uvc_frame_t *UVCPreview::draw_preview_one(uvc_frame_t *frame, ANativeWindow **window, convFunc_t convert_func, int pixcelBytes) {
 	// ENTER();
-
-	uvc_error_t ret;
-	ANativeWindow_Buffer buffer;
 
 	int b = 0;
 	pthread_mutex_lock(&preview_mutex);
@@ -475,26 +547,19 @@ uvc_frame_t *UVCPreview::draw_preview_one(uvc_frame_t *frame, ANativeWindow **wi
 			converted = uvc_allocate_frame(frame->width * frame->height * pixcelBytes);
 			if LIKELY(converted) {
 				b = convert_func(frame, converted);
-				if (UNLIKELY(b)) {
+				if (!b) {
+					pthread_mutex_lock(&preview_mutex);
+					copyToSurface(converted, window);
+					pthread_mutex_unlock(&preview_mutex);
+				} else {
 					LOGE("failed converting");
-					uvc_free_frame(converted);
-					converted = NULL;
 				}
+				uvc_free_frame(converted);
 			}
-			// release original frame data(YUYV)
-			uvc_free_frame(frame);
-			frame = NULL;
 		} else {
-			converted = frame;
-		}
-		if (LIKELY(converted)) {
-			// draw a frame to the view when success to convert
 			pthread_mutex_lock(&preview_mutex);
-			copyToSurface(converted, window);
+			copyToSurface(frame, window);
 			pthread_mutex_unlock(&preview_mutex);
-			return converted; // RETURN(converted, uvc_frame_t *);
-		} else {
-			LOGE("draw_preview_one:unable to allocate converted frame!");
 		}
 	}
 	return frame; //RETURN(frame, uvc_frame_t *);
@@ -598,7 +663,14 @@ void *UVCPreview::capture_thread_func(void *vptr_args) {
 	ENTER();
 	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
 	if (LIKELY(preview)) {
-		preview->do_capture();	// never return until finish previewing
+		JavaVM *vm = getVM();
+		JNIEnv *env;
+		// attach to JavaVM
+		vm->AttachCurrentThread(&env, NULL);
+		preview->do_capture(env);	// never return until finish previewing
+		// detach from JavaVM
+		vm->DetachCurrentThread();
+		MARK("DetachCurrentThread");
 	}
 	PRE_EXIT();
 	pthread_exit(NULL);
@@ -607,54 +679,106 @@ void *UVCPreview::capture_thread_func(void *vptr_args) {
 /**
  * the actual function for capturing
  */
-void UVCPreview::do_capture() {
+void UVCPreview::do_capture(JNIEnv *env) {
 
 	ENTER();
 
-	mIsCapturing = false;
 	clearCaptureFrame();
+	callbackPixelFormatChanged();
 	for (; isRunning() ;) {
-		pthread_mutex_lock(&capture_mutex);
+		mIsCapturing = true;
 		if (mCaptureWindow) {
-			mIsCapturing = true;
-			pthread_mutex_unlock(&capture_mutex);
-			do_capture_surface();
+			do_capture_surface(env);
 		} else {
-			// wait for setting capture window(come from Surface of MediaMuxer)
-			pthread_mutex_unlock(&capture_mutex);
-			usleep(100000);	// 10msec
+			do_capture_idle_loop(env);
 		}
+		pthread_cond_broadcast(&capture_sync);
+	}	// end of for (; isRunning() ;)
+	EXIT();
+}
+
+void UVCPreview::do_capture_idle_loop(JNIEnv *env) {
+	ENTER();
+	
+	for (; isRunning() && isCapturing() ;) {
+		do_capture_callback(env, waitCaptureFrame());
 	}
+	
 	EXIT();
 }
 
 /**
  * write frame data to Surface for capturing
  */
-void UVCPreview::do_capture_surface() {
+void UVCPreview::do_capture_surface(JNIEnv *env) {
 	ENTER();
+
 	uvc_frame_t *frame = NULL;
+	uvc_frame_t *converted = NULL;
 	char *local_picture_path;
+
 	for (; isRunning() && isCapturing() ;) {
 		frame = waitCaptureFrame();
 		if (LIKELY(frame)) {
-			// this frame data has already converted to RGBA/RGBX in #draw_preview_one
+			// frame data is always YUYV format.
 			if LIKELY(isCapturing()) {
-				pthread_mutex_lock(&capture_mutex);
-				if (LIKELY(mCaptureWindow)) {
-					copyToSurface(frame, &mCaptureWindow);
+				if (UNLIKELY(!converted)) {
+					converted = uvc_allocate_frame(previewBytes);
 				}
-				pthread_mutex_unlock(&capture_mutex);
+				if (LIKELY(converted)) {
+					int b = uvc_any2rgbx(frame, converted);
+					if (!b) {
+						if (LIKELY(mCaptureWindow)) {
+							copyToSurface(converted, &mCaptureWindow);
+						}
+					}
+				}
 			}
-			uvc_free_frame(frame);
-			frame = NULL;
+			do_capture_callback(env, frame);
 		}
+	}
+	if (converted) {
+		uvc_free_frame(converted);
 	}
 	if (mCaptureWindow) {
 		ANativeWindow_release(mCaptureWindow);
 		mCaptureWindow = NULL;
 	}
-	pthread_cond_broadcast(&capture_sync);
+
 	EXIT();
 }
 
+/**
+* call IFrameCallback#onFrame if needs
+ */
+void UVCPreview::do_capture_callback(JNIEnv *env, uvc_frame_t *frame) {
+	ENTER();
+
+	if (LIKELY(frame)) {
+		uvc_frame_t *callback_frame = frame;
+		if (mFrameCallbackObj) {
+			if (mFrameCallbackFunc) {
+				callback_frame = uvc_allocate_frame(callbackPixelBytes);
+				if (LIKELY(callback_frame)) {
+					int b = mFrameCallbackFunc(frame, callback_frame);
+					uvc_free_frame(frame);
+					if (UNLIKELY(b)) {
+						LOGW("failed to convert for callback frame");
+						goto SKIP;
+					}
+				} else {
+					LOGW("failed to allocate for callback frame");
+					callback_frame = frame;
+					goto SKIP;
+				}
+			}
+			jobject buf = env->NewDirectByteBuffer(callback_frame->data, callbackPixelBytes);
+			env->CallVoidMethod(mFrameCallbackObj, iframecallback_fields.onFrame, buf);
+			env->ExceptionClear();
+			env->DeleteLocalRef(buf);
+		}
+ SKIP:
+		uvc_free_frame(callback_frame);
+	}
+	EXIT();
+}

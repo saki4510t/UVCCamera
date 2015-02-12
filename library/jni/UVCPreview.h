@@ -39,6 +39,17 @@
 
 typedef uvc_error_t (*convFunc_t)(uvc_frame_t *in, uvc_frame_t *out);
 
+#define PIXEL_FORMAT_RAW 0		// same as PIXEL_FORMAT_YUV
+#define PIXEL_FORMAT_YUV 1
+#define PIXEL_FORMAT_RGB565 2
+#define PIXEL_FORMAT_RGBX 3
+#define PIXEL_FORMAT_NV21 4		// YVU420SemiPlanar
+
+// for callback to Java object
+typedef struct {
+	jmethodID onFrame;
+} Fields_iframecallback;
+
 class UVCPreview {
 private:
 	uvc_device_handle_t *mDeviceHandle;
@@ -60,7 +71,12 @@ private:
 	pthread_t capture_thread;
 	pthread_mutex_t capture_mutex;
 	pthread_cond_t capture_sync;
-	uvc_frame_t *captureQueu;			// 最新の1フレームだけを保持可能に変更
+	uvc_frame_t *captureQueu;			// keep latest frame
+	jobject mFrameCallbackObj;
+	convFunc_t mFrameCallbackFunc;
+	Fields_iframecallback iframecallback_fields;
+	int mPixelFormat;
+	size_t callbackPixelBytes;
 //
 	void clearDisplay();
 	static void uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args);
@@ -76,8 +92,11 @@ private:
 	uvc_frame_t *waitCaptureFrame();
 	void clearCaptureFrame();
 	static void *capture_thread_func(void *vptr_args);
-	void do_capture();
-	void do_capture_surface();
+	void do_capture(JNIEnv *env);
+	void do_capture_surface(JNIEnv *env);
+	void do_capture_idle_loop(JNIEnv *env);
+	void do_capture_callback(JNIEnv *env, uvc_frame_t *frame);
+	void callbackPixelFormatChanged();
 public:
 	UVCPreview(uvc_device_handle_t *devh);
 	~UVCPreview();
@@ -85,6 +104,7 @@ public:
 	inline const bool isRunning() const;
 	int setPreviewSize(int width, int height, int mode);
 	int setPreviewDisplay(ANativeWindow *preview_window);
+	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
 	int startPreview();
 	int stopPreview();
 	inline const bool isCapturing() const;

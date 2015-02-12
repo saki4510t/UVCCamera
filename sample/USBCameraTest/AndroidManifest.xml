@@ -4,7 +4,7 @@
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
  *
  * File name: AndroidManifest.xml
  *
@@ -26,12 +26,12 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.serenegiant.usbcameratest"
-    android:versionCode="4"
-    android:versionName="2.00" >
+    android:versionCode="5"
+    android:versionName="2.10" >
 
     <uses-sdk
         android:minSdkVersion="14"
-        android:targetSdkVersion="19" />
+        android:targetSdkVersion="21" />
 
     <application
         android:allowBackup="true"

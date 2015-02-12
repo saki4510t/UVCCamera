@@ -3,7 +3,7 @@ package com.serenegiant.usb;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
  *
  * File name: UVCCamera.java
  *
@@ -35,9 +35,19 @@ public class UVCCamera {
 
 	private static final String TAG = UVCCamera.class.getSimpleName();
 	private static final String DEFAULT_USBFS = "/dev/bus/usb";
-	private static final int DEFAULT_PREVIEW_WIDTH = 640;
-	private static final int DEFAULT_PREVIEW_HEIGHT = 480;
-	private static final int DEFAULT_PREVIEW_MODE = 0;
+
+	public static final int DEFAULT_PREVIEW_WIDTH = 640;
+	public static final int DEFAULT_PREVIEW_HEIGHT = 480;
+	public static final int DEFAULT_PREVIEW_MODE = 0;
+
+	public static final int FRAME_FORMAT_YUYV = 0;
+	public static final int FRAME_FORMAT_MJPEG = 1;
+
+	public static final int PIXEL_FORMAT_RAW = 0;
+	public static final int PIXEL_FORMAT_YUV = 1;
+	public static final int PIXEL_FORMAT_RGB565 = 2;
+	public static final int PIXEL_FORMAT_RGBX = 3;
+	public static final int PIXEL_FORMAT_NV21 = 4;		// = YUV420SemiPlanar
 
 	private static boolean isLoaded;
 	static {
@@ -78,6 +88,7 @@ public class UVCCamera {
      * close and release UVC camera
      */
     public void close() {
+    	stopPreview();
     	if (mNativePtr != 0) {
     		nativeRelease(mNativePtr);
     	}
@@ -128,6 +139,17 @@ public class UVCCamera {
     }
 
     /**
+     * set frame callback
+     * @param callback
+     * @param pixelFormat
+     */
+    public void setFrameCallback(final IFrameCallback callback, final int pixelFormat) {
+    	if (mNativePtr != 0) {
+        	nativeSetFrameCallback(mNativePtr, callback, pixelFormat);
+    	}
+    }
+
+    /**
      * start preview
      */
     public void startPreview() {
@@ -140,6 +162,7 @@ public class UVCCamera {
      * stop preview
      */
     public void stopPreview() {
+    	setFrameCallback(null, 0);
     	if (mCtrlBlock != null) {
     		nativeStopPreview(mNativePtr);
     	}
@@ -184,6 +207,7 @@ public class UVCCamera {
     private static final native int nativeStartPreview(long id_camera);
     private static final native int nativeStopPreview(long id_camera);
     private static final native int nativeSetPreviewDisplay(long id_camera, Surface surface);
+    private static final native int nativeSetFrameCallback(long mNativePtr, IFrameCallback callback, int pixelFormat);
 
 //**********************************************************************
     /**
@@ -206,4 +230,5 @@ public class UVCCamera {
     	}
     }
     private static final native int nativeSetCaptureDisplay(long id_camera, Surface surface);
+
 }

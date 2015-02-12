@@ -66,6 +66,7 @@ LOCAL_ARM_MODE := arm
 
 LOCAL_SRC_FILES := \
 		$(UVCCAMERA_ROOT)/_onload.cpp \
+		$(UVCCAMERA_ROOT)/utilbase.cpp \
 		$(UVCCAMERA_ROOT)/UVCCamera.cpp \
 		$(UVCCAMERA_ROOT)/UVCPreview.cpp \
 		$(UVCCAMERA_ROOT)/serenegiant_usb_UVCCamera.cpp

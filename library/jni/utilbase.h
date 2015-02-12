@@ -25,6 +25,7 @@
 #ifndef UTILBASE_H_
 #define UTILBASE_H_
 
+#include <jni.h>
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
@@ -218,5 +219,9 @@
 		LOG_ALWAYS_FATAL(                                       \
 			__FILE__ ":" LITERAL_TO_STRING(__LINE__)            \
 			" Should not be here.");
+
+void setVM(JavaVM *);
+JavaVM *getVM();
+JNIEnv *getEnv();
 
 #endif /* UTILBASE_H_ */

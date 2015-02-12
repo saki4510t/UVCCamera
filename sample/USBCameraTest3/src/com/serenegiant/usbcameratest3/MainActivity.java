@@ -3,7 +3,7 @@ package com.serenegiant.usbcameratest3;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
  *
  * File name: MainActivity.java
  *
@@ -66,7 +66,7 @@ import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.widget.CameraViewInterface;
 
-public class MainActivity extends Activity {
+public final class MainActivity extends Activity {
 	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "MainActivity";
 
@@ -451,46 +451,45 @@ public class MainActivity extends Activity {
 			}
 
 			public boolean isCameraOpened() {
-				synchronized (mSync) {
-					return mUVCCamera != null;
-				}
+				return mUVCCamera != null;
 			}
 
 			public boolean isRecording() {
-				synchronized (mSync) {
-					return (mUVCCamera != null) && (mMuxer != null);
-				}
+				return (mUVCCamera != null) && (mMuxer != null);
 			}
 
 			public void handleOpen(final UsbControlBlock ctrlBlock) {
 				if (DEBUG) Log.v(TAG_THREAD, "handleOpen:");
 				handleClose();
-				final UVCCamera camera = new UVCCamera();
-				camera.open(ctrlBlock);
-				synchronized (mSync) {
-					mUVCCamera = camera;
-				}
+				mUVCCamera = new UVCCamera();
+				mUVCCamera.open(ctrlBlock);
 			}
 
 			public void handleClose() {
 				if (DEBUG) Log.v(TAG_THREAD, "handleClose:");
 				handleStopRecording();
-				final UVCCamera camera;
-				synchronized (mSync) {
-					camera = mUVCCamera;
+				if (mUVCCamera != null) {
+					mUVCCamera.stopPreview();
+					mUVCCamera.destroy();
 					mUVCCamera = null;
-				}
-				if (camera != null) {
-					camera.stopPreview();
-					camera.destroy();
 				}
 			}
 
 			public void handleStartPreview(final Surface surface) {
 				if (DEBUG) Log.v(TAG_THREAD, "handleStartPreview:");
-				synchronized (mSync) {
-					if (mUVCCamera == null) return;
+				if (mUVCCamera == null) return;
+				try {
 					mUVCCamera.setPreviewSize(PREVIEW_WIDTH, PREVIEW_HEIGHT, PREVIEW_MODE);
+				} catch (final IllegalArgumentException e) {
+					try {
+						// fallback to YUV mode
+						mUVCCamera.setPreviewSize(PREVIEW_WIDTH, PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
+					} catch (final IllegalArgumentException e1) {
+						handleClose();
+					}
+				}
+				if (mUVCCamera != null) {
+//					mUVCCamera.setFrameCallback(mIFrameCallback, UVCCamera.PIXEL_FORMAT_YUV);
 					mUVCCamera.setPreviewDisplay(surface);
 					mUVCCamera.startPreview();
 				}
@@ -498,10 +497,10 @@ public class MainActivity extends Activity {
 
 			public void handleStopPreview() {
 				if (DEBUG) Log.v(TAG_THREAD, "handleStopPreview:");
+				if (mUVCCamera != null) {
+					mUVCCamera.stopPreview();
+				}
 				synchronized (mSync) {
-					if (mUVCCamera != null) {
-						mUVCCamera.stopPreview();
-					}
 					mSync.notifyAll();
 				}
 			}
@@ -536,10 +535,8 @@ public class MainActivity extends Activity {
 			public void handleStartRecording() {
 				if (DEBUG) Log.v(TAG_THREAD, "handleStartRecording:");
 				try {
-					synchronized (mSync) {
-						if ((mUVCCamera == null) || (mMuxer != null)) return;
-						mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
-					}
+					if ((mUVCCamera == null) || (mMuxer != null)) return;
+					mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
 					if (USE_SURFACE_ENCODER) {
 						// for video capturing using MediaSurfaceEncoder
 						new MediaSurfaceEncoder(mMuxer, mMediaEncoderListener);
@@ -560,13 +557,9 @@ public class MainActivity extends Activity {
 
 			public void handleStopRecording() {
 				if (DEBUG) Log.v(TAG_THREAD, "handleStopRecording:mMuxer=" + mMuxer);
-				final MediaMuxerWrapper muxer;
-				synchronized (mSync) {
-					muxer = mMuxer;
+				if (mMuxer != null) {
+					mMuxer.stopRecording();
 					mMuxer = null;
-				}
-				if (muxer != null) {
-					muxer.stopRecording();
 					// you should not wait here
 				}
 			}
@@ -597,6 +590,13 @@ public class MainActivity extends Activity {
 				if (!mIsRecording)
 					Looper.myLooper().quit();
 			}
+
+/*			// if you need frame data as ByteBuffer on Java side, you can use this callback method with UVCCamera#setFrameCallback
+			private final IFrameCallback mIFrameCallback = new IFrameCallback() {
+				@Override
+				public void onFrame(final ByteBuffer frame) {
+				}
+			}; */
 
 			private final MediaEncoder.MediaEncoderListener mMediaEncoderListener = new MediaEncoder.MediaEncoderListener() {
 				@Override
@@ -645,6 +645,7 @@ public class MainActivity extends Activity {
 			/**
 			 * prepare and load shutter sound for still image capturing
 			 */
+			@SuppressWarnings("deprecation")
 			private void loadSutterSound(final Context context) {
 		    	// get system stream type using refrection
 		        int streamType;

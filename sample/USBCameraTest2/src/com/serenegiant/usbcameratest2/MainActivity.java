@@ -3,7 +3,7 @@ package com.serenegiant.usbcameratest2;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
  *
  * File name: MainActivity.java
  *
@@ -60,7 +60,7 @@ import com.serenegiant.video.Encoder.EncodeListener;
 import com.serenegiant.video.SurfaceEncoder;
 import com.serenegiant.widget.UVCCameraTextureView;
 
-public class MainActivity extends Activity {
+public final class MainActivity extends Activity {
 	private static final boolean DEBUG = true;	// set false when releasing
 	private static final String TAG = "MainActivity";
 
@@ -101,7 +101,7 @@ public class MainActivity extends Activity {
 		mCaptureButton.setOnClickListener(mOnClickListener);
 
 		mUVCCameraView = (UVCCameraTextureView)findViewById(R.id.UVCCameraTextureView1);
-		mUVCCameraView.setAspectRatio(640 / 480.f);
+		mUVCCameraView.setAspectRatio(UVCCamera.DEFAULT_PREVIEW_WIDTH / (float)UVCCamera.DEFAULT_PREVIEW_HEIGHT);
 		mUVCCameraView.setSurfaceTextureListener(mSurfaceTextureListener);
 
 		mUSBMonitor = new USBMonitor(this, mOnDeviceConnectListener);
@@ -185,11 +185,24 @@ public class MainActivity extends Activity {
 						mPreviewSurface.release();
 						mPreviewSurface = null;
 					}
-					final SurfaceTexture st = mUVCCameraView.getSurfaceTexture();
-					if (st != null)
-						mPreviewSurface = new Surface(st);
-					mUVCCamera.setPreviewDisplay(mPreviewSurface);
-					mUVCCamera.startPreview();
+					try {
+						mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
+					} catch (final IllegalArgumentException e) {
+						try {
+							// fallback to YUV mode
+							mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
+						} catch (final IllegalArgumentException e1) {
+							mUVCCamera.destroy();
+							mUVCCamera = null;
+						}
+					}
+					if (mUVCCamera != null) {
+						final SurfaceTexture st = mUVCCameraView.getSurfaceTexture();
+						if (st != null)
+							mPreviewSurface = new Surface(st);
+						mUVCCamera.setPreviewDisplay(mPreviewSurface);
+						mUVCCamera.startPreview();
+					}
 				}
 			});
 		}

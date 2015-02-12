@@ -776,6 +776,10 @@ uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_any2rgbx(uvc_frame_t *in, uvc_frame_t *out);
 
+uvc_error_t uvc_yuyv2yuv420P(uvc_frame_t *in, uvc_frame_t *out);
+uvc_error_t uvc_yuyv2iyuv420P(uvc_frame_t *in, uvc_frame_t *out);
+uvc_error_t uvc_yuyv2yuv420SP(uvc_frame_t *in, uvc_frame_t *out);
+uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out);
 //**********************************************************************
 // added for diagonostic
 // t_saki@serenegiant.com

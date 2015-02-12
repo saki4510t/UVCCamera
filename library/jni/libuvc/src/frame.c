@@ -1058,6 +1058,183 @@ uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	return UVC_SUCCESS;
 }
 
+int uvc_yuyv2yuv420P(uvc_frame_t *in, uvc_frame_t *out) {
+
+	ENTER();
+	
+	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_YUYV))
+		RETURN(UVC_ERROR_INVALID_PARAM, uvc_error_t);
+
+	if (UNLIKELY(uvc_ensure_frame_size(out, (in->width * in->height * 3) / 2) < 0))
+		RETURN(UVC_ERROR_NO_MEM, uvc_error_t);
+
+	const uint8_t *src = in->data;
+	uint8_t *dest = out->data;
+	const int32_t width = in->width;
+	const int32_t height = in->height;
+	const int32_t src_width = in->step;
+	const int32_t src_height = in->height;
+	const int32_t dest_width = out->width = out->step = in->width;
+	const int32_t dest_height = out->height = in->height;
+	const uint32_t hh = src_height < dest_height ? src_height : dest_height;
+	uint8_t *y = dest;
+	uint8_t *v = dest + dest_width * dest_height;
+	uint8_t *u = dest + dest_width * dest_height * 5 / 4;
+	int h, w;
+	for (h = 0; h < hh; h++) {
+		const uint8_t *yuv = src + src_width * h;
+		for (w = 0; w < width; w += 4) {
+			*(y++) = yuv[0];	// y
+			*(y++) = yuv[2];	// y'
+			*(y++) = yuv[4];	// y''
+			*(y++) = yuv[6];	// y'''
+			if ((h & 1) == 1) {
+				*(u++) = yuv[3];	// u
+				*(u++) = yuv[7];	// u
+			} else {
+				*(v++) = yuv[1];	// v
+				*(v++) = yuv[5];	// v
+			}
+			yuv += 8;	// (1pixel=2bytes)x4pixel=8bytes
+		}
+	}
+	RETURN(0, int);
+}
+
+//--------------------------------------------------------------------------------
+int uvc_yuyv2iyuv420P(uvc_frame_t *in, uvc_frame_t *out) {
+
+	ENTER();
+	
+	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_YUYV))
+		RETURN(UVC_ERROR_INVALID_PARAM, uvc_error_t);
+
+	if (UNLIKELY(uvc_ensure_frame_size(out, (in->width * in->height * 3) / 2) < 0))
+		RETURN(UVC_ERROR_NO_MEM, uvc_error_t);
+
+	const uint8_t *src = in->data;
+	uint8_t *dest = out->data;
+	const int32_t width = in->width;
+	const int32_t height = in->height;
+	const int32_t src_width = in->step;
+	const int32_t src_height = in->height;
+	const int32_t dest_width = out->width = out->step = in->width;
+	const int32_t dest_height = out->height = in->height;
+	const uint32_t hh = src_height < dest_height ? src_height : dest_height;
+	uint8_t *y = dest;
+	uint8_t *u = dest + dest_width * dest_height * 5 / 4;
+	uint8_t *v = dest + dest_width * dest_height * 5 / 4;
+	int h, w;
+	for (h = 0; h < hh; h++) {
+		const uint8_t *yuv = src + src_width * h;
+		for (w = 0; w < width; w += 4) {
+			*(y++) = yuv[0];	// y
+			*(y++) = yuv[2];	// y'
+			*(y++) = yuv[4];	// y''
+			*(y++) = yuv[6];	// y'''
+			if ((h & 1) == 1) {
+				*(u++) = yuv[3];	// u
+				*(u++) = yuv[7];	// u
+			} else {
+				*(v++) = yuv[1];	// v
+				*(v++) = yuv[5];	// v
+			}
+			yuv += 8;	// (1pixel=2bytes)x4pixel=8bytes
+		}
+	}
+	RETURN(0, int);
+}
+
+uvc_error_t uvc_yuyv2yuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
+	ENTER();
+	
+	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_YUYV))
+		RETURN(UVC_ERROR_INVALID_PARAM, uvc_error_t);
+
+	if (UNLIKELY(uvc_ensure_frame_size(out, (in->width * in->height * 3) / 2) < 0))
+		RETURN(UVC_ERROR_NO_MEM, uvc_error_t);
+
+	const uint8_t *src = in->data;
+	uint8_t *dest = out->data;
+	const int32_t width = in->width;
+	const int32_t height = in->height;
+	const int32_t src_width = in->step;
+	const int32_t src_height = in->height;
+	const int32_t dest_width = out->width = out->step = in->width;
+	const int32_t dest_height = out->height = in->height;
+
+	const uint32_t hh = src_height < dest_height ? src_height : dest_height;
+	uint8_t *uv = dest + dest_width * dest_height;
+	int h, w;
+	for (h = 0; h < hh - 1; h += 2) {
+		uint8_t *y0 = dest + width * h;
+		uint8_t *y1 = y0 + width;
+		const uint8_t *yuv = src + src_width * h;
+		for (w = 0; w < width; w += 4) {
+			*(y0++) = yuv[0];	// y
+			*(y0++) = yuv[2];	// y'
+			*(y0++) = yuv[4];	// y''
+			*(y0++) = yuv[6];	// y'''
+			*(uv++) = yuv[1];	// u
+			*(uv++) = yuv[3];	// v
+			*(uv++) = yuv[5];	// u
+			*(uv++) = yuv[7];	// v
+			*(y1++) = yuv[src_width+0];	// y on next low
+			*(y1++) = yuv[src_width+2];	// y' on next low
+			*(y1++) = yuv[src_width+4];	// y''  on next low
+			*(y1++) = yuv[src_width+6];	// y'''  on next low
+			yuv += 8;	// (1pixel=2bytes)x4pixels=8bytes
+		}
+	}
+	
+	RETURN(UVC_SUCCESS, uvc_error_t);
+}
+
+uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
+	ENTER();
+	
+	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_YUYV))
+		RETURN(UVC_ERROR_INVALID_PARAM, uvc_error_t);
+
+	if (UNLIKELY(uvc_ensure_frame_size(out, (in->width * in->height * 3) / 2) < 0))
+		return UVC_ERROR_NO_MEM;
+
+	const uint8_t *src = in->data;
+	uint8_t *dest =out->data;
+	const int32_t width = in->width;
+	const int32_t height = in->height;
+	const int32_t src_width = in->step;
+	const int32_t src_height = in->height;
+	const int32_t dest_width = out->width = out->step = in->width;
+	const int32_t dest_height = out->height = in->height;
+
+	const uint32_t hh = src_height < dest_height ? src_height : dest_height;
+	uint8_t *uv = dest + dest_width * dest_height;
+	int h, w;
+	for (h = 0; h < hh - 1; h += 2) {
+		uint8_t *y0 = dest + width * h;
+		uint8_t *y1 = y0 + width;
+		const uint8_t *yuv = src + src_width * h;
+		for (w = 0; w < width; w += 4) {
+			*(y0++) = yuv[0];	// y
+			*(y0++) = yuv[2];	// y'
+			*(y0++) = yuv[4];	// y''
+			*(y0++) = yuv[6];	// y'''
+			*(uv++) = yuv[3];	// v
+			*(uv++) = yuv[1];	// u
+			*(uv++) = yuv[7];	// v
+			*(uv++) = yuv[5];	// u
+			*(y1++) = yuv[src_width+0];	// y on next low
+			*(y1++) = yuv[src_width+2];	// y' on next low
+			*(y1++) = yuv[src_width+4];	// y''  on next low
+			*(y1++) = yuv[src_width+6];	// y'''  on next low
+			yuv += 8;	// (1pixel=2bytes)x4pixels=8bytes
+		}
+	}
+	
+	RETURN(UVC_SUCCESS, uvc_error_t);
+}
+
 /** @brief Convert a frame to RGB565
  * @ingroup frame
  *

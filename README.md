@@ -80,3 +80,10 @@ Add bulk transfer mode and update sample projects.
 
 ###2014/01/12
 Add wiki page, [HowTo](https://github.com/saki4510t/UVCCamera/wiki/howto "HowTo")
+
+###2014/01/22
+Add method to adjust preview resolution and frame data mode.
+
+###2014/02/12
+Add IFrameCallback interface to get frame data as ByteArray
+and new sample project `USBCameraTest5` to demonstrate how to use the callback method.

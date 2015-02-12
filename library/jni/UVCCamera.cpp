@@ -141,6 +141,15 @@ int UVCCamera::setPreviewDisplay(ANativeWindow *preview_window) {
 	RETURN(result, int);
 }
 
+int UVCCamera::setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format) {
+	ENTER();
+	int result = EXIT_FAILURE;
+	if (mPreview) {
+		result = mPreview->setFrameCallback(env, frame_callback_obj, pixel_format);
+	}
+	RETURN(result, int);
+}
+
 int UVCCamera::startPreview() {
 	ENTER();
 

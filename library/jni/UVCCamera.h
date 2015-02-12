@@ -47,6 +47,7 @@ public:
 	int release();
 	int setPreviewSize(int width, int height, int mode);
 	int setPreviewDisplay(ANativeWindow *preview_window);
+	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
 	int startPreview();
 	int stopPreview();
 	int setCaptureDisplay(ANativeWindow *capture_window);

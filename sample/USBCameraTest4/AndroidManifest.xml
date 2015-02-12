@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.serenegiant.usbcameratest4"
-    android:versionCode="4"
-    android:versionName="2.00" >
+    android:versionCode="5"
+    android:versionName="2.10" >
 
     <uses-sdk
         android:minSdkVersion="18"
-        android:targetSdkVersion="19" />
+        android:targetSdkVersion="21" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>

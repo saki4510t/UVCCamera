@@ -2,23 +2,23 @@ package com.serenegiant.widget;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
- * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ *
  * File name: UVCCameraTextureView.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
@@ -57,15 +57,15 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
     private Bitmap mTempBitmap;
     private boolean mReqesutCaptureStillImage;
 
-	public UVCCameraTextureView(Context context) {
+	public UVCCameraTextureView(final Context context) {
 		this(context, null, 0);
 	}
 
-	public UVCCameraTextureView(Context context, AttributeSet attrs) {
+	public UVCCameraTextureView(final Context context, final AttributeSet attrs) {
 		this(context, attrs, 0);
 	}
 
-	public UVCCameraTextureView(Context context, AttributeSet attrs, int defStyle) {
+	public UVCCameraTextureView(final Context context, final AttributeSet attrs, final int defStyle) {
 		super(context, attrs, defStyle);
 		setSurfaceTextureListener(this);
 	}
@@ -92,7 +92,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	}
 
 	@Override
-    public void setAspectRatio(double aspectRatio) {
+    public void setAspectRatio(final double aspectRatio) {
         if (aspectRatio < 0) {
             throw new IllegalArgumentException();
         }
@@ -136,19 +136,19 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
     }
 
 	@Override
-	public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+	public void onSurfaceTextureAvailable(final SurfaceTexture surface, final int width, final int height) {
 		if (DEBUG) Log.v(TAG, "onSurfaceTextureAvailable:" + surface);
 		mRenderHandler = RenderHandler.createHandler(surface);
 		mHasSurface = true;
 	}
 
 	@Override
-	public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+	public void onSurfaceTextureSizeChanged(final SurfaceTexture surface, final int width, final int height) {
 		if (DEBUG) Log.v(TAG, "onSurfaceTextureSizeChanged:" + surface);
 	}
 
 	@Override
-	public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+	public boolean onSurfaceTextureDestroyed(final SurfaceTexture surface) {
 		if (DEBUG) Log.v(TAG, "onSurfaceTextureDestroyed:" + surface);
 		if (mRenderHandler != null) {
 			mRenderHandler.release();
@@ -159,7 +159,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	}
 
 	@Override
-	public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+	public void onSurfaceTextureUpdated(final SurfaceTexture surface) {
 		synchronized (mCaptureSync) {
 			if (mReqesutCaptureStillImage) {
 				mReqesutCaptureStillImage = false;
@@ -184,7 +184,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	 * the returned bitmap will be changed while you are processing the bitmap
 	 * (because we return same instance of bitmap on each call for memory saving)
 	 * if you need to call this method from multiple thread,
-	 * you should change this method(copy and return) 
+	 * you should change this method(copy and return)
 	 */
 	@Override
 	public Bitmap captureStillImage() {
@@ -192,7 +192,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 			mReqesutCaptureStillImage = true;
 			try {
 				mCaptureSync.wait();
-			} catch (InterruptedException e) {
+			} catch (final InterruptedException e) {
 			}
 			return mTempBitmap;
 		}
@@ -225,17 +225,17 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 		private RenderThread mThread;
 		private boolean mIsActive = true;
 
-		public static final RenderHandler createHandler(SurfaceTexture surface) {
+		public static final RenderHandler createHandler(final SurfaceTexture surface) {
 			final RenderThread thread = new RenderThread(surface);
 			thread.start();
 			return thread.getHandler();
 		}
 
-		private RenderHandler(RenderThread thread) {
+		private RenderHandler(final RenderThread thread) {
 			mThread = thread;
 		}
 
-		public final void setVideoEncoder(MediaEncoder encoder) {
+		public final void setVideoEncoder(final MediaEncoder encoder) {
 			if (DEBUG) Log.v(TAG, "setVideoEncoder:");
 			if (mIsActive)
 				sendMessage(obtainMessage(MSG_SET_ENCODER, encoder));
@@ -247,7 +247,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 				sendEmptyMessage(MSG_CREATE_SURFACE);
 				try {
 					mThread.mSync.wait();
-				} catch (InterruptedException e) {
+				} catch (final InterruptedException e) {
 				}
 				return mThread.mPreviewSurface;
 			}
@@ -265,13 +265,13 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 		}
 
 		@Override
-		public final void onFrameAvailable(SurfaceTexture surfaceTexture) {
+		public final void onFrameAvailable(final SurfaceTexture surfaceTexture) {
 			if (mIsActive)
 				sendEmptyMessage(MSG_REQUEST_RENDER);
 		}
 
 		@Override
-		public final void handleMessage(Message msg) {
+		public final void handleMessage(final Message msg) {
 			if (mThread == null) return;
 			switch (msg.what) {
 			case MSG_REQUEST_RENDER:
@@ -308,7 +308,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 			 * constructor
 			 * @param surface: drawing surface came from TexureView
 			 */
-	    	public RenderThread(SurfaceTexture surface) {
+	    	public RenderThread(final SurfaceTexture surface) {
 	    		mSurface = surface;
 	    		setName("RenderThread");
 			}
@@ -320,7 +320,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	            	if (mHandler == null)
 	            	try {
 	            		mSync.wait();
-	            	} catch (InterruptedException e) {
+	            	} catch (final InterruptedException e) {
 	                }
 	            }
 	            return mHandler;
@@ -349,7 +349,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	            }
 			}
 
-			public final void setEncoder(MediaEncoder encoder) {
+			public final void setEncoder(final MediaEncoder encoder) {
 				if (DEBUG) Log.v(TAG, "RenderThread#setEncoder:encoder=" + encoder);
 				if (encoder != null && (encoder instanceof MediaVideoEncoder)) {
 					((MediaVideoEncoder)encoder).setEglContext(mEglSurface.getContext(), mTexId);
@@ -357,6 +357,10 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 				mEncoder = encoder;
 			}
 
+/*
+ * Now you can get frame data as ByteBuffer(as YUV/RGB565/RGBX/NV21 pixel format) using IFrameCallback interface
+ * with UVCCamera#setFrameCallback instead of using following code samples.
+ */
 /*			// for part1
  			private static final int BUF_NUM = 1;
 			private static final int BUF_STRIDE = 640 * 480;
@@ -390,7 +394,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 /*				// sample code to read pixels into Buffer and save as a Bitmap (part1)
 				buffer.position(offset);
 				GLES20.glReadPixels(0, 0, 640, 480, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buffer);
-				if (++cnt == 100) { // save as a Bitmap, only once on this sample code 
+				if (++cnt == 100) { // save as a Bitmap, only once on this sample code
 					// if you save every frame as a Bitmap, app will crash by Out of Memory exception...
 					Log.i(TAG, "Capture image using glReadPixels:offset=" + offset);
 					final Bitmap bitmap = createBitmap(pixels,offset,  640, 480);

@@ -3,7 +3,7 @@ package com.serenegiant.usbcameratest0;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
  *
  * File name: MainActivity.java
  *
@@ -149,8 +149,19 @@ public class MainActivity extends Activity {
 					synchronized (mSync) {
 						mUVCCamera = new UVCCamera();
 						mUVCCamera.open(ctrlBlock);
-						isActive = true;
-						if (mPreviewSurface != null) {
+						try {
+							mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
+						} catch (final IllegalArgumentException e) {
+							try {
+								// fallback to YUV mode
+								mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
+							} catch (final IllegalArgumentException e1) {
+								mUVCCamera.destroy();
+								mUVCCamera = null;
+							}
+						}
+						if ((mUVCCamera != null) && (mPreviewSurface != null)) {
+							isActive = true;
 							mUVCCamera.setPreviewDisplay(mPreviewSurface);
 							mUVCCamera.startPreview();
 							isPreview = true;
