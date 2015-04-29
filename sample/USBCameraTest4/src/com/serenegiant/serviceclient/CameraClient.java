@@ -2,9 +2,9 @@ package com.serenegiant.serviceclient;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
- * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ *
  * File name: CameraClient.java
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -150,7 +150,9 @@ public class CameraClient implements ICameraClient {
 			if (mService == null) {
 				final Context context = mWeakContext.get();
 				if (context != null) {
-					context.bindService(new Intent(IUVCService.class.getName()),
+					final Intent intent = new Intent(IUVCService.class.getName());
+					intent.setPackage("com.serenegiant.usbcameratest4");
+					context.bindService(intent,
 						mServiceConnection, Context.BIND_AUTO_CREATE);
 				} else
 					return true;
