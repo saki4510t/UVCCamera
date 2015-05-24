@@ -3,7 +3,7 @@ UVCCamera
 
 library and sample to access to UVC web camera on non-rooted Android device
 
-Copyright (c) 2014 saki t_saki@serenegiant.com
+Copyright (c) 2014-2015 saki t_saki@serenegiant.com
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ see the respective files.
 
 How to compile library  
 =========
-If you want to compile this library,
- 1. move to library/jni directory
+If you want to compile this library(on command line),
+ 1. move to libUVCCamera directory
  2. run ndk-build clean
  3. run ndk-build
 
@@ -36,6 +36,12 @@ library/jni/Application.mk file.
 
 After compiling, copy or move libuvc.so and libUVCCamera.so into your project's 
 libs/`architecture name` folder.
+
+Or  
+You can use `libUVCCamera` as a library project. Please import all files under `libUVCCamera`
+directory into your IDE.  
+
+All files and directories under `library` directory is deprecated.
 
 libusb and libjpeg are embedded　into libuvc.so with current setting. You can also compile to
 separate shared libraries but some compile/link error may occur(we have not confirmed well yet). 
@@ -78,12 +84,16 @@ even if you stop app. If you stop camera communication, click "stop service" but
 ###2014/12/17
 Add bulk transfer mode and update sample projects.
 
-###2014/01/12
+###2015/01/12
 Add wiki page, [HowTo](https://github.com/saki4510t/UVCCamera/wiki/howto "HowTo")
 
-###2014/01/22
+###2015/01/22
 Add method to adjust preview resolution and frame data mode.
 
-###2014/02/12
+###2015/02/12
 Add IFrameCallback interface to get frame data as ByteArray
 and new sample project `USBCameraTest5` to demonstrate how to use the callback method.
+
+###2015/02/18
+Add `libUVCCamera` as a library project(source code is almost same as previous release except Android.mk).
+All files and directories under `library` directory is deprecated.
