@@ -130,7 +130,7 @@ public final class DeviceFilter {
 	private static final int getAttributeInteger(final Context context, final XmlPullParser parser, final String namespace, final String name, final int defaultValue) {
 		int result = defaultValue;
 		try {
-			final String v = parser.getAttributeValue(namespace, name);
+			String v = parser.getAttributeValue(namespace, name);
 			if (!TextUtils.isEmpty(v) && v.startsWith("@")) {
 				final String r = v.substring(1);
 				final int resId = context.getResources().getIdentifier(r, null, context.getPackageName());
@@ -138,7 +138,14 @@ public final class DeviceFilter {
 					result = context.getResources().getInteger(resId);
 				}
 			} else {
-				result = Integer.parseInt(v);
+                int radix = 10;
+                if (v != null && v.length() > 2 && v.charAt(0) == '0' &&
+                    (v.charAt(1) == 'x' || v.charAt(1) == 'X')) {
+                    // allow hex values starting with 0x or 0X
+                    radix = 16;
+                    v = v.substring(2);
+                }
+				result = Integer.parseInt(v, radix);
 			}
 		} catch (final NotFoundException e) {
 			result = defaultValue;
@@ -200,14 +207,27 @@ public final class DeviceFilter {
         	if (!TextUtils.isEmpty(tag) && (tag.equalsIgnoreCase("usb-device"))) {
         		if (eventType == XmlPullParser.START_TAG) {
         			hasValue = true;
-        			vendorId = getAttributeInteger(context, parser, null, "venderId", -1);
-        			productId = getAttributeInteger(context, parser, null, "productId", -1);
+					vendorId = getAttributeInteger(context, parser, null, "vendor-id", -1);
+        			if (vendorId == -1) {
+        				vendorId = getAttributeInteger(context, parser, null, "vendorId", -1);
+        				if (vendorId == -1)
+                			vendorId = getAttributeInteger(context, parser, null, "venderId", -1);
+        			}
+    				productId = getAttributeInteger(context, parser, null, "product-id", -1);
+        			if (productId == -1)
+            			productId = getAttributeInteger(context, parser, null, "productId", -1);
         			deviceClass = getAttributeInteger(context, parser, null, "class", -1);
         			deviceSubclass = getAttributeInteger(context, parser, null, "subclass", -1);
         			deviceProtocol = getAttributeInteger(context, parser, null, "protocol", -1);
-        			manufacturerName = getAttributeString(context, parser, null, "manufacture", null);
-        			productName = getAttributeString(context, parser, null, "product", null);
-        			serialNumber = getAttributeString(context, parser, null, "serial", null);
+        			manufacturerName = getAttributeString(context, parser, null, "manufacturer-name", null);
+        			if (TextUtils.isEmpty(manufacturerName))
+        				manufacturerName = getAttributeString(context, parser, null, "manufacture", null);
+        			productName = getAttributeString(context, parser, null, "product-name", null);
+        			if (TextUtils.isEmpty(productName))
+        				productName = getAttributeString(context, parser, null, "product", null);
+        			serialNumber = getAttributeString(context, parser, null, "serial-number", null);
+        			if (TextUtils.isEmpty(serialNumber))
+            			serialNumber = getAttributeString(context, parser, null, "serial", null);
         		} else if (eventType == XmlPullParser.END_TAG) {
         			if (hasValue) {
 	        			return new DeviceFilter(vendorId, productId, deviceClass,
