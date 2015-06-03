@@ -97,3 +97,14 @@ and new sample project `USBCameraTest5` to demonstrate how to use the callback m
 ###2015/02/18
 Add `libUVCCamera` as a library project(source code is almost same as previous release except Android.mk).
 All files and directories under `library` directory is deprecated.
+
+###2015/05/25
+libraryProject branch merged to master.
+
+###2015/05/30
+Fixed the issue that DeviceFilter class could not work well when providing venderID, productID etc.
+
+###2015/06/03
+Add new sample project named `USBCameraTest6`
+This new sample project mainly demonstrate how to show video images on two TextureView simultaneously.
+
