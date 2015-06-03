@@ -106,5 +106,5 @@ Fixed the issue that DeviceFilter class could not work well when providing vende
 
 ###2015/06/03
 Add new sample project named `USBCameraTest6`
-This new sample project mainly demonstrate how to show video images on two TextureView simultaneously.
+This new sample project mainly demonstrate how to show video images on two TextureView simultaneously, side by side.
 
