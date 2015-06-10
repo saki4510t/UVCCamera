@@ -162,12 +162,14 @@ public final class CameraServer extends Handler {
 
 	public void addSurface(final int id, final Surface surface, final boolean isRecordable, final IUVCServiceOnFrameAvailable onFrameAvailableListener) {
 		if (DEBUG) Log.d(TAG, "addSurface:id=" + id +",surface=" + surface);
-		mRendererHolder.addSurface(id, surface, isRecordable, onFrameAvailableListener);
+		if (mRendererHolder != null)
+			mRendererHolder.addSurface(id, surface, isRecordable, onFrameAvailableListener);
 	}
 
 	public void removeSurface(final int id) {
 		if (DEBUG) Log.d(TAG, "removeSurface:id=" + id);
-		mRendererHolder.removeSurface(id);
+		if (mRendererHolder != null)
+			mRendererHolder.removeSurface(id);
 	}
 
 	public void startRecording() {
@@ -181,8 +183,10 @@ public final class CameraServer extends Handler {
 	}
 
 	public void captureStill(final String path) {
-		mRendererHolder.captureStill(path);
-		sendMessage(obtainMessage(MSG_CAPTURE_STILL, path));
+		if (mRendererHolder != null) {
+			mRendererHolder.captureStill(path);
+			sendMessage(obtainMessage(MSG_CAPTURE_STILL, path));
+		}
 	}
 
 //********************************************************************************

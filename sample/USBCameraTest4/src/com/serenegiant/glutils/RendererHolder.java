@@ -179,10 +179,12 @@ public class RendererHolder implements Runnable {
 		synchronized (mSync) {
 			final int n = mClients.size();
 			for (int i = 0; i < n; i++) {
-				if (!mClients.valueAt(i).isValid()) {
+				final RenderHandler rh = mClients.valueAt(i);
+				if (rh == null || !rh.isValid()) {
 					final int id = mClients.keyAt(i);
 					if (DEBUG) Log.i(TAG, "checkSurface:found invalid surface:id=" + id);
-					mClients.valueAt(i).release();
+					if (rh != null)
+						rh.release();
 					mClients.remove(id);
 					mOnFrameAvailables.remove(id);
 				}

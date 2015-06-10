@@ -90,7 +90,7 @@ int UVCCamera::connect(int vid, int pid, int fd, const char *usbfs) {
 			} else {
 				LOGE("could not open camera:err=%d", result);
 				uvc_unref_device(mDevice);
-				SAFE_DELETE(mDevice);
+				mDevice = NULL;		//	SAFE_DELETE(mDevice);
 				mDeviceHandle = NULL;
 				close(fd);
 			}

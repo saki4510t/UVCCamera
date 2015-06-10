@@ -47,7 +47,8 @@ public class UVCCamera {
 	public static final int PIXEL_FORMAT_YUV = 1;
 	public static final int PIXEL_FORMAT_RGB565 = 2;
 	public static final int PIXEL_FORMAT_RGBX = 3;
-	public static final int PIXEL_FORMAT_NV21 = 4;		// = YUV420SemiPlanar
+	public static final int PIXEL_FORMAT_YUV420SP = 4;
+	public static final int PIXEL_FORMAT_NV21 = 5;		// = YVU420SemiPlanar
 
 	private static boolean isLoaded;
 	static {
