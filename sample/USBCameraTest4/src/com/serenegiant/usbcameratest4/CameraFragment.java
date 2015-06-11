@@ -2,28 +2,45 @@ package com.serenegiant.usbcameratest4;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
+ *
  * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
  * File name: CameraFragment.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
 
 import java.util.List;
+
+import android.app.Activity;
+import android.app.Fragment;
+import android.hardware.usb.UsbDevice;
+import android.os.Bundle;
+import android.os.Environment;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.Surface;
+import android.view.SurfaceView;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.ImageButton;
+import android.widget.ToggleButton;
 
 import com.serenegiant.encoder.MediaMuxerWrapper;
 import com.serenegiant.serviceclient.CameraClient;
@@ -34,23 +51,6 @@ import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.widget.CameraViewInterface;
-
-import android.app.Activity;
-import android.app.Fragment;
-import android.hardware.usb.UsbDevice;
-import android.os.Bundle;
-import android.os.Environment;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.SurfaceView;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.View.OnClickListener;
-import android.widget.Button;
-import android.widget.CompoundButton;
-import android.widget.ImageButton;
-import android.widget.ToggleButton;
-import android.widget.CompoundButton.OnCheckedChangeListener;
 
 public class CameraFragment extends Fragment {
 	private static final boolean DEBUG = true;
@@ -72,13 +72,13 @@ public class CameraFragment extends Fragment {
 	}
 
 	@Override
-	public void onAttach(Activity activity) {
+	public void onAttach(final Activity activity) {
 		super.onAttach(activity);
 		if (DEBUG) Log.v(TAG, "onAttach:");
 	}
 
 	@Override
-	public void onCreate(Bundle savedInstanceState) {
+	public void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		if (DEBUG) Log.v(TAG, "onCreate:");
 		if (mUSBMonitor == null) {
@@ -89,12 +89,12 @@ public class CameraFragment extends Fragment {
 	}
 
 	@Override
-	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+	public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState) {
 		if (DEBUG) Log.v(TAG, "onCreateView:");
 		final View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 		View view = rootView.findViewById(R.id.start_button);
 		view.setOnClickListener(mOnClickListener);
-		view =(Button)rootView.findViewById(R.id.stop_button);
+		view =rootView.findViewById(R.id.stop_button);
 		view.setOnClickListener(mOnClickListener);
 		mPreviewButton = (ToggleButton)rootView.findViewById(R.id.preview_button);
 		setPreviewButton(false);
@@ -107,6 +107,7 @@ public class CameraFragment extends Fragment {
 		mStillCaptureButton.setEnabled(false);
 		mCameraView = (CameraViewInterface)rootView.findViewById(R.id.camera_view);
 		mCameraView.setAspectRatio(640 / 480.f);
+		mCameraView.setCallback(mCallback);
 		mCameraViewSub = (SurfaceView)rootView.findViewById(R.id.camera_view_sub);
 		mCameraViewSub.setOnClickListener(mOnClickListener);
 		return rootView;
@@ -160,25 +161,25 @@ public class CameraFragment extends Fragment {
 
 	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
 		@Override
-		public void onAttach(UsbDevice device) {
+		public void onAttach(final UsbDevice device) {
 			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onAttach:");
-			if (!updateCameraDialog()) {
+			if (!updateCameraDialog() && (mCameraView.getSurface() != null)) {
 				tryOpenUVCCamera(true);
 			}
 		}
 
 		@Override
-		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, boolean createNew) {
+		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, final boolean createNew) {
 			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onConnect:");
 		}
 
 		@Override
-		public void onDisconnect(UsbDevice device, UsbControlBlock ctrlBlock) {
+		public void onDisconnect(final UsbDevice device, final UsbControlBlock ctrlBlock) {
 			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onDisconnect:");
 		}
 
 		@Override
-		public void onDettach(UsbDevice device) {
+		public void onDettach(final UsbDevice device) {
 			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onDettach:");
 			if (mCameraClient != null) {
 				mCameraClient.disconnect();
@@ -210,7 +211,7 @@ public class CameraFragment extends Fragment {
 		openUVCCamera(0);
 	}
 
-	public void openUVCCamera(int index) {
+	public void openUVCCamera(final int index) {
 		if (DEBUG) Log.v(TAG, "openUVCCamera:index=" + index);
 		if (!mUSBMonitor.isRegistered()) return;
 		final List<UsbDevice> list = mUSBMonitor.getDeviceList();
@@ -222,6 +223,20 @@ public class CameraFragment extends Fragment {
 			mCameraClient.connect();
 		}
 	}
+
+	private final CameraViewInterface.Callback mCallback = new CameraViewInterface.Callback() {
+		@Override
+		public void onSurfaceCreated(final Surface surface) {
+			tryOpenUVCCamera(true);
+		}
+		@Override
+		public void onSurfaceChanged(final Surface surface, final int width, final int height) {
+		}
+		@Override
+		public void onSurfaceDestroy(final Surface surface) {
+
+		}
+	};
 
 	private final ICameraClientCallback mCameraListener = new ICameraClientCallback() {
 		@Override
@@ -245,7 +260,7 @@ public class CameraFragment extends Fragment {
 
 	private final OnClickListener mOnClickListener = new OnClickListener() {
 		@Override
-		public void onClick(View v) {
+		public void onClick(final View v) {
 			switch (v.getId()) {
 			case R.id.start_button:
 				if (DEBUG) Log.v(TAG, "onClick:start");
@@ -299,7 +314,7 @@ public class CameraFragment extends Fragment {
 
 	private final OnCheckedChangeListener mOnCheckedChangeListener = new OnCheckedChangeListener() {
 		@Override
-		public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+		public void onCheckedChanged(final CompoundButton buttonView, final boolean isChecked) {
 			if (DEBUG) Log.v(TAG, "onCheckedChanged:" + isChecked);
 			if (isChecked) {
 				mCameraClient.addSurface(mCameraView.getSurface(), false);

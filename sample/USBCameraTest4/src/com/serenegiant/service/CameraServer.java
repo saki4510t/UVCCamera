@@ -139,6 +139,7 @@ public final class CameraServer extends Handler {
 		if (thread == null) return;
 		synchronized (thread.mSync) {
 			sendEmptyMessage(MSG_PREVIEW_STOP);
+			sendEmptyMessage(MSG_CLOSE);
 			// wait for actually preview stopped to avoid releasing Surface/SurfaceTexture
 			// while preview is still running.
 			// therefore this method will take a time to execute
@@ -147,7 +148,6 @@ public final class CameraServer extends Handler {
 			} catch (final InterruptedException e) {
 			}
 		}
-		sendEmptyMessage(MSG_CLOSE);
 	}
 
 	public boolean isConnected() {
@@ -192,17 +192,21 @@ public final class CameraServer extends Handler {
 //********************************************************************************
 	private void processOnCameraStart() {
 		if (DEBUG) Log.d(TAG, "processOnCameraStart:");
-		final int n = mCallbacks.beginBroadcast();
-		for (int i = 0; i < n; i++) {
-			if (!((CallbackCookie)mCallbacks.getBroadcastCookie(i)).isConnected)
-			try {
-				mCallbacks.getBroadcastItem(i).onConnected();
-				((CallbackCookie)mCallbacks.getBroadcastCookie(i)).isConnected = true;
-			} catch (final Exception e) {
-				Log.e(TAG, "failed to call IOverlayCallback#onFrameAvailable");
+		try {
+			final int n = mCallbacks.beginBroadcast();
+			for (int i = 0; i < n; i++) {
+				if (!((CallbackCookie)mCallbacks.getBroadcastCookie(i)).isConnected)
+				try {
+					mCallbacks.getBroadcastItem(i).onConnected();
+					((CallbackCookie)mCallbacks.getBroadcastCookie(i)).isConnected = true;
+				} catch (final Exception e) {
+					Log.e(TAG, "failed to call IOverlayCallback#onFrameAvailable");
+				}
 			}
+			mCallbacks.finishBroadcast();
+		} catch (final Exception e) {
+			Log.w(TAG, e);
 		}
-		mCallbacks.finishBroadcast();
 	}
 
 	private void processOnCameraStop() {
@@ -284,7 +288,7 @@ public final class CameraServer extends Handler {
 		/**
 		 * for accessing UVC camera
 		 */
-		private UVCCamera mUVCCamera;
+		private volatile UVCCamera mUVCCamera;
 		/**
 		 * muxer for audio/video recording
 		 */
@@ -328,49 +332,59 @@ public final class CameraServer extends Handler {
 		public void handleOpen() {
 			if (DEBUG) Log.d(TAG_THREAD, "handleOpen:");
 			handleClose();
-			mUVCCamera = new UVCCamera();
-			mUVCCamera.open(mCtrlBlock);
+			synchronized (mSync) {
+				mUVCCamera = new UVCCamera();
+				mUVCCamera.open(mCtrlBlock);
+			}
 			mHandler.processOnCameraStart();
 		}
 
 		public void handleClose() {
 			if (DEBUG) Log.d(TAG_THREAD, "handleClose:");
 			handleStopRecording();
-			if (mUVCCamera != null) {
-				mUVCCamera.stopPreview();
-				mUVCCamera.destroy();
-				mUVCCamera = null;
-				mHandler.processOnCameraStop();
+			boolean closed = false;
+			synchronized (mSync) {
+				if (mUVCCamera != null) {
+					mUVCCamera.stopPreview();
+					mUVCCamera.destroy();
+					mUVCCamera = null;
+					closed = true;
+				}
+				mSync.notifyAll();
 			}
+			if (closed)
+				mHandler.processOnCameraStop();
+			if (DEBUG) Log.d(TAG_THREAD, "handleClose:finished");
 		}
 
 		public void handleStartPreview(final Surface surface) {
 			if (DEBUG) Log.d(TAG_THREAD, "handleStartPreview:");
-			if (mUVCCamera == null) return;
-			try {
-				mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
-			} catch (final IllegalArgumentException e) {
+			synchronized (mSync) {
+				if (mUVCCamera == null) return;
 				try {
-					// fallback to YUV mode
-					mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
-				} catch (final IllegalArgumentException e1) {
-					mUVCCamera.destroy();
-					mUVCCamera = null;
+					mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
+				} catch (final IllegalArgumentException e) {
+					try {
+						// fallback to YUV mode
+						mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
+					} catch (final IllegalArgumentException e1) {
+						mUVCCamera.destroy();
+						mUVCCamera = null;
+					}
 				}
-			}
-			if (mUVCCamera == null) return;
+				if (mUVCCamera == null) return;
 //				mUVCCamera.setFrameCallback(mIFrameCallback, UVCCamera.PIXEL_FORMAT_YUV);
-			mUVCCamera.setPreviewDisplay(surface);
-			mUVCCamera.startPreview();
+				mUVCCamera.setPreviewDisplay(surface);
+				mUVCCamera.startPreview();
+			}
 		}
 
 		public void handleStopPreview() {
 			if (DEBUG) Log.d(TAG_THREAD, "handleStopPreview:");
-			if (mUVCCamera != null) {
-				mUVCCamera.stopPreview();
-			}
 			synchronized (mSync) {
-				mSync.notifyAll();
+				if (mUVCCamera != null) {
+					mUVCCamera.stopPreview();
+				}
 			}
 		}
 

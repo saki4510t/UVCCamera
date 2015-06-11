@@ -2,23 +2,23 @@ package com.serenegiant.widget;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
+ *
  * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
  * File name: UVCCameraTextureView.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
  * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
 */
@@ -46,36 +46,46 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 
     private boolean mHasSurface;
 	private Surface mPreviewSurface;
+	private Callback mCallback;
 
-	public UVCCameraTextureView(Context context) {
+	public UVCCameraTextureView(final Context context) {
 		this(context, null, 0);
 	}
 
-	public UVCCameraTextureView(Context context, AttributeSet attrs) {
+	public UVCCameraTextureView(final Context context, final AttributeSet attrs) {
 		this(context, attrs, 0);
 	}
 
-	public UVCCameraTextureView(Context context, AttributeSet attrs, int defStyle) {
+	public UVCCameraTextureView(final Context context, final AttributeSet attrs, final int defStyle) {
 		super(context, attrs, defStyle);
 		if (DEBUG) Log.v(TAG, "Constructor:");
 		setSurfaceTextureListener(this);
 	}
 
 	@Override
-	public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+	public void onSurfaceTextureAvailable(final SurfaceTexture surface, final int width, final int height) {
 		if (DEBUG) Log.v(TAG, "onSurfaceTextureAvailable:");
 		mHasSurface = true;
+		if (mCallback != null) {
+			mCallback.onSurfaceCreated(getSurface());
+		}
 	}
 
 	@Override
-	public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+	public void onSurfaceTextureSizeChanged(final SurfaceTexture surface, final int width, final int height) {
 		if (DEBUG) Log.v(TAG, "onSurfaceTextureSizeChanged:");
+		if (mCallback != null) {
+			mCallback.onSurfaceChanged(getSurface(), width, height);
+		}
 	}
 
 	@Override
-	public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+	public boolean onSurfaceTextureDestroyed(final SurfaceTexture surface) {
 		if (DEBUG) Log.v(TAG, "onSurfaceTextureDestroyed:");
 		mHasSurface = false;
+		if (mCallback != null) {
+			mCallback.onSurfaceDestroy(getSurface());
+		}
 		if (mPreviewSurface != null) {
 			mPreviewSurface.release();
 			mPreviewSurface = null;
@@ -84,14 +94,14 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	}
 
 	@Override
-	public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+	public void onSurfaceTextureUpdated(final SurfaceTexture surface) {
 	}
 
 	@Override
 	public void onResume() {
 		if (DEBUG) Log.v(TAG, "onResume:");
 	}
-	
+
 	@Override
 	public void onPause() {
 		if (DEBUG) Log.v(TAG, "onPause:");
@@ -102,7 +112,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	}
 
 	@Override
-    public void setAspectRatio(double aspectRatio) {
+    public void setAspectRatio(final double aspectRatio) {
 		if (DEBUG) Log.v(TAG, "setAspectRatio:");
         if (aspectRatio < 0) {
             throw new IllegalArgumentException();
@@ -155,8 +165,14 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 		if (DEBUG) Log.v(TAG, "getSurface:hasSurface=" + mHasSurface);
 		if (mPreviewSurface == null) {
 			final SurfaceTexture st = getSurfaceTexture();
-			mPreviewSurface = new Surface(st);
+			if (st != null)
+				mPreviewSurface = new Surface(st);
 		}
 		return mPreviewSurface;
+	}
+
+	@Override
+	public void setCallback(final Callback callback) {
+		mCallback = callback;
 	}
 }
