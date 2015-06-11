@@ -108,3 +108,8 @@ Fixed the issue that DeviceFilter class could not work well when providing vende
 Add new sample project named `USBCameraTest6`
 This new sample project mainly demonstrate how to show video images on two TextureView simultaneously, side by side.
 
+###2015/06/10
+Fixed the issue of pixel format is wrong when NV21 mode on calling IFrameCallback#onFrame(U and V plane was swapped) and added YUV420SP mode.
+
+###2015/06/11
+Improve the issue of `USBCameraTest4` that fails to connect/disconnect.
