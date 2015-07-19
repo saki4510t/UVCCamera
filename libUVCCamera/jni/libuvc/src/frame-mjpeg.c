@@ -1,6 +1,6 @@
 /*********************************************************************
  * add and modified some function to avoid crash
- * Copyright (C) 2014 saki@serenegiant All rights reserved.
+ * Copyright (C) 2014-2015 saki@serenegiant All rights reserved.
  *********************************************************************/
 /*********************************************************************
  * Software License Agreement (BSD License)

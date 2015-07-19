@@ -864,7 +864,7 @@ int API_EXPORTED libusb_get_device_descriptor(libusb_device *dev,
 {
 	usbi_dbg("");
 	// FIXME add IAD support
-	LOGI("desc=%p,dev=%p,device_descriptor=%p", desc, dev, &dev->device_descriptor);
+	LOGD("desc=%p,dev=%p,device_descriptor=%p", desc, dev, &dev->device_descriptor);
 	memcpy((unsigned char *) desc, (unsigned char *) &dev->device_descriptor,
 	       sizeof (dev->device_descriptor));
 	return 0;

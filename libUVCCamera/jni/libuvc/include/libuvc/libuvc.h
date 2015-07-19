@@ -50,9 +50,9 @@ typedef enum uvc_error {
 } uvc_error_t;
 
 /**
- * Table 4-7 Request Error Code Control XXX add saki@serenegiant.com
+ * Table 4-7 VC Request Error Code Control XXX add saki@serenegiant.com
  */
-enum uvc_error_code_control {
+typedef enum uvc_vc_error_code_control {
 	UVC_ERROR_CODECTRL_NO_ERROR = 0x00,
 	UVC_ERROR_CODECTRL_NOT_READY = 0x01,
 	UVC_ERROR_CODECTRL_WRONG_STATE = 0x02,
@@ -63,7 +63,22 @@ enum uvc_error_code_control {
 	UVC_ERROR_CODECTRL_INVALID_REQUEST = 0x07,
 	UVC_ERROR_CODECTRL_INVALID_VALUE = 0x08,
 	UVC_ERROR_CODECTRL_UNKNOWN = 0xff
-};
+} uvc_vc_error_code_control_t;
+
+/**
+ * VS Request Error Code Control XXX add saki@serenegiant.com
+ */
+typedef enum uvc_vs_error_code_control {
+	UVC_VS_ERROR_CODECTRL_NO_ERROR = 0,
+	UVC_VS_ERROR_CODECTRL_PROTECTED = 1,
+	UVC_VS_ERROR_CODECTRL_IN_BUFEER_UNDERRUN = 2,
+	UVC_VS_ERROR_CODECTRL_DATA_DISCONTINUITY = 3,
+	UVC_VS_ERROR_CODECTRL_OUT_BUFEER_UNDERRUN = 4,
+	UVC_VS_ERROR_CODECTRL_OUT_BUFEER_OVERRUN = 5,
+	UVC_VS_ERROR_CODECTRL_FORMAT_CHANGE = 6,
+	UVC_VS_ERROR_CODECTRL_STILL_CAPTURE_ERROR = 7,
+	UVC_VS_ERROR_CODECTRL_UNKNOWN = 8,
+} uvc_vs_error_code_control_t;
 
 /** Color coding of stream, transport-independent
  * @ingroup streaming
@@ -584,8 +599,10 @@ int uvc_set_ctrl(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl,
 		void *data, int len);
 
 // Camera Controls
-uvc_error_t uvc_get_error_code(uvc_device_handle_t *devh,
-		enum uvc_error_code_control *error_code, enum uvc_req_code req_code);	// XXX added saki
+uvc_error_t uvc_vc_get_error_code(uvc_device_handle_t *devh,
+		uvc_vc_error_code_control_t *error_code, enum uvc_req_code req_code);	// XXX added saki
+uvc_error_t uvc_vs_get_error_code(uvc_device_handle_t *devh,
+		uvc_vs_error_code_control_t *error_code, enum uvc_req_code req_code);	// XXX added saki
 uvc_error_t uvc_get_power_mode(uvc_device_handle_t *devh,
 		enum uvc_device_power_mode *mode, enum uvc_req_code req_code);
 uvc_error_t uvc_set_power_mode(uvc_device_handle_t *devh,
@@ -763,6 +780,7 @@ uvc_error_t uvc_any2bgr(uvc_frame_t *in, uvc_frame_t *out);
 
 #ifdef LIBUVC_HAS_JPEG
 uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out);
+uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out);
 #endif
 

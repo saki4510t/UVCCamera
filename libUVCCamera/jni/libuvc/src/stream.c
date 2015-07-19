@@ -2,7 +2,7 @@
  *********************************************************************/
 /*********************************************************************
  * modified some function to avoid crash
- * Copyright (C) 2014 saki@serenegiant All rights reserved.
+ * Copyright (C) 2014-2015 saki@serenegiant All rights reserved.
  *********************************************************************/
 /*********************************************************************
  * Software License Agreement (BSD License)
@@ -656,6 +656,8 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 	uint8_t header_info;
 	size_t data_len;
 	struct libusb_iso_packet_descriptor *pkt;
+	uvc_vc_error_code_control_t vc_error_code;
+	uvc_vs_error_code_control_t vs_error_code;
 
 	// magic numbers for identifying header packets from some iSight cameras
 	static const uint8_t isight_tag[] = {
@@ -705,9 +707,12 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 		header_info = payload[1];
 
 		if UNLIKELY(header_info & UVC_STREAM_ERR) {
-			strmh->bfh_err |= UVC_STREAM_ERR;
+//			strmh->bfh_err |= UVC_STREAM_ERR;
 			UVC_DEBUG("bad packet: error bit set");
-			return;
+			libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
+//			uvc_vc_get_error_code(strmh->devh, &vc_error_code, UVC_GET_CUR);
+			uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
+//			return;
 		}
 
 		if ((strmh->fid != (header_info & UVC_STREAM_FID)) && strmh->got_bytes) {
@@ -780,6 +785,8 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 		0x11, 0x22, 0x33, 0x44, 0xde, 0xad,
 		0xbe, 0xef, 0xde, 0xad, 0xfa, 0xce };
 	int packet_id;
+	uvc_vc_error_code_control_t vc_error_code;
+	uvc_vs_error_code_control_t vs_error_code;
 
 	for (packet_id = 0; packet_id < transfer->num_iso_packets; ++packet_id) {
 		check_header = 1;
@@ -790,6 +797,8 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 			MARK("bad packet:status=%d,actual_length=%d", pkt->status, pkt->actual_length);
 			strmh->bfh_err |= UVC_STREAM_ERR;
 			libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
+//			uvc_vc_get_error_code(strmh->devh, &vc_error_code, UVC_GET_CUR);
+//			uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
 			continue;
 		}
 
@@ -824,9 +833,11 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 
 			if (LIKELY(check_header)) {
 				if (UNLIKELY(pktbuf[1] & UVC_STREAM_ERR)) {
-					strmh->bfh_err |= UVC_STREAM_ERR;
+//					strmh->bfh_err |= UVC_STREAM_ERR;
 					MARK("bad packet:status=0x%2x", pktbuf[1]);
 					libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
+//					uvc_vc_get_error_code(strmh->devh, &vc_error_code, UVC_GET_CUR);
+					uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
 					continue;
 				}
 #ifdef USE_EOF
@@ -1030,7 +1041,9 @@ static void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					if (UNLIKELY(pktbuf[1] & UVC_STREAM_ERR)) {
 						strmh->bfh_err |= UVC_STREAM_ERR;
 						MARK("bad packet");
-						libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
+//						libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
+						uvc_vc_get_error_code(strmh->devh, &vc_error_code, UVC_GET_CUR);
+						uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
 						continue;
 					}
 #ifdef USE_EOF

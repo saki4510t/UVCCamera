@@ -21,13 +21,13 @@
  *  limitations under the License.
  *
  * All files in the folder are under this Apache License, Version 2.0.
- * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+ * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.serenegiant.usbcameratest2"
-    android:versionCode="5"
-    android:versionName="2.10" >
+    android:versionCode="6"
+    android:versionName="2.11" >
 
     <uses-sdk
         android:minSdkVersion="18"

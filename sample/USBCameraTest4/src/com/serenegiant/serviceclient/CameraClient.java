@@ -6,27 +6,24 @@ package com.serenegiant.serviceclient;
  * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
  *
  * File name: CameraClient.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
- * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+ * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
 import java.lang.ref.WeakReference;
-
-import com.serenegiant.service.IUVCService;
-import com.serenegiant.service.IUVCServiceCallback;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -41,6 +38,9 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.view.Surface;
 
+import com.serenegiant.service.IUVCService;
+import com.serenegiant.service.IUVCServiceCallback;
+
 public class CameraClient implements ICameraClient {
 	private static final boolean DEBUG = true;
 	private static final String TAG = "CameraClient";
@@ -53,7 +53,7 @@ public class CameraClient implements ICameraClient {
 	protected IUVCService mService;
 	protected ICameraClientCallback mListener;
 
-	public CameraClient(Context context, ICameraClientCallback listener) {
+	public CameraClient(final Context context, final ICameraClientCallback listener) {
 		if (DEBUG) Log.v(TAG, "Constructor:");
 		mWeakContext = new WeakReference<Context>(context);
 		mListener = listener;
@@ -69,7 +69,7 @@ public class CameraClient implements ICameraClient {
 	}
 
 	@Override
-	public void select(UsbDevice device) {
+	public void select(final UsbDevice device) {
 		if (DEBUG) Log.v(TAG, "select:device=" + device);
 		mUsbDevice = device;
 		final CameraHandler handler = mWeakHandler.get();
@@ -101,14 +101,14 @@ public class CameraClient implements ICameraClient {
 	}
 
 	@Override
-	public void addSurface(Surface surface, boolean isRecordable) {
+	public void addSurface(final Surface surface, final boolean isRecordable) {
 		if (DEBUG) Log.v(TAG, "addSurface:surface=" + surface + ",hash=" + surface.hashCode());
 		final CameraHandler handler = mWeakHandler.get();
 		handler.sendMessage(handler.obtainMessage(MSG_ADD_SURFACE, isRecordable ? 1 : 0, 0, surface));
 	}
 
 	@Override
-	public void removeSurface(Surface surface) {
+	public void removeSurface(final Surface surface) {
 		if (DEBUG) Log.v(TAG, "removeSurface:surface=" + surface + ",hash=" + surface.hashCode());
 		final CameraHandler handler = mWeakHandler.get();
 		handler.sendMessage(handler.obtainMessage(MSG_REMOVE_SURFACE, surface));
@@ -137,7 +137,7 @@ public class CameraClient implements ICameraClient {
 	}
 
 	@Override
-	public void captureStill(String path) {
+	public void captureStill(final String path) {
 		final CameraHandler handler = mWeakHandler.get();
 		if (handler != null) {
 			handler.sendMessage(handler.obtainMessage(MSG_CAPTURE_STILL, path));
@@ -174,7 +174,7 @@ public class CameraClient implements ICameraClient {
 
 	private final ServiceConnection mServiceConnection = new ServiceConnection() {
 		@Override
-		public void onServiceConnected(ComponentName name, IBinder service) {
+		public void onServiceConnected(final ComponentName name, final IBinder service) {
 			if (DEBUG) Log.v(TAG, "onServiceConnected:name=" + name);
 			synchronized (mServiceSync) {
 				mService = IUVCService.Stub.asInterface(service);
@@ -183,7 +183,7 @@ public class CameraClient implements ICameraClient {
 		}
 
 		@Override
-		public void onServiceDisconnected(ComponentName name) {
+		public void onServiceDisconnected(final ComponentName name) {
 			if (DEBUG) Log.v(TAG, "onServiceDisconnected:name=" + name);
 			synchronized (mServiceSync) {
 				mService = null;
@@ -202,7 +202,7 @@ public class CameraClient implements ICameraClient {
 			if (mService == null) {
 				try {
 					mServiceSync.wait();
-				} catch (InterruptedException e) {
+				} catch (final InterruptedException e) {
 					if (DEBUG) Log.e(TAG, "getService:", e);
 				}
 			}
@@ -222,14 +222,14 @@ public class CameraClient implements ICameraClient {
 
 	private static final class CameraHandler extends Handler {
 
-		public static CameraHandler createHandler(CameraClient parent) {
+		public static CameraHandler createHandler(final CameraClient parent) {
 			final CameraTask runnable = new CameraTask(parent);
 			new Thread(runnable).start();
 			return runnable.getHandler();
 		}
 
 		private CameraTask mCameraTask;
-		private CameraHandler(CameraTask cameraTask) {
+		private CameraHandler(final CameraTask cameraTask) {
 			mCameraTask = cameraTask;
 		}
 
@@ -238,14 +238,14 @@ public class CameraClient implements ICameraClient {
 			if (service != null)
 			try {
 				return service.isRecording(mCameraTask.mServiceId);
-			} catch (RemoteException e) {
+			} catch (final RemoteException e) {
 				if (DEBUG) Log.e(TAG, "isRecording:", e);
 			}
 			return false;
 		}
 
 		@Override
-		public void handleMessage(Message msg) {
+		public void handleMessage(final Message msg) {
 			switch (msg.what) {
 			case MSG_SELECT:
 				mCameraTask.handleSelect((UsbDevice)msg.obj);
@@ -289,7 +289,7 @@ public class CameraClient implements ICameraClient {
 			private boolean mIsConnected;
 			private int mServiceId;
 
-			private CameraTask(CameraClient parent) {
+			private CameraTask(final CameraClient parent) {
 				mParent = parent;
 			}
 
@@ -298,7 +298,7 @@ public class CameraClient implements ICameraClient {
 					if (mHandler == null)
 					try {
 						mSync.wait();
-					} catch (InterruptedException e) {
+					} catch (final InterruptedException e) {
 					}
 				}
 				return mHandler;
@@ -347,13 +347,13 @@ public class CameraClient implements ICameraClient {
 			}
 
 //================================================================================
-			public void handleSelect(UsbDevice device) {
+			public void handleSelect(final UsbDevice device) {
 				if (DEBUG) Log.v(TAG_CAMERA, "handleSelect:");
 				final IUVCService service = mParent.getService();
 				if (service != null) {
 					try {
 						mServiceId = service.select(device, this);
-					} catch (RemoteException e) {
+					} catch (final RemoteException e) {
 						if (DEBUG) Log.e(TAG_CAMERA, "select:", e);
 					}
 				}
@@ -373,7 +373,7 @@ public class CameraClient implements ICameraClient {
 					if (!mIsConnected/*!service.isConnected(mServiceId)*/) {
 						service.connect(mServiceId);
 					}
-				} catch (RemoteException e) {
+				} catch (final RemoteException e) {
 					if (DEBUG) Log.e(TAG_CAMERA, "handleConnect:", e);
 				}
 			}
@@ -385,30 +385,30 @@ public class CameraClient implements ICameraClient {
 				try {
 					if (service.isConnected(mServiceId))
 						service.disconnect(mServiceId);
-				} catch (RemoteException e) {
+				} catch (final RemoteException e) {
 					if (DEBUG) Log.e(TAG_CAMERA, "handleDisconnect:", e);
 				}
 				mIsConnected = false;
 			}
 
-			public void handleAddSurface(Surface surface, boolean isRecordable) {
+			public void handleAddSurface(final Surface surface, final boolean isRecordable) {
 				if (DEBUG) Log.v(TAG_CAMERA, "handleAddSurface:surface=" + surface + ",hash=" + surface.hashCode());
 				final IUVCService service = mParent.getService();
 				if (service != null)
 				try {
 					service.addSurface(mServiceId, surface.hashCode(), surface, isRecordable);
-				} catch (RemoteException e) {
+				} catch (final RemoteException e) {
 					if (DEBUG) Log.e(TAG_CAMERA, "handleAddSurface:", e);
 				}
 			}
 
-			public void handleRemoveSurface(Surface surface) {
+			public void handleRemoveSurface(final Surface surface) {
 				if (DEBUG) Log.v(TAG_CAMERA, "handleRemoveSurface:surface=" + surface + ",hash=" + surface.hashCode());
 				final IUVCService service = mParent.getService();
 				if (service != null)
 				try {
 					service.removeSurface(mServiceId, surface.hashCode());
-				} catch (RemoteException e) {
+				} catch (final RemoteException e) {
 					if (DEBUG) Log.e(TAG_CAMERA, "handleRemoveSurface:", e);
 				}
 			}
@@ -421,7 +421,7 @@ public class CameraClient implements ICameraClient {
 					if (!service.isRecording(mServiceId)) {
 						service.startRecording(mServiceId);
 					}
-				} catch (RemoteException e) {
+				} catch (final RemoteException e) {
 					if (DEBUG) Log.e(TAG_CAMERA, "handleStartRecording:", e);
 				}
 			}
@@ -434,18 +434,18 @@ public class CameraClient implements ICameraClient {
 					if (service.isRecording(mServiceId)) {
 						service.stopRecording(mServiceId);
 					}
-				} catch (RemoteException e) {
+				} catch (final RemoteException e) {
 					if (DEBUG) Log.e(TAG_CAMERA, "handleStopRecording:", e);
 				}
 			}
 
-			public void handleCaptureStill(String path) {
+			public void handleCaptureStill(final String path) {
 				if (DEBUG) Log.v(TAG, "handleCaptureStill:" + path);
 				final IUVCService service = mParent.getService();
 				if (service != null)
 				try {
 					service.captureStillImage(mServiceId, path);
-				} catch (RemoteException e) {
+				} catch (final RemoteException e) {
 					if (DEBUG) Log.e(TAG_CAMERA, "handleCaptureStill:", e);
 				}
 			}

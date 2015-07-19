@@ -5,7 +5,7 @@ package com.serenegiant.usb;
  *
  * Fixed the issue when reading filter definition from xml file
  * that undefined null filter(that match all device) is generateed.
- * Copyright (C) 2014 saki (t_saki@serenegiant.com)
+ * Copyright (C) 2014-2015 saki (t_saki@serenegiant.com)
  *
  * This class originally came from
  * com.android.server.usb.UsbSettingsManager.DeviceFilter

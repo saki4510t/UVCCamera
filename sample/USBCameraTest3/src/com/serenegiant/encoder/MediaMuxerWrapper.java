@@ -2,25 +2,25 @@ package com.serenegiant.encoder;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
- * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ *
  * File name: MediaMuxerWrapper.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
- * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+ * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
 import java.io.File;
@@ -43,15 +43,15 @@ public class MediaMuxerWrapper {
 
 	private static final String DIR_NAME = "USBCameraTest";
     private static final SimpleDateFormat mDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US);
-    
+
 	private String mOutputPath;
-	private MediaMuxer mMediaMuxer;	// API >= 18
+	private final MediaMuxer mMediaMuxer;	// API >= 18
 	private int mEncoderCount, mStatredCount;
 	private boolean mIsStarted;
 	private MediaEncoder mVideoEncoder, mAudioEncoder;
 
 	/**
-	 * Constructor	
+	 * Constructor
 	 * @param ext extension of output file
 	 * @throws IOException
 	 */
@@ -59,7 +59,7 @@ public class MediaMuxerWrapper {
 		if (TextUtils.isEmpty(ext)) ext = ".mp4";
 		try {
 			mOutputPath = getCaptureFile(Environment.DIRECTORY_MOVIES, ext).toString();
-		} catch (NullPointerException e) {
+		} catch (final NullPointerException e) {
 			throw new RuntimeException("This app has no permission of writing external storage");
 		}
 		mMediaMuxer = new MediaMuxer(mOutputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
@@ -104,7 +104,7 @@ public class MediaMuxerWrapper {
 	 * assign encoder to this calss. this is called from encoder.
 	 * @param encoder instance of MediaVideoEncoder or MediaAudioEncoder
 	 */
-	/*package*/ void addEncoder(MediaEncoder encoder) {
+	/*package*/ void addEncoder(final MediaEncoder encoder) {
 		if (encoder instanceof MediaVideoEncoder) {
 			if (mVideoEncoder != null)
 				throw new IllegalArgumentException("Video encoder already added.");
@@ -137,9 +137,9 @@ public class MediaMuxerWrapper {
 		}
 		return mIsStarted;
 	}
-	
+
 	/**
-	 * request stop recording from encoder when encoder received EOS 
+	 * request stop recording from encoder when encoder received EOS
 	*/
 	/*package*/ synchronized void stop() {
 		if (DEBUG) Log.v(TAG,  "stop:mStatredCount=" + mStatredCount);
@@ -156,11 +156,11 @@ public class MediaMuxerWrapper {
 	 * @param format
 	 * @return minus value indicate error
 	 */
-	/*package*/ synchronized int addTrack(MediaFormat format) {
+	/*package*/ synchronized int addTrack(final MediaFormat format) {
 		if (mIsStarted)
 			throw new IllegalStateException("muxer already started");
 		final int trackIx = mMediaMuxer.addTrack(format);
-		if (DEBUG) Log.i(TAG, "addTrack:trackNum=" + mEncoderCount + ",trackIx=" + trackIx + ",format=" + format); 
+		if (DEBUG) Log.i(TAG, "addTrack:trackNum=" + mEncoderCount + ",trackIx=" + trackIx + ",format=" + format);
 		return trackIx;
 	}
 
@@ -170,7 +170,7 @@ public class MediaMuxerWrapper {
 	 * @param byteBuf
 	 * @param bufferInfo
 	 */
-	/*package*/ synchronized void writeSampleData(int trackIndex, ByteBuffer byteBuf, MediaCodec.BufferInfo bufferInfo) {
+	/*package*/ synchronized void writeSampleData(final int trackIndex, final ByteBuffer byteBuf, final MediaCodec.BufferInfo bufferInfo) {
 		if (mStatredCount > 0)
 			mMediaMuxer.writeSampleData(trackIndex, byteBuf, bufferInfo);
 	}
@@ -183,7 +183,7 @@ public class MediaMuxerWrapper {
      * @param ext .mp4(.m4a for audio) or .png
      * @return return null when this app has no writing permission to external storage.
      */
-    public static final File getCaptureFile(String type, String ext) {
+    public static final File getCaptureFile(final String type, final String ext) {
 		final File dir = new File(Environment.getExternalStoragePublicDirectory(type), DIR_NAME);
 		Log.d(TAG, "path=" + dir.toString());
 		dir.mkdirs();

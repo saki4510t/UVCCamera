@@ -2,34 +2,34 @@ package com.serenegiant.widget;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
- * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ *
  * File name: UVCCameraTextureView2.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
- * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+ * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
-
-import com.serenegiant.encoder.MediaEncoder;
 
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.util.AttributeSet;
 import android.view.TextureView;
+
+import com.serenegiant.encoder.MediaEncoder;
 
 /**
  * change the view size with keeping the specified aspect ratio.
@@ -39,7 +39,7 @@ import android.view.TextureView;
  */
 public class UVCCameraTextureView2 extends TextureView	// API >= 14
 	implements CameraViewInterface, TextureView.SurfaceTextureListener {
-	
+
 //	private static final boolean DEBUG = true;	// TODO set false on release
 //	private static final String TAG = "UVCCameraTextureView2";
 
@@ -47,15 +47,15 @@ public class UVCCameraTextureView2 extends TextureView	// API >= 14
 	private boolean mHasSurface;
 	private MediaEncoder mEncoder;
 
-	public UVCCameraTextureView2(Context context) {
+	public UVCCameraTextureView2(final Context context) {
 		this(context, null, 0);
 	}
 
-	public UVCCameraTextureView2(Context context, AttributeSet attrs) {
+	public UVCCameraTextureView2(final Context context, final AttributeSet attrs) {
 		this(context, attrs, 0);
 	}
 
-	public UVCCameraTextureView2(Context context, AttributeSet attrs, int defStyle) {
+	public UVCCameraTextureView2(final Context context, final AttributeSet attrs, final int defStyle) {
 		super(context, attrs, defStyle);
 		setSurfaceTextureListener(this);
 	}
@@ -69,7 +69,7 @@ public class UVCCameraTextureView2 extends TextureView	// API >= 14
 	}
 
 	@Override
-    public void setAspectRatio(double aspectRatio) {
+    public void setAspectRatio(final double aspectRatio) {
         if (aspectRatio < 0) {
             throw new IllegalArgumentException();
         }
@@ -113,22 +113,22 @@ public class UVCCameraTextureView2 extends TextureView	// API >= 14
     }
 
 	@Override
-	public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+	public void onSurfaceTextureAvailable(final SurfaceTexture surface, final int width, final int height) {
 		mHasSurface = true;
 	}
 
 	@Override
-	public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+	public void onSurfaceTextureSizeChanged(final SurfaceTexture surface, final int width, final int height) {
 	}
 
 	@Override
-	public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+	public boolean onSurfaceTextureDestroyed(final SurfaceTexture surface) {
 		mHasSurface = false;
 		return true;
 	}
 
 	@Override
-	public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+	public void onSurfaceTextureUpdated(final SurfaceTexture surface) {
 		if (mEncoder != null)
 			mEncoder.frameAvailableSoon();
 	}
@@ -139,7 +139,7 @@ public class UVCCameraTextureView2 extends TextureView	// API >= 14
 	}
 
 	@Override
-	public void setVideoEncoder(MediaEncoder encoder) {
+	public void setVideoEncoder(final MediaEncoder encoder) {
 		mEncoder = encoder;
 	}
 

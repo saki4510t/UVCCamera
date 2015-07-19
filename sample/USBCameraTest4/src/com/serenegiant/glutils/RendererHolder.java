@@ -2,25 +2,25 @@ package com.serenegiant.glutils;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
- * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ *
  * File name: RendererHolder.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
- * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+ * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
 import java.io.BufferedOutputStream;
@@ -30,8 +30,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-
-import com.serenegiant.service.IUVCServiceOnFrameAvailable;
 
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
@@ -43,9 +41,11 @@ import android.util.Log;
 import android.util.SparseArray;
 import android.view.Surface;
 
+import com.serenegiant.service.IUVCServiceOnFrameAvailable;
+
 /**
  * Hold shared texture that has camera frame and draw them to registered surface if needs<br>
- * Using RenderHandler is little bit slow and it is better to draw in this class directly. 
+ * Using RenderHandler is little bit slow and it is better to draw in this class directly.
  */
 public class RendererHolder implements Runnable {
 	private static final boolean DEBUG = true;
@@ -70,7 +70,7 @@ public class RendererHolder implements Runnable {
 	final float[] mTexMatrix = new float[16];
 	private Surface mSurface;
 
-	public RendererHolder(RenderHolderCallback callback) {
+	public RendererHolder(final RenderHolderCallback callback) {
 		if (DEBUG) Log.v(TAG, "Constructor");
 		mCallback = callback;
 		final Thread thread = new Thread(this, TAG);
@@ -80,7 +80,7 @@ public class RendererHolder implements Runnable {
 			if (!isRunning) {
 				try {
 					mSync.wait();
-				} catch (InterruptedException e) {
+				} catch (final InterruptedException e) {
 				}
 			}
 		}
@@ -91,7 +91,7 @@ public class RendererHolder implements Runnable {
 		return mSurface;
 	}
 
-	public void addSurface(int id, Surface surface, boolean isRecordable, IUVCServiceOnFrameAvailable onFrameAvailableListener) {
+	public void addSurface(final int id, final Surface surface, final boolean isRecordable, final IUVCServiceOnFrameAvailable onFrameAvailableListener) {
 		if (DEBUG) Log.v(TAG, "addSurface:id=" + id + ",surface=" + surface);
 		checkSurface();
 		synchronized (mSync) {
@@ -111,7 +111,7 @@ public class RendererHolder implements Runnable {
 		}
 	}
 
-	public void removeSurface(int id) {
+	public void removeSurface(final int id) {
 		if (DEBUG) Log.v(TAG, "removeSurface:id=" + id);
 		RenderHandler handler = null;
 		synchronized (mSync) {
@@ -145,7 +145,7 @@ public class RendererHolder implements Runnable {
 		}
 	}
 
-	public void captureStill(String path) {
+	public void captureStill(final String path) {
 		if (DEBUG) Log.v(TAG, "captureStill:" + path);
 		final File file = new File(path);
 		if (DEBUG) Log.v(TAG, "captureStill:canWrite");
@@ -166,7 +166,7 @@ public class RendererHolder implements Runnable {
 
 	private final OnFrameAvailableListener mOnFrameAvailableListener = new OnFrameAvailableListener() {
 		@Override
-		public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+		public void onFrameAvailable(final SurfaceTexture surfaceTexture) {
 			synchronized (mSync) {
 				requestDraw = isRunning;
 				mSync.notifyAll();
@@ -198,7 +198,7 @@ public class RendererHolder implements Runnable {
 			mDummySurface.makeCurrent();
 			mMasterTexture.updateTexImage();
 			mMasterTexture.getTransformMatrix(mTexMatrix);
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			Log.e(TAG, "draw:thread id =" + Thread.currentThread().getId(), e);
 			return;
 		}
@@ -214,7 +214,7 @@ public class RendererHolder implements Runnable {
 			for (int i = 0; i < m; i++) {
 				try {
 					mOnFrameAvailables.valueAt(i).onFrameAvailable();
-				} catch (RemoteException e) {
+				} catch (final RemoteException e) {
 				}
 			}
 		}
@@ -229,7 +229,7 @@ public class RendererHolder implements Runnable {
     	mDummySurface = mMasterEgl.createOffscreen(2, 2);
 		mDummySurface.makeCurrent();
 		mTexId = GLDrawer2D.initTex();
-		mMasterTexture = new SurfaceTexture(mTexId); 
+		mMasterTexture = new SurfaceTexture(mTexId);
 		mSurface = new Surface(mMasterTexture);
 		mMasterTexture.setOnFrameAvailableListener(mOnFrameAvailableListener);
 		if (mCallback != null) {
@@ -245,7 +245,7 @@ public class RendererHolder implements Runnable {
 				} else {
 					try {
 						mSync.wait();
-					} catch (InterruptedException e) {
+					} catch (final InterruptedException e) {
 						break;
 					}
 				}
@@ -269,7 +269,7 @@ public class RendererHolder implements Runnable {
 
 	private final Runnable mCaptureTask = new Runnable() {
     	final ByteBuffer buf = ByteBuffer.allocateDirect(640 * 480 * 4);
-    	EGLBase egl; 
+    	EGLBase egl;
     	EGLBase.EglSurface captureSurface;
     	GLDrawer2D drawer;
 
@@ -281,7 +281,7 @@ public class RendererHolder implements Runnable {
 				if (!isRunning) {
 					try {
 						mSync.wait();
-					} catch (InterruptedException e) {
+					} catch (final InterruptedException e) {
 					}
 				}
 			}
@@ -294,7 +294,7 @@ public class RendererHolder implements Runnable {
 					if (mCaptureFile == null) {
 						try {
 							mSync.wait();
-						} catch (InterruptedException e) {
+						} catch (final InterruptedException e) {
 							break;
 						}
 					}
@@ -306,7 +306,7 @@ public class RendererHolder implements Runnable {
 					synchronized (mCaptureTask) {
 						try {
 							mCaptureTask.wait();
-						} catch (InterruptedException e) {
+						} catch (final InterruptedException e) {
 							break;
 						}
 					}
@@ -330,8 +330,8 @@ public class RendererHolder implements Runnable {
 					        } finally {
 					            if (os != null) os.close();
 					        }
-						} catch (FileNotFoundException e) {
-						} catch (IOException e) {
+						} catch (final FileNotFoundException e) {
+						} catch (final IOException e) {
 						}
 					}
 					captureFile = null;
@@ -342,9 +342,9 @@ public class RendererHolder implements Runnable {
 			release();
 			if (DEBUG) Log.v(TAG, "captureTask finished");
 		}
-		
+
 		private final void init() {
-	    	egl = new EGLBase(mMasterEgl.getContext(), false, false); 
+	    	egl = new EGLBase(mMasterEgl.getContext(), false, false);
 	    	captureSurface = egl.createOffscreen(640,  480);
 	    	drawer = new GLDrawer2D();
 	    	drawer.getMvpMatrxi()[5] *= -1.0f;	// flip up-side down

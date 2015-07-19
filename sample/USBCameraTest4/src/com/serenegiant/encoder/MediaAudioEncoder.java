@@ -2,25 +2,25 @@ package com.serenegiant.encoder;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
- * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ *
  * File name: MediaAudioEncoder.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
- * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+ * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
 import java.io.IOException;
@@ -41,10 +41,10 @@ public class MediaAudioEncoder extends MediaEncoder {
 	private static final String MIME_TYPE = "audio/mp4a-latm";
     private static final int SAMPLE_RATE = 44100;	// 44.1[KHz] is only setting guaranteed to be available on all devices.
     private static final int BIT_RATE = 64000;
-    
+
     private AudioThread mAudioThread = null;
 
-	public MediaAudioEncoder(MediaMuxerWrapper muxer, MediaEncoderListener listener) {
+	public MediaAudioEncoder(final MediaMuxerWrapper muxer, final MediaEncoderListener listener) {
 		super(muxer, listener);
 	}
 
@@ -76,7 +76,7 @@ public class MediaAudioEncoder extends MediaEncoder {
         if (mListener != null) {
         	try {
         		mListener.onPrepared(this);
-        	} catch (Exception e) {
+        	} catch (final Exception e) {
         		Log.e(TAG, "prepare:", e);
         	}
         }
@@ -134,7 +134,7 @@ public class MediaAudioEncoder extends MediaEncoder {
 	            } finally {
 	            	audioRecord.release();
 	            }
-    		} catch (Exception e) {
+    		} catch (final Exception e) {
     			Log.e(TAG, "AudioThread#run", e);
     		}
 			if (DEBUG) Log.v(TAG, "AudioThread:finished");
@@ -146,7 +146,7 @@ public class MediaAudioEncoder extends MediaEncoder {
      * @param mimeType
      * @return
      */
-    private static final MediaCodecInfo selectAudioCodec(String mimeType) {
+    private static final MediaCodecInfo selectAudioCodec(final String mimeType) {
     	if (DEBUG) Log.v(TAG, "selectAudioCodec:");
 
     	MediaCodecInfo result = null;

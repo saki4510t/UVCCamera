@@ -2,25 +2,25 @@ package com.serenegiant.encoder;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
- * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ *
  * File name: MediaEncoder.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
- * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+ * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
 import java.io.IOException;
@@ -35,7 +35,7 @@ public abstract class MediaEncoder implements Runnable {
 	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "MediaEncoder";
 
-	protected static final int TIMEOUT_USEC = 10000;	// 10[msec]   
+	protected static final int TIMEOUT_USEC = 10000;	// 10[msec]
 	protected static final int MSG_FRAME_AVAILABLE = 1;
 	protected static final int MSG_STOP_RECORDING = 9;
 
@@ -43,7 +43,7 @@ public abstract class MediaEncoder implements Runnable {
 		public void onPrepared(MediaEncoder encoder);
 		public void onStopped(MediaEncoder encoder);
 	}
-	
+
 	protected final Object mSync = new Object();
 	/**
 	 * Flag that indicate this encoder is capturing now.
@@ -84,7 +84,7 @@ public abstract class MediaEncoder implements Runnable {
 
     protected final MediaEncoderListener mListener;
 
-    public MediaEncoder(MediaMuxerWrapper muxer, MediaEncoderListener listener) {
+    public MediaEncoder(final MediaMuxerWrapper muxer, final MediaEncoderListener listener) {
     	if (listener == null) throw new NullPointerException("MediaEncoderListener is null");
     	if (muxer == null) throw new NullPointerException("MediaMuxerWrapper is null");
 		mWeakMuxer = new WeakReference<MediaMuxerWrapper>(muxer);
@@ -97,13 +97,13 @@ public abstract class MediaEncoder implements Runnable {
             new Thread(this, getClass().getSimpleName()).start();
             try {
             	mSync.wait();
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
             }
         }
 	}
 
     public String getOutputPath() {
-    	MediaMuxerWrapper muxer = mWeakMuxer.get();
+    	final MediaMuxerWrapper muxer = mWeakMuxer.get();
     	return muxer != null ? muxer.getOutputPath() : null;
     }
 
@@ -134,7 +134,7 @@ public abstract class MediaEncoder implements Runnable {
     		mRequestDrain = 0;
             mSync.notify();
         }
-        boolean isRunning = true;
+        final boolean isRunning = true;
         boolean localRequestStop;
         boolean localRequestDrain;
         while (isRunning) {
@@ -160,7 +160,7 @@ public abstract class MediaEncoder implements Runnable {
 	        	synchronized (mSync) {
 		        	try {
 						mSync.wait();
-					} catch (InterruptedException e) {
+					} catch (final InterruptedException e) {
 						break;
 					}
 	        	}
@@ -214,7 +214,7 @@ public abstract class MediaEncoder implements Runnable {
 		if (DEBUG) Log.d(TAG, "release:");
 		try {
 			mListener.onStopped(this);
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			Log.e(TAG, "failed onStopped", e);
 		}
 		mIsCapturing = false;
@@ -223,7 +223,7 @@ public abstract class MediaEncoder implements Runnable {
 	            mMediaCodec.stop();
 	            mMediaCodec.release();
 	            mMediaCodec = null;
-			} catch (Exception e) {
+			} catch (final Exception e) {
 				Log.e(TAG, "failed releasing MediaCodec", e);
 			}
         }
@@ -232,7 +232,7 @@ public abstract class MediaEncoder implements Runnable {
        		if (muxer != null) {
        			try {
            			muxer.stop();
-    			} catch (Exception e) {
+    			} catch (final Exception e) {
     				Log.e(TAG, "failed stopping muxer", e);
     			}
        		}
@@ -254,7 +254,7 @@ public abstract class MediaEncoder implements Runnable {
      * @param length　length of byte array, zero means EOS.
      * @param presentationTimeUs
      */
-    protected void encode(byte[] buffer, int length, long presentationTimeUs) {
+    protected void encode(final byte[] buffer, final int length, final long presentationTimeUs) {
     	if (!mIsCapturing) return;
     	int ix = 0, sz;
         final ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
@@ -264,7 +264,7 @@ public abstract class MediaEncoder implements Runnable {
 	            final ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
 	            inputBuffer.clear();
 	            sz = inputBuffer.remaining();
-	            sz = (ix + sz < length) ? sz : length - ix; 
+	            sz = (ix + sz < length) ? sz : length - ix;
 	            if (sz > 0 && (buffer != null)) {
 	            	inputBuffer.put(buffer, ix, sz);
 	            }
@@ -308,7 +308,7 @@ LOOP:	while (mIsCapturing) {
             if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
                 // wait 5 counts(=TIMEOUT_USEC x 5 = 50msec) until data/EOS come
                 if (!mIsEOS) {
-                	if (++count > 5)	
+                	if (++count > 5)
                 		break LOOP;		// out of while
                 }
             } else if (encoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
@@ -335,7 +335,7 @@ LOOP:	while (mIsCapturing) {
 	               		while (!muxer.isStarted())
 						try {
 							muxer.wait(100);
-						} catch (InterruptedException e) {
+						} catch (final InterruptedException e) {
 							break LOOP;
 						}
                		}

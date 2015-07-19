@@ -2,25 +2,25 @@ package com.serenegiant.glutils;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
- * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ *
  * File name: GLDrawer2D.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
- * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+ * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
 import java.nio.ByteBuffer;
@@ -111,13 +111,13 @@ public class GLDrawer2D {
 			GLES20.glDeleteProgram(hProgram);
 		hProgram = -1;
 	}
-	
+
 	/**
 	 * draw specific texture with specific texture matrix
 	 * @param tex_id texture ID
 	 * @param tex_matrix texture matrix、if this is null, the last one use(we don't check size of this array and needs at least 16 of float)
 	 */
-	public void draw(int tex_id, float[] tex_matrix) {
+	public void draw(final int tex_id, final float[] tex_matrix) {
 		GLES20.glUseProgram(hProgram);
 		if (tex_matrix != null)
 			GLES20.glUniformMatrix4fv(muTexMatrixLoc, 1, false, tex_matrix, 0);
@@ -128,7 +128,7 @@ public class GLDrawer2D {
 		GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0);
         GLES20.glUseProgram(0);
 	}
-	
+
 	/**
 	 * create external texture
 	 * @return texture ID
@@ -153,7 +153,7 @@ public class GLDrawer2D {
 	/**
 	 * delete specific texture
 	 */
-	public static void deleteTex(int hTex) {
+	public static void deleteTex(final int hTex) {
 		if (DEBUG) Log.v(TAG, "deleteTex:");
 		final int[] tex = new int[] {hTex};
 		GLES20.glDeleteTextures(1, tex, 0);
@@ -165,7 +165,7 @@ public class GLDrawer2D {
 	 * @param fss source of fragment shader
 	 * @return
 	 */
-	public static int loadShader(String vss, String fss) {
+	public static int loadShader(final String vss, final String fss) {
 		if (DEBUG) Log.v(TAG, "loadShader:");
 		int vs = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
 		GLES20.glShaderSource(vs, vss);

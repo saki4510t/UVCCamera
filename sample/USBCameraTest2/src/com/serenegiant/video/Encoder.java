@@ -2,25 +2,25 @@ package com.serenegiant.video;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
- * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ *
  * File name: Encoder.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
- * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+ * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
 import java.io.IOException;
@@ -37,7 +37,7 @@ public abstract class Encoder implements Runnable {
 	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "Encoder";
 
-	protected static final int TIMEOUT_USEC = 10000;	// 10[msec]   
+	protected static final int TIMEOUT_USEC = 10000;	// 10[msec]
 
 	protected final Object mSync = new Object();
 	/**
@@ -68,10 +68,10 @@ public abstract class Encoder implements Runnable {
      * MediaCodec instance for encoding
      */
     protected MediaCodec mMediaCodec;				// API >= 16(Android4.1.2)
-    protected EncodeListener mEncodeListener;   
+    protected EncodeListener mEncodeListener;
     protected MediaCodec.BufferInfo mBufferInfo;	// API >= 16(Android4.1.2)
 	protected String mOutputPath;
- 
+
 	protected MediaMuxer mMuxer;					// API >= 18
 
     public interface EncodeListener {
@@ -95,11 +95,11 @@ public abstract class Encoder implements Runnable {
             try {
                 // wait for starting thread
             	mSync.wait();
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
             }
         }
     }
-    
+
 //********************************************************************************
     public boolean isCapturing() {
     	return mIsCapturing;
@@ -130,13 +130,13 @@ public abstract class Encoder implements Runnable {
 		}
 	}
 
-    public void setOutputFile(String filePath) {
+    public void setOutputFile(final String filePath) {
 		mOutputPath = filePath;
 	}
-	
+
 	public abstract void prepare()  throws IOException;
 
-	public void setEncodeListener(EncodeListener listener) {
+	public void setEncodeListener(final EncodeListener listener) {
 		mEncodeListener = listener;
 	}
 
@@ -168,7 +168,7 @@ public abstract class Encoder implements Runnable {
     		mRequestDrain = 0;
             mSync.notify();
         }
-        boolean isRunning = true;
+        final boolean isRunning = true;
         boolean localRequestStop;
         boolean localRequestDrain;
         while (isRunning) {
@@ -194,7 +194,7 @@ public abstract class Encoder implements Runnable {
 	        	synchronized (mSync) {
 		        	try {
 						mSync.wait();
-					} catch (InterruptedException e) {
+					} catch (final InterruptedException e) {
 						break;
 					}
 	        	}
@@ -216,7 +216,7 @@ public abstract class Encoder implements Runnable {
 		if (DEBUG) Log.d(TAG, "release:");
 		try {
 			mEncodeListener.onRelease(this);
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			Log.e(TAG, "failed onStopped", e);
 		}
 		mIsCapturing = false;
@@ -225,7 +225,7 @@ public abstract class Encoder implements Runnable {
 	            mMediaCodec.stop();
 	            mMediaCodec.release();
 	            mMediaCodec = null;
-			} catch (Exception e) {
+			} catch (final Exception e) {
 				Log.e(TAG, "failed releasing MediaCodec", e);
 			}
         }
@@ -233,7 +233,7 @@ public abstract class Encoder implements Runnable {
        		if (mMuxer != null) {
        			try {
        				mMuxer.stop();
-    			} catch (Exception e) {
+    			} catch (final Exception e) {
     				Log.e(TAG, "failed stopping muxer", e);
     			}
        		}
@@ -255,7 +255,7 @@ public abstract class Encoder implements Runnable {
      * @param length　length of byte array, zero means EOS.
      * @param presentationTimeUs
      */
-    protected void encode(byte[] buffer, int length, long presentationTimeUs) {
+    protected void encode(final byte[] buffer, final int length, final long presentationTimeUs) {
     	if (!mIsCapturing) return;
     	int ix = 0, sz;
         final ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
@@ -265,7 +265,7 @@ public abstract class Encoder implements Runnable {
 	            final ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
 	            inputBuffer.clear();
 	            sz = inputBuffer.remaining();
-	            sz = (ix + sz < length) ? sz : length - ix; 
+	            sz = (ix + sz < length) ? sz : length - ix;
 	            if (sz > 0 && (buffer != null)) {
 	            	inputBuffer.put(buffer, ix, sz);
 	            }
@@ -308,7 +308,7 @@ LOOP:	while (mIsCapturing) {
             if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
                 // wait 5 counts(=TIMEOUT_USEC x 5 = 50msec) until data/EOS come
                 if (!mIsEOS) {
-                	if (++count > 5)	
+                	if (++count > 5)
                 		break LOOP;		// out of while
                 }
             } else if (encoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
@@ -393,7 +393,7 @@ LOOP:	while (mIsCapturing) {
      * return null if nothing is available
      * @param mimeType
      */
-    public static final MediaCodecInfo selectCodec(String mimeType) {
+    public static final MediaCodecInfo selectCodec(final String mimeType) {
     	MediaCodecInfo result = null;
 
     	// get avcodec list

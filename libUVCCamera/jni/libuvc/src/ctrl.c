@@ -1,7 +1,7 @@
 /*********************************************************************
  * add some functions unsupported on original libuvc library
  * and fixed some issues
- * Copyright (C) 2014 saki@serenegiant All rights reserved.
+ * Copyright (C) 2014-2015 saki@serenegiant All rights reserved.
  *********************************************************************/
 /*********************************************************************
  * Software License Agreement (BSD License)
@@ -119,11 +119,11 @@ int uvc_set_ctrl(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl,
 }
 
 /***** INTERFACE CONTROLS *****/
-/** Request Error Code Control (UVC 1.5, 4.2.1.2) */ // XXX added saki
-uvc_error_t uvc_get_error_code(uvc_device_handle_t *devh,
-		enum uvc_error_code_control *error_code, enum uvc_req_code req_code) {
+/** VC Request Error Code Control (UVC 4.2.1.2) */ // XXX added saki
+uvc_error_t uvc_vc_get_error_code(uvc_device_handle_t *devh,
+		uvc_vc_error_code_control_t *error_code, enum uvc_req_code req_code) {
 	uint8_t error_char = 0;
-	uvc_error_t ret;
+	uvc_error_t ret = UVC_SUCCESS;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
 			UVC_VC_REQUEST_ERROR_CODE_CONTROL << 8,
@@ -136,6 +136,29 @@ uvc_error_t uvc_get_error_code(uvc_device_handle_t *devh,
 	} else {
 		return ret;
 	}
+}
+
+/** VS Request Error Code Control */ // XXX added saki
+uvc_error_t uvc_vs_get_error_code(uvc_device_handle_t *devh,
+		uvc_vs_error_code_control_t *error_code, enum uvc_req_code req_code) {
+	uint8_t error_char = 0;
+	uvc_error_t ret = UVC_SUCCESS;
+
+#if 0 // This code may cause hang-up on some combinations of device and camera and temporary disabled.
+	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
+			UVC_VS_STREAM_ERROR_CODE_CONTROL << 8,
+			devh->info->stream_ifs->bInterfaceNumber,	// XXX is this OK?
+			&error_char, sizeof(error_char), CTRL_TIMEOUT_MILLIS);
+
+	if (LIKELY(ret == 1)) {
+		*error_code = error_char;
+		return UVC_SUCCESS;
+	} else {
+		return ret;
+	}
+#else
+	return ret;
+#endif
 }
 
 uvc_error_t uvc_get_power_mode(uvc_device_handle_t *devh,

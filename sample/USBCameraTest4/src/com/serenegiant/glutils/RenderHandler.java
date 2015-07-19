@@ -2,25 +2,25 @@ package com.serenegiant.glutils;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
- * 
- * Copyright (c) 2014 saki t_saki@serenegiant.com
- * 
+ *
+ * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ *
  * File name: RenderHandler.java
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- * 
+ *
  * All files in the folder are under this Apache License, Version 2.0.
- * Files in the jni/libjpeg, jni/libusb and jin/libuvc folder may have a different license, see the respective files.
+ * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
 import android.graphics.SurfaceTexture;
@@ -53,14 +53,14 @@ public final class RenderHandler extends Handler {
 		return createHandler("RenderThread");
 	}
 
-	public static final RenderHandler createHandler(String name) {
+	public static final RenderHandler createHandler(final String name) {
 		if (DEBUG) Log.v(TAG, "createHandler:name=" + name);
 		final RenderThread thread = new RenderThread(name);
 		thread.start();
 		return thread.getHandler();
 	}
 
-	public final void setEglContext(EGLContext shared_context, int tex_id, Object surface, boolean isRecordable) {
+	public final void setEglContext(final EGLContext shared_context, final int tex_id, final Object surface, final boolean isRecordable) {
 		if (DEBUG) Log.i(TAG, "RenderHandler:setEglContext:");
 		if (!(surface instanceof Surface) && !(surface instanceof SurfaceTexture) && !(surface instanceof SurfaceHolder))
 			throw new RuntimeException("unsupported window type:" + surface);
@@ -72,15 +72,15 @@ public final class RenderHandler extends Handler {
 		sendMessage(obtainMessage(MSG_RENDER_DRAW, mTexId, 0, null));
 	}
 
-	public final void draw(int tex_id) {
+	public final void draw(final int tex_id) {
 		sendMessage(obtainMessage(MSG_RENDER_DRAW, tex_id, 0, null));
 	}
 
 	public final void draw(final float[] tex_matrix) {
 		sendMessage(obtainMessage(MSG_RENDER_DRAW, mTexId, 0, tex_matrix));
 	}
-	
-	public final void draw(int tex_id, final float[] tex_matrix) {
+
+	public final void draw(final int tex_id, final float[] tex_matrix) {
 		sendMessage(obtainMessage(MSG_RENDER_DRAW, tex_id, 0, tex_matrix));
 	}
 
@@ -89,7 +89,7 @@ public final class RenderHandler extends Handler {
 			sendEmptyMessage(MSG_CHECK_VALID);
 			try {
 				mThread.mSync.wait();
-			} catch (InterruptedException e) {
+			} catch (final InterruptedException e) {
 			}
 			return mThread.mSurface != null ? mThread.mSurface.isValid() : false;
 		}
@@ -103,7 +103,7 @@ public final class RenderHandler extends Handler {
 	}
 
 	@Override
-	public final void handleMessage(Message msg) {
+	public final void handleMessage(final Message msg) {
 		switch (msg.what) {
 		case MSG_RENDER_SET_GLCONTEXT:
 			final ContextParams params = (ContextParams)msg.obj;
@@ -127,7 +127,7 @@ public final class RenderHandler extends Handler {
 
 //********************************************************************************
 //********************************************************************************
-	private RenderHandler(RenderThread thread) {
+	private RenderHandler(final RenderThread thread) {
 		if (DEBUG) Log.i(TAG, "RenderHandler:");
 		mThread = thread;
 	}
@@ -135,7 +135,7 @@ public final class RenderHandler extends Handler {
 	private static final class ContextParams {
     	final EGLContext shared_context;
     	final Object surface;
-    	public ContextParams(EGLContext shared_context, Object surface) {
+    	public ContextParams(final EGLContext shared_context, final Object surface) {
     		this.shared_context = shared_context;
     		this.surface = surface;
     	}
@@ -143,7 +143,7 @@ public final class RenderHandler extends Handler {
 
 	/**
 	 * Thread to execute render methods
-	 * You can also use HandlerThread insted of this and create Handler from its Looper.  
+	 * You can also use HandlerThread insted of this and create Handler from its Looper.
 	 */
     private static final class RenderThread extends Thread {
 		private static final String TAG_THREAD = "RenderThread";
@@ -154,7 +154,7 @@ public final class RenderHandler extends Handler {
     	private Surface mSurface;
     	private GLDrawer2D mDrawer;
 
-    	public RenderThread(String name) {
+    	public RenderThread(final String name) {
     		super(name);
     	}
 
@@ -163,7 +163,7 @@ public final class RenderHandler extends Handler {
                 // create rendering thread
             	try {
             		mSync.wait();
-            	} catch (InterruptedException e) {
+            	} catch (final InterruptedException e) {
                 }
             }
             return mHandler;
@@ -174,7 +174,7 @@ public final class RenderHandler extends Handler {
     	 * @param shard_context
     	 * @param surface
     	 */
-    	public final void handleSetEglContext(EGLContext shard_context, Object surface, boolean isRecordable) {
+    	public final void handleSetEglContext(final EGLContext shard_context, final Object surface, final boolean isRecordable) {
     		if (DEBUG) Log.i(TAG_THREAD, "setEglContext:");
     		release();
     		synchronized (mSync) {
@@ -185,13 +185,13 @@ public final class RenderHandler extends Handler {
    			mTargetSurface = mEgl.createFromSurface(surface);
     		mDrawer = new GLDrawer2D();
     	}
- 
+
     	/**
     	 * drawing
     	 * @param tex_id
     	 * @param tex_matrix
     	 */
-    	public void handleDraw(int tex_id, final float[] tex_matrix) {
+    	public void handleDraw(final int tex_id, final float[] tex_matrix) {
 //    		if (DEBUG) Log.i(TAG_THREAD, "draw");
     		if (tex_id >= 0) {
 	    		mTargetSurface.makeCurrent();
