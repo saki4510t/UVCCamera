@@ -117,3 +117,7 @@ Improve the issue of `USBCameraTest4` that fails to connect/disconnect.
 ###2015/07/19
 Add new methods to get/set camera features like brightness, contrast etc.  
 Add new method to get supported resolution from camera as json format.  
+
+###2015/08/17
+Add new sample project `USBCameraTest7` to demonstrate how to use two camera at the same time.  
+
