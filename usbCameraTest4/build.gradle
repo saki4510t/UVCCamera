@@ -19,5 +19,6 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:support-v4:21.+'
+    compile project(':libuvccamera')
+    compile 'com.android.support:support-v4:22.+'
 }

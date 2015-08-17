@@ -17,3 +17,7 @@ android {
         }
     }
 }
+
+dependencies {
+    compile project(':libuvccamera')
+}

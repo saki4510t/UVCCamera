@@ -15,4 +15,34 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
         }
     }
+
+    sourceSets.main.jni.srcDirs = []
+}
+
+dependencies {
+    compile fileTree(dir: new File(buildDir, 'libs'), include: '*.jar')
+}
+
+tasks.withType(JavaCompile) {
+    compileTask -> compileTask.dependsOn ndkLibsToJar
+}
+
+task ndkLibsToJar(type: Zip, dependsOn: 'ndkBuild', description: 'Create a JAR of the native libs') {
+    destinationDir new File(buildDir, 'libs')
+    baseName 'ndk-libs'
+    extension 'jar'
+    from(new File(buildDir, 'libs')) {
+        include '**/*.so'
+    }
+    into 'lib/'
+}
+
+task ndkBuild(type: Exec, description: 'Compile JNI source via NDK') {
+    def ndkDir = project.plugins.findPlugin('com.android.library').sdkHandler.getNdkFolder()
+    println(ndkDir)
+    commandLine "$ndkDir/ndk-build",
+            'NDK_PROJECT_PATH=build',
+            'APP_BUILD_SCRIPT=src/main/jni/Android.mk',
+            'NDK_APPLICATION_MK=src/main/jni/Application.mk',
+            '-j8'
 }
