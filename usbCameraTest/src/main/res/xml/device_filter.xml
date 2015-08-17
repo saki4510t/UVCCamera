@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<usb>
+	<usb-device class="239" subclass="2" />	<!-- all device of UVC -->
+	<usb-device vendor-id="0x1b80" />
+</usb>

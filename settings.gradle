@@ -1,0 +1,8 @@
+include ':libuvccamera'
+include ':usbCameraTest'
+include ':usbCameraTest0'
+include ':usbCameraTest2'
+include ':usbCameraTest3'
+include ':usbCameraTest4'
+include ':usbCameraTest5'
+include ':usbCameraTest6'

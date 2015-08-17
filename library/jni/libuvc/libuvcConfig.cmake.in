@@ -1,3 +1,0 @@
-# - Config file for the libuvc package
-set(libuvc_INCLUDE_DIRS "@CONF_INCLUDE_DIR@")
-set(libuvc_LIBRARIES "@CONF_LIBRARY@")

@@ -1,4 +1,0 @@
-Changes since 0.0.3:
-
-- Support devices with multiple streaming interfaces
-- Support for MJPEG streams

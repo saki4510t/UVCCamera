@@ -1,0 +1,33 @@
+# IntelliJ
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/libraries/
+*.class
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+bin/
+obj
+obj/local
+bin/classes
+bin/res
+bin/AndroidManifest.xml
+bin/dexedLibs
+bin/jarlist.cache
+
+# Gradle
+.gradle/
+build/
+local.properties
+
+# gedit
+*~
