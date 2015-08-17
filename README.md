@@ -23,25 +23,9 @@ see the respective files.
 
 How to compile library  
 =========
-If you want to compile this library(on command line),
- 1. move to libUVCCamera directory
- 2. run ndk-build clean
- 3. run ndk-build
-
-(tested NDK-r9d/NDK-r10c 64bit on OSX)  
-The libraries are saved into libs/`architecture name` directory, for example libs/armeabi-v7a
-Only library for armeabi-v7a architecture is compiled with the default setting.
-If you want to compile for other architecture, you need change APP_ABI flag in the
-library/jni/Application.mk file.
-
-After compiling, copy or move libuvc.so and libUVCCamera.so into your project's 
-libs/`architecture name` folder.
-
-Or  
-You can use `libUVCCamera` as a library project. Please import all files under `libUVCCamera`
-directory into your IDE.  
-
-All files and directories under `library` directory is deprecated.
+The Gradle build system will build the entire project, including the NDK parts.
+Just make sure that `local.properties` contains the paths for `sdk.dir` and
+`ndk.dir`.
 
 libusb and libjpeg are embedded　into libuvc.so with current setting. You can also compile to
 separate shared libraries but some compile/link error may occur(we have not confirmed well yet). 
@@ -49,7 +33,7 @@ separate shared libraries but some compile/link error may occur(we have not conf
 How to use
 =========
 See sample project and/or our web site(but sorry web site is Japanese only).
-These sample projects are Eclipse project. Please import using Eclipse.
+These sample projects are IntelliJ projects, as is the library.
 This library works on at least Android 3.1 or later(API >= 12), but Android 4.0(API >= 14)
 or later is better. USB host function must be required.
 If you want to try on Android 3.1, you will need some modification(need to remove 
