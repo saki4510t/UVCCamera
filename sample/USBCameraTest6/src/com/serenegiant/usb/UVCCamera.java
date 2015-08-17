@@ -31,6 +31,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.graphics.SurfaceTexture;
+import android.hardware.usb.UsbDevice;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Surface;
@@ -165,6 +166,14 @@ public class UVCCamera {
 		mControlSupports = mProcSupports = 0;
 		mCurrentPreviewMode = -1;
     }
+
+	public UsbDevice getDevice() {
+		return mCtrlBlock != null ? mCtrlBlock.getDevice() : null;
+	}
+
+	public UsbControlBlock getUsbControlBlock() {
+		return mCtrlBlock;
+	}
 
 	public synchronized String getSupportedSize() {
     	return !TextUtils.isEmpty(mSupportedSize) ? mSupportedSize : (mSupportedSize = nativeGetSupportedSize(mNativePtr));
