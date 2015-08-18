@@ -27,9 +27,6 @@ The Gradle build system will build the entire project, including the NDK parts.
 Just make sure that `local.properties` contains the paths for `sdk.dir` and
 `ndk.dir`.
 
-libusb and libjpeg are embedded　into libuvc.so with current setting. You can also compile to
-separate shared libraries but some compile/link error may occur(we have not confirmed well yet). 
-
 How to use
 =========
 See sample project and/or our web site(but sorry web site is Japanese only).

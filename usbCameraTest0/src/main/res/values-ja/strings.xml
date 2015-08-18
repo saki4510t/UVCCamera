@@ -25,7 +25,7 @@
 */
 -->
 <resources>
-    <string name="app_name">USBカメラテスト</string>
+    <string name="app_name">USBカメラテスト0</string>
     <string name="select">USB Webカメラを選択してください</string>
     <string name="camera">カメラ</string>
     <string name="refresh">更新</string>

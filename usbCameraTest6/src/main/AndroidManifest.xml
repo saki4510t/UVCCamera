@@ -25,13 +25,7 @@
 */
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.serenegiant.usbcameratest6"
-    android:versionCode="2"
-    android:versionName="1.01" >
-
-    <uses-sdk
-        android:minSdkVersion="18"
-        android:targetSdkVersion="19" />
+    package="com.serenegiant.usbcameratest6" >
 
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>

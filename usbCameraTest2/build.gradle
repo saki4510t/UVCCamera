@@ -5,9 +5,11 @@ android {
     buildToolsVersion "22.0.1"
 
     defaultConfig {
-        applicationId "com.serenegiant.usbcameratest"
-        minSdkVersion 14
+        applicationId "com.serenegiant.usbcameratest2"
+        minSdkVersion 18
         targetSdkVersion 22
+		versionCode 7
+		versionName "2.20"
     }
 
     buildTypes {

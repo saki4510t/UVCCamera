@@ -25,13 +25,8 @@
 */
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.serenegiant.usbcameratest2"
-    android:versionCode="6"
-    android:versionName="2.11" >
+    package="com.serenegiant.usbcameratest2" >
 
-    <uses-sdk
-        android:minSdkVersion="18"
-        android:targetSdkVersion="21" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <application

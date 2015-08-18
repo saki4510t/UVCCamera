@@ -3,10 +3,10 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 22
     buildToolsVersion "22.0.1"
-
+	
     defaultConfig {
-        applicationId "com.serenegiant.usbcameratest6"
-        minSdkVersion 18
+        applicationId "com.serenegiant.usbcameratest7"
+        minSdkVersion 14
         targetSdkVersion 22
 		versionCode 7
 		versionName "2.20"
@@ -17,6 +17,8 @@ android {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt'
         }
+    }
+    compileOptions {
     }
 }
 
