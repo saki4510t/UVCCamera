@@ -81,7 +81,7 @@ void UVCCamera::clearCameraParams() {
 	mFocus.min = mFocus.max = mFocus.def = 0;
 }
 
-int UVCCamera::connect(int vid, int pid, int fd, const char *usbfs) {
+int UVCCamera::connect(int vid, int pid, int fd, const char *usbfs, int bus, int addr) {
 	ENTER();
 	uvc_error_t result = UVC_ERROR_BUSY;
 	if (!mDeviceHandle && fd) {
@@ -97,7 +97,7 @@ int UVCCamera::connect(int vid, int pid, int fd, const char *usbfs) {
 		}
 		clearCameraParams();
 		fd = dup(fd);
-		result = uvc_find_device2(mContext, &mDevice, vid, pid, NULL, fd);
+		result = uvc_find_device2(mContext, &mDevice, vid, pid, NULL, fd, bus, addr);
 		if (LIKELY(!result)) {
 			result = uvc_open(mDevice, &mDeviceHandle);
 			if (LIKELY(!result)) {

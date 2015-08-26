@@ -144,14 +144,16 @@ public class UVCCamera {
      */
     public void open(final UsbControlBlock ctrlBlock) {
 		mCtrlBlock = ctrlBlock;
+		final USBFSName usbfs = getUSBFSName(mCtrlBlock);
 		nativeConnect(mNativePtr,
 			mCtrlBlock.getVenderId(), mCtrlBlock.getProductId(),
 			mCtrlBlock.getFileDescriptor(),
-			getUSBFSName(mCtrlBlock));
+			usbfs.name, usbfs.bus, usbfs.addr);
     	if (mNativePtr != 0 && TextUtils.isEmpty(mSupportedSize)) {
     		mSupportedSize = nativeGetSupportedSize(mNativePtr);
     	}
 		nativeSetPreviewSize(mNativePtr, DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT, DEFAULT_PREVIEW_MODE);
+		Log.w(TAG, "device=" + ctrlBlock.getDevice());
     }
 
     /**
@@ -871,8 +873,20 @@ public class UVCCamera {
     	}
     }
 
-	private final String getUSBFSName(final UsbControlBlock ctrlBlock) {
+	private static final class USBFSName {
+		public final String name;
+		public final int bus;
+		public final int addr;
+		public USBFSName(final String usbfs, final int bus, final int addr) {
+			this.name = usbfs;
+			this.bus = bus;
+			this.addr = addr;
+		}
+	}
+	private final USBFSName getUSBFSName(final UsbControlBlock ctrlBlock) {
 		String result = null;
+		int bus = 0;
+		int addr = 0;
 		final String name = ctrlBlock.getDeviceName();
 		final String[] v = !TextUtils.isEmpty(name) ? name.split("/") : null;
 		if ((v != null) && (v.length > 2)) {
@@ -880,19 +894,35 @@ public class UVCCamera {
 			for (int i = 1; i < v.length - 2; i++)
 				sb.append("/").append(v[i]);
 			result = sb.toString();
+			try {
+				bus = Integer.parseInt(v[v.length-2]);
+			} catch (final Exception e) {
+				try {
+					bus = Integer.parseInt("0x" + v[v.length-2]);
+				} catch (final Exception e1) {
+				}
+			}
+			try {
+				addr = Integer.parseInt(v[v.length-1]);
+			} catch (final Exception e) {
+				try {
+					addr = Integer.parseInt("0x" + v[v.length-1]);
+				} catch (final Exception e1) {
+				}
+			}
 		}
 		if (TextUtils.isEmpty(result)) {
 			Log.w(TAG, "failed to get USBFS path, try to use default path:" + name);
 			result = DEFAULT_USBFS;
 		}
-		return result;
+		return new USBFSName(result, bus, addr);
 	}
 
     // #nativeCreate and #nativeDestroy are not static methods.
     private final native long nativeCreate();
     private final native void nativeDestroy(long id_camera);
 
-    private static final native int nativeConnect(long id_camera, int venderId, int productId, int fileDescriptor, String usbfs);
+    private static final native int nativeConnect(long id_camera, int venderId, int productId, int fileDescriptor, String usbfs, int bus, int addr);
     private static final native int nativeRelease(long id_camera);
 
     private static final native int nativeSetPreviewSize(long id_camera, int width, int height, int mode);

@@ -118,7 +118,7 @@ public:
 	UVCCamera();
 	~UVCCamera();
 
-	int connect(int vid, int pid, int fd, const char *usbfs);
+	int connect(int vid, int pid, int fd, const char *usbfs, int bus, int addr);
 	int release();
 	char *getSupportedSize();
 	int setPreviewSize(int width, int height, int mode);

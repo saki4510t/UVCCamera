@@ -532,7 +532,7 @@ uvc_error_t uvc_find_device(uvc_context_t *ctx, uvc_device_t **dev, int vid,
 		int pid, const char *sn);
 
 uvc_error_t uvc_find_device2(uvc_context_t *ctx, uvc_device_t **dev, int vid,
-		int pid, const char *sn, int fd);
+		int pid, const char *sn, int fd, int bus, int addr);
 
 uvc_error_t uvc_get_device_with_fd(uvc_context_t *ctx, uvc_device_t **dev,
 		int vid, int pid, const char *serial, int fd);

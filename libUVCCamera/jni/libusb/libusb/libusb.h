@@ -1375,7 +1375,7 @@ void LIBUSB_CALL libusb_free_device_list(libusb_device **list,
 libusb_device * LIBUSB_CALL libusb_ref_device(libusb_device *dev);
 void LIBUSB_CALL libusb_unref_device(libusb_device *dev);
 libusb_device *libusb_find_device(libusb_context *ctx,
-	const int vid, const int pid, const char *sn, int fd);	// XXX add for mainly non-rooted Android
+	const int vid, const int pid, const char *sn, int fd, int bus, int addr);	// XXX add for mainly non-rooted Android
 
 int LIBUSB_CALL libusb_get_raw_descriptor(libusb_device *dev,
 		unsigned char **buffer, int *descriptors_len, int *host_endian);

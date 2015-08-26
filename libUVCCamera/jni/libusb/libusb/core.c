@@ -735,11 +735,13 @@ out:
  * @param vid: vender ID, 0 means don't care
  * @param pid: product ID, 0 means don't care
  * @param sn: serial number(currently not use)
+ * @param bus: bus number, 0 means don't care
+ * @param addr: address number, 0 means don't care
  * @param fd: file descripter that need to access device on no-rooted Android
  * @return null if not found
  */
 libusb_device *libusb_find_device(libusb_context *ctx, const int vid,
-		const int pid, const char* sn, int fd) {
+		const int pid, const char* sn, int fd, int bus, int addr) {
 
 	libusb_device **devs;
 	// get list of devices
@@ -759,7 +761,9 @@ libusb_device *libusb_find_device(libusb_context *ctx, const int vid,
 			continue;
 		}
 		if ((!vid || (desc.idVendor == vid))
-				&& (!pid || (desc.idProduct == pid))) {
+			&& (!pid || (desc.idProduct == pid))
+			&& (!bus || (libusb_get_bus_number(devs[i]) == bus))
+			&& (!addr || (libusb_get_device_address(devs[i]) == addr)) ) {
 			// found
 			device = devs[i];
 			libusb_ref_device(device);

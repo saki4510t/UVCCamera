@@ -176,11 +176,11 @@ uvc_error_t uvc_find_device(uvc_context_t *ctx, uvc_device_t **dev, int vid,
  * return UVC_SUCCESS and set uvc_device_t when specific device dound
  */
 uvc_error_t uvc_find_device2(uvc_context_t *ctx, uvc_device_t **device, int vid,
-		int pid, const char *sn, int fd) {
+		int pid, const char *sn, int fd, int bus, int addr) {
 
 	UVC_ENTER();
 
-	struct libusb_device *usb_dev = libusb_find_device(ctx->usb_ctx, vid, pid, sn, fd);
+	struct libusb_device *usb_dev = libusb_find_device(ctx->usb_ctx, vid, pid, sn, fd, bus, addr);
 
 	if (usb_dev) {
 		*device = malloc(sizeof(uvc_device_t/* *device */));
