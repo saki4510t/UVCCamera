@@ -1,4 +1,5 @@
 apply plugin: 'com.android.library'
+import org.apache.tools.ant.taskdefs.condition.Os
 
 android {
     compileSdkVersion 22
@@ -15,8 +16,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
         }
     }
-
-    sourceSets.main.jni.srcDirs = []
+	sourceSets {
+		main {
+			jniLibs.srcDir 'src/main/libs'
+			jni.srcDirs = []
+		}
+	}
 }
 
 dependencies {
@@ -24,25 +29,17 @@ dependencies {
 }
 
 tasks.withType(JavaCompile) {
-    compileTask -> compileTask.dependsOn ndkLibsToJar
-}
-
-task ndkLibsToJar(type: Zip, dependsOn: 'ndkBuild', description: 'Create a JAR of the native libs') {
-    destinationDir new File(buildDir, 'libs')
-    baseName 'ndk-libs'
-    extension 'jar'
-    from(new File(buildDir, 'libs')) {
-        include '**/*.so'
-    }
-    into 'lib/'
+	compileTask -> compileTask.dependsOn ndkBuild
 }
 
 task ndkBuild(type: Exec, description: 'Compile JNI source via NDK') {
-    def ndkDir = project.plugins.findPlugin('com.android.library').sdkHandler.getNdkFolder()
-    println(ndkDir)
-    commandLine "$ndkDir/ndk-build",
-            'NDK_PROJECT_PATH=build',
-            'APP_BUILD_SCRIPT=src/main/jni/Android.mk',
-            'NDK_APPLICATION_MK=src/main/jni/Application.mk',
-            '-j8'
+	println('executing ndkBuild')
+	def ndkBuildingDir = project.plugins.findPlugin('com.android.library').sdkHandler.getNdkFolder().absolutePath
+	def ndkBuildPath = ndkBuildingDir
+	if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+		ndkBuildPath = ndkBuildingDir + '/ndk-build.cmd'
+	} else {
+		ndkBuildPath = ndkBuildingDir + '/ndk-build'
+	}
+	commandLine ndkBuildPath, '-j8', '-C', file('src/main').absolutePath
 }
