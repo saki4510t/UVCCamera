@@ -34,9 +34,10 @@ The Gradle build system will build the entire project, including the NDK parts. 
 It will takes several minutes to build. Now you can see apks in each `{sample project}/build/outputs/apks` directory.  
 Or if you want to install and try all sample projects on your device, run `gradle installDebug`.  
 
-Note: Just make sure that `local.properties` contains the paths for `sdk.dir` and `ndk.dir`. Or you can set them as enviroment variables of you shell.
+Note: Just make sure that `local.properties` contains the paths for `sdk.dir` and `ndk.dir`. Or you can set them as enviroment variables of you shell. On some system, you may need add `JAVA_HOME` envairoment valiable that points to JDK directory.  
 
 If you still need to use Eclipse or if you don't want to use Gradle with some reason, you can build suing `ndk-build` command.
+
 1. make directory on your favorite place.
 2. change directory into the directory.
 3. clone this repository with `git  clone https://github.com/saki4510t/UVCCamera.git`
@@ -119,3 +120,6 @@ Add new method to get supported resolution from camera as json format.
 
 ###2015/08/17
 Add new sample project `USBCameraTest7` to demonstrate how to use two camera at the same time.  
+
+###2015/09/20
+Fixed the issue that building native libraries fail on Windows.
