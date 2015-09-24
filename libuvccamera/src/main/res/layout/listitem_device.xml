@@ -28,6 +28,7 @@
     android:id="@+id/name_text"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
+	android:minHeight="@dimen/list_height_min"
     android:textSize="@dimen/list_font_size" >
 
 </CheckedTextView>

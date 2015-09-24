@@ -121,7 +121,7 @@ public:
 	int connect(int vid, int pid, int fd, const char *usbfs);
 	int release();
 	char *getSupportedSize();
-	int setPreviewSize(int width, int height, int mode);
+	int setPreviewSize(int width, int height, int mode, float bandwidth = DEFAULT_BANDWIDTH);
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
 	int startPreview();

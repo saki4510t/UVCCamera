@@ -6,7 +6,7 @@
  *
  * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
  *
- * File name: listitem_device.xml
+ * File name: dimens.xml
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,10 +24,10 @@
  * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 -->
-<CheckedTextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/name_text"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:textSize="@dimen/list_font_size" >
-
-</CheckedTextView>
+<resources>
+	<dimen name="horizontal_margin">16dp</dimen>
+	<dimen name="vertical_margin">16dp</dimen>
+	<dimen name="button_size">48dp</dimen>
+    <dimen name="list_font_size">18sp</dimen>
+    <dimen name="list_height_min">32dp</dimen>
+</resources>

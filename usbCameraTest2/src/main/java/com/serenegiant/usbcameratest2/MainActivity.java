@@ -51,6 +51,7 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import com.serenegiant.usb.CameraDialog;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
@@ -60,7 +61,7 @@ import com.serenegiant.video.Encoder.EncodeListener;
 import com.serenegiant.video.SurfaceEncoder;
 import com.serenegiant.widget.UVCCameraTextureView;
 
-public final class MainActivity extends Activity {
+public final class MainActivity extends Activity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = true;	// set false when releasing
 	private static final String TAG = "MainActivity";
 
@@ -234,6 +235,7 @@ public final class MainActivity extends Activity {
 	 * to access from CameraDialog
 	 * @return
 	 */
+	@Override
 	public USBMonitor getUSBMonitor() {
 		return mUSBMonitor;
 	}

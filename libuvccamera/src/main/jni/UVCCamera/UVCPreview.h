@@ -36,6 +36,7 @@
 #define DEFAULT_PREVIEW_HEIGHT 480
 #define DEFAULT_PREVIEW_FPS 30
 #define DEFAULT_PREVIEW_MODE 0
+#define DEFAULT_BANDWIDTH 1.0f
 
 typedef uvc_error_t (*convFunc_t)(uvc_frame_t *in, uvc_frame_t *out);
 
@@ -57,6 +58,7 @@ private:
 	ANativeWindow *mPreviewWindow;
 	volatile bool mIsRunning;
 	int requestWidth, requestHeight, requestMode, requestFps;
+	float requestBandwidth;
 	int frameWidth, frameHeight;
 	int frameMode;
 	size_t frameBytes;
@@ -103,7 +105,7 @@ public:
 	~UVCPreview();
 
 	inline const bool isRunning() const;
-	int setPreviewSize(int width, int height, int mode);
+	int setPreviewSize(int width, int height, int mode, float bandwidth = 1.0f);
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
 	int startPreview();

@@ -41,6 +41,4 @@
     <dimen name="button_size_small">16dp</dimen>
     <dimen name="button_size_large">32dp</dimen>
     <dimen name="value_button_size">32dp</dimen>
-    <dimen name="list_font_size">18sp</dimen>
-    <dimen name="list_height_min">32dp</dimen>
 </resources>

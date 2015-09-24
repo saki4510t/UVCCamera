@@ -1148,6 +1148,24 @@ static void _uvc_iso_callback(struct libusb_transfer *transfer) {
 uvc_error_t uvc_start_streaming(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl, uvc_frame_callback_t *cb, void *user_ptr,
 		uint8_t flags) {
+	return uvc_start_streaming_bandwidth(devh, ctrl, cb, user_ptr, 0, flags);
+}
+
+/** Begin streaming video from the camera into the callback function.
+ * @ingroup streaming
+ *
+ * @param devh UVC device
+ * @param ctrl Control block, processed using {uvc_probe_stream_ctrl} or
+ *             {uvc_get_stream_ctrl_format_size}
+ * @param cb   User callback function. See {uvc_frame_callback_t} for restrictions.
+ * @param bandwidth [0.0f, 1.0f]
+ * @param flags Stream setup flags, currently undefined. Set this to zero. The lower bit
+ * is reserved for backward compatibility.
+ */
+uvc_error_t uvc_start_streaming_bandwidth(uvc_device_handle_t *devh,
+		uvc_stream_ctrl_t *ctrl, uvc_frame_callback_t *cb, void *user_ptr,
+		float bandwidth,
+		uint8_t flags) {
 	uvc_error_t ret;
 	uvc_stream_handle_t *strmh;
 
@@ -1155,7 +1173,7 @@ uvc_error_t uvc_start_streaming(uvc_device_handle_t *devh,
 	if (UNLIKELY(ret != UVC_SUCCESS))
 		return ret;
 
-	ret = uvc_stream_start(strmh, cb, user_ptr, flags);
+	ret = uvc_stream_start_bandwidth(strmh, cb, user_ptr, bandwidth, flags);
 	if (UNLIKELY(ret != UVC_SUCCESS)) {
 		uvc_stream_close(strmh);
 		return ret;
@@ -1285,7 +1303,21 @@ fail:
  * is reserved for backward compatibility.
  */
 uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
-		uvc_frame_callback_t *cb, void *user_ptr, uint8_t flags) {
+			uvc_frame_callback_t *cb, void *user_ptr, uint8_t flags) {
+	return uvc_stream_start_bandwidth(strmh, cb, user_ptr, 1.0f, flags);
+}
+
+/** Begin streaming video from the stream into the callback function.
+ * @ingroup streaming
+ *
+ * @param strmh UVC stream
+ * @param cb   User callback function. See {uvc_frame_callback_t} for restrictions.
+ * @param bandwidth [0.0f,1.0f]
+ * @param flags Stream setup flags, currently undefined. Set this to zero. The lower bit
+ * is reserved for backward compatibility.
+ */
+uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
+			uvc_frame_callback_t *cb, void *user_ptr, float bandwidth, uint8_t flags) {
 	/* USB interface we'll be using */
 	const struct libusb_interface *interface;
 	int interface_id;
@@ -1360,8 +1392,15 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 
 		struct libusb_transfer *transfer;
 		int transfer_id;
-
-		config_bytes_per_packet = strmh->cur_ctrl.dwMaxPayloadTransferSize;
+		
+		if ((bandwidth > 0) && (bandwidth < 1.0f)) {
+			config_bytes_per_packet = (size_t)(strmh->cur_ctrl.dwMaxPayloadTransferSize * bandwidth);
+			if (!config_bytes_per_packet) {
+				config_bytes_per_packet = strmh->cur_ctrl.dwMaxPayloadTransferSize;
+			}
+		} else {
+			config_bytes_per_packet = strmh->cur_ctrl.dwMaxPayloadTransferSize;
+		}
 //#if !defined(__LP64__)
 //		LOGI("config_bytes_per_packet=%d", config_bytes_per_packet);
 //#else

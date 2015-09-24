@@ -37,13 +37,14 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Toast;
 
+import com.serenegiant.usb.CameraDialog;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.widget.UVCCameraTextureView;
 
-public final class MainActivity extends Activity {
+public final class MainActivity extends Activity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = false;	// FIXME set false when production
 	private static final String TAG = "MainActivity";
 
@@ -162,11 +163,11 @@ public final class MainActivity extends Activity {
 					camera.open(ctrlBlock);
 //					camera.setPreviewTexture(mRightCameraView.getSurfaceTexture());
 					try {
-						camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
+						camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG, 0.5f);
 					} catch (final IllegalArgumentException e) {
 						// fallback to YUV mode
 						try {
-							camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
+							camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE, 0.5f);
 						} catch (final IllegalArgumentException e1) {
 							camera.destroy();
 							return;
@@ -239,6 +240,7 @@ public final class MainActivity extends Activity {
 	 * to access from CameraDialog
 	 * @return
 	 */
+	@Override
 	public USBMonitor getUSBMonitor() {
 		return mUSBMonitor;
 	}

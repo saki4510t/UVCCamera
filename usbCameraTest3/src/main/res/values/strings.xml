@@ -26,8 +26,4 @@
 -->
 <resources>
     <string name="app_name">USBCameraTest3</string>
-    <string name="select">Select USB Web Camera</string>
-    <string name="camera">Camera</string>
-    <string name="refresh">Refresh</string>
-    <string name="no_device">No USB camera found</string>
 </resources>

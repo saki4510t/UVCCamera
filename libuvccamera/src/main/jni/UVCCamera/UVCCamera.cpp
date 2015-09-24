@@ -153,11 +153,11 @@ char *UVCCamera::getSupportedSize() {
 	RETURN(NULL, char *);
 }
 
-int UVCCamera::setPreviewSize(int width, int height, int mode) {
+int UVCCamera::setPreviewSize(int width, int height, int mode, float bandwidth) {
 	ENTER();
 	int result = EXIT_FAILURE;
 	if (mPreview) {
-		result = mPreview->setPreviewSize(width, height, mode);
+		result = mPreview->setPreviewSize(width, height, mode, bandwidth);
 	}
 	RETURN(result, int);
 }

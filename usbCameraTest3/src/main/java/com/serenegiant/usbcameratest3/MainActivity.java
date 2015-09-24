@@ -60,13 +60,15 @@ import com.serenegiant.encoder.MediaEncoder;
 import com.serenegiant.encoder.MediaMuxerWrapper;
 import com.serenegiant.encoder.MediaSurfaceEncoder;
 import com.serenegiant.encoder.MediaVideoEncoder;
+
+import com.serenegiant.usb.CameraDialog;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.widget.CameraViewInterface;
 
-public final class MainActivity extends Activity {
+public final class MainActivity extends Activity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "MainActivity";
 
@@ -280,6 +282,7 @@ public final class MainActivity extends Activity {
 	 * to access from CameraDialog
 	 * @return
 	 */
+	@Override
 	public USBMonitor getUSBMonitor() {
 		return mUSBMonitor;
 	}

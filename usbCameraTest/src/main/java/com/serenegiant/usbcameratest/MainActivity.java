@@ -34,6 +34,7 @@ import android.view.View.OnClickListener;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
+import com.serenegiant.usb.CameraDialog;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
@@ -44,7 +45,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-public final class MainActivity extends Activity {
+public final class MainActivity extends Activity implements CameraDialog.CameraDialogParent {
 
     // for thread pool
     private static final int CORE_POOL_SIZE = 1;		// initial/minimum threads
@@ -189,6 +190,7 @@ public final class MainActivity extends Activity {
 	 * to access from CameraDialog
 	 * @return
 	 */
+	@Override
 	public USBMonitor getUSBMonitor() {
 		return mUSBMonitor;
 	}

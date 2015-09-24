@@ -41,6 +41,7 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	requestHeight(DEFAULT_PREVIEW_HEIGHT),
 	requestFps(DEFAULT_PREVIEW_FPS),
 	requestMode(DEFAULT_PREVIEW_MODE),
+	requestBandwidth(DEFAULT_BANDWIDTH),
 	frameWidth(DEFAULT_PREVIEW_WIDTH),
 	frameHeight(DEFAULT_PREVIEW_HEIGHT),
 	frameBytes(DEFAULT_PREVIEW_WIDTH * DEFAULT_PREVIEW_HEIGHT * 2),	// YUYV
@@ -83,7 +84,7 @@ UVCPreview::~UVCPreview() {
 
 inline const bool UVCPreview::isRunning() const {return mIsRunning; }
 
-int UVCPreview::setPreviewSize(int width, int height, int mode) {
+int UVCPreview::setPreviewSize(int width, int height, int mode, float bandwidth) {
 	ENTER();
 	
 	int result = 0;
@@ -91,6 +92,7 @@ int UVCPreview::setPreviewSize(int width, int height, int mode) {
 		requestWidth = width;
 		requestHeight = height;
 		requestMode = mode;
+		requestBandwidth = bandwidth;
 
 		uvc_stream_ctrl_t ctrl;
 		result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
@@ -427,8 +429,8 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 
 	uvc_frame_t *frame = NULL;
 	uvc_frame_t *frame_mjpeg = NULL;
-	uvc_error_t result = uvc_start_iso_streaming(
-		mDeviceHandle, ctrl, uvc_preview_frame_callback, (void *)this);
+	uvc_error_t result = uvc_start_streaming_bandwidth(
+		mDeviceHandle, ctrl, uvc_preview_frame_callback, (void *)this, requestBandwidth, 0);
 
 	if (LIKELY(!result)) {
 		clearPreviewFrame();

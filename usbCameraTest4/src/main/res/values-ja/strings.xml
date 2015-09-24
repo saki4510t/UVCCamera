@@ -26,8 +26,4 @@
 -->
 <resources>
     <string name="app_name">USBカメラテスト4</string>
-    <string name="select">USB Webカメラを選択してください</string>
-    <string name="camera">カメラ</string>
-    <string name="refresh">更新</string>
-    <string name="no_device">USBカメラが見つかりません</string>
 </resources>
