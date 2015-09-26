@@ -32,6 +32,7 @@
 #define	LOCAL_DEBUG 0
 #define MAX_FRAME 4
 #define PREVIEW_PIXEL_BYTES 4	// RGBA/RGBX
+#define FRAME_POOL_SZ MAX_FRAME + 2
 
 UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 :	mPreviewWindow(NULL),
@@ -61,6 +62,8 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 //
 	pthread_cond_init(&capture_sync, NULL);
 	pthread_mutex_init(&capture_mutex, NULL);
+//	
+	pthread_mutex_init(&pool_mutex, NULL);
 	EXIT();
 }
 
@@ -75,10 +78,77 @@ UVCPreview::~UVCPreview() {
 	mCaptureWindow = NULL;
 	clearPreviewFrame();
 	clearCaptureFrame();
+	clear_pool();
 	pthread_mutex_destroy(&preview_mutex);
 	pthread_cond_destroy(&preview_sync);
 	pthread_mutex_destroy(&capture_mutex);
 	pthread_cond_destroy(&capture_sync);
+	pthread_mutex_destroy(&pool_mutex);
+	EXIT();
+}
+
+/**
+ * get uvc_frame_t from frame pool
+ * if pool is empty, create new frame
+ * this function does not confirm the frame size
+ * and you may need to confirm the size
+ */
+uvc_frame_t *UVCPreview::get_frame(size_t data_bytes) {
+	uvc_frame_t *frame = NULL;
+	pthread_mutex_lock(&pool_mutex);
+	{
+		if (!mFramePool.isEmpty()) {
+			frame = mFramePool.last();
+		}
+	}
+	pthread_mutex_unlock(&pool_mutex);
+	if UNLIKELY(!frame) {
+		LOGW("allocate new frame");
+		frame = uvc_allocate_frame(data_bytes);
+	}
+	return frame;
+}
+
+void UVCPreview::recycle_frame(uvc_frame_t *frame) {
+	pthread_mutex_lock(&pool_mutex);
+	if (LIKELY(mFramePool.size() < FRAME_POOL_SZ)) {
+		mFramePool.put(frame);
+		frame = NULL;
+	}
+	pthread_mutex_unlock(&pool_mutex);
+	if (UNLIKELY(frame)) {
+		uvc_free_frame(frame);
+	}
+}
+
+
+void UVCPreview::init_pool(size_t data_bytes) {
+	ENTER();
+
+	clear_pool();
+	pthread_mutex_lock(&pool_mutex);
+	{
+		for (int i = 0; i < FRAME_POOL_SZ; i++) {
+			mFramePool.put(uvc_allocate_frame(data_bytes));
+		}
+	}
+	pthread_mutex_unlock(&pool_mutex);
+
+	EXIT();
+}
+
+void UVCPreview::clear_pool() {
+	ENTER();
+
+	pthread_mutex_lock(&pool_mutex);
+	{
+		const int n = mFramePool.size();
+		for (int i = 0; i < n; i++) {
+			uvc_free_frame(mFramePool[i]);
+		}
+		mFramePool.clear();
+	}
+	pthread_mutex_unlock(&pool_mutex);
 	EXIT();
 }
 
@@ -316,7 +386,7 @@ void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args)
 		return;
 	}
 	if (LIKELY(preview->isRunning())) {
-		uvc_frame_t *copy = uvc_allocate_frame(frame->data_bytes);
+		uvc_frame_t *copy = preview->get_frame(frame->data_bytes);
 		if (UNLIKELY(!copy)) {
 #if LOCAL_DEBUG
 			LOGE("uvc_callback:unable to allocate duplicate frame!");
@@ -325,7 +395,7 @@ void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args)
 		}
 		uvc_error_t ret = uvc_duplicate_frame(frame, copy);
 		if (UNLIKELY(ret)) {
-			uvc_free_frame(copy);
+			preview->recycle_frame(copy);
 			return;
 		}
 		preview->addPreviewFrame(copy);
@@ -342,7 +412,7 @@ void UVCPreview::addPreviewFrame(uvc_frame_t *frame) {
 	}
 	pthread_mutex_unlock(&preview_mutex);
 	if (frame) {
-		uvc_free_frame(frame);
+		recycle_frame(frame);
 	}
 }
 
@@ -365,7 +435,7 @@ void UVCPreview::clearPreviewFrame() {
 	pthread_mutex_lock(&preview_mutex);
 	{
 		for (int i = 0; i < previewFrames.size(); i++)
-			uvc_free_frame(previewFrames[i]);
+			recycle_frame(previewFrames[i]);
 		previewFrames.clear();
 	}
 	pthread_mutex_unlock(&preview_mutex);
@@ -441,23 +511,23 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 #endif
 		if (frameMode) {
 			// MJPEG mode
-			while (LIKELY(isRunning())) {
+			for ( ; LIKELY(isRunning()) ; ) {
 				frame_mjpeg = waitPreviewFrame();
 				if (LIKELY(frame_mjpeg)) {
-					frame = uvc_allocate_frame(frame_mjpeg->width * frame_mjpeg->height * 2);
+					frame = get_frame(frame_mjpeg->width * frame_mjpeg->height * 2);
 					result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
-					uvc_free_frame(frame_mjpeg);
+					recycle_frame(frame_mjpeg);
 					if (LIKELY(!result)) {
 						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
 						addCaptureFrame(frame);
 					} else {
-						uvc_free_frame(frame);
+						recycle_frame(frame);
 					}
 				}
 			}
 		} else {
 			// yuvyv mode
-			while (LIKELY(isRunning())) {
+			for ( ; LIKELY(isRunning()) ; ) {
 				frame = waitPreviewFrame();
 				if (LIKELY(frame)) {
 					frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
@@ -551,7 +621,7 @@ uvc_frame_t *UVCPreview::draw_preview_one(uvc_frame_t *frame, ANativeWindow **wi
 	if (LIKELY(b)) {
 		uvc_frame_t *converted;
 		if (convert_func) {
-			converted = uvc_allocate_frame(frame->width * frame->height * pixcelBytes);
+			converted = get_frame(frame->width * frame->height * pixcelBytes);
 			if LIKELY(converted) {
 				b = convert_func(frame, converted);
 				if (!b) {
@@ -561,7 +631,7 @@ uvc_frame_t *UVCPreview::draw_preview_one(uvc_frame_t *frame, ANativeWindow **wi
 				} else {
 					LOGE("failed converting");
 				}
-				uvc_free_frame(converted);
+				recycle_frame(converted);
 			}
 		} else {
 			pthread_mutex_lock(&preview_mutex);
@@ -618,7 +688,7 @@ void UVCPreview::addCaptureFrame(uvc_frame_t *frame) {
 	if (LIKELY(isRunning())) {
 		// keep only latest one
 		if (captureQueu) {
-			uvc_free_frame(captureQueu);
+			recycle_frame(captureQueu);
 		}
 		captureQueu = frame;
 		pthread_cond_broadcast(&capture_sync);
@@ -649,10 +719,10 @@ uvc_frame_t *UVCPreview::waitCaptureFrame() {
  * clear drame data for capturing
  */
 void UVCPreview::clearCaptureFrame() {
-	pthread_mutex_unlock(&capture_mutex);
+	pthread_mutex_lock(&capture_mutex);
 	{
 		if (captureQueu)
-			uvc_free_frame(captureQueu);
+			recycle_frame(captureQueu);
 		captureQueu = NULL;
 	}
 	pthread_mutex_unlock(&capture_mutex);
@@ -730,7 +800,7 @@ void UVCPreview::do_capture_surface(JNIEnv *env) {
 			// frame data is always YUYV format.
 			if LIKELY(isCapturing()) {
 				if (UNLIKELY(!converted)) {
-					converted = uvc_allocate_frame(previewBytes);
+					converted = get_frame(previewBytes);
 				}
 				if (LIKELY(converted)) {
 					int b = uvc_any2rgbx(frame, converted);
@@ -745,7 +815,7 @@ void UVCPreview::do_capture_surface(JNIEnv *env) {
 		}
 	}
 	if (converted) {
-		uvc_free_frame(converted);
+		recycle_frame(converted);
 	}
 	if (mCaptureWindow) {
 		ANativeWindow_release(mCaptureWindow);
@@ -765,10 +835,10 @@ void UVCPreview::do_capture_callback(JNIEnv *env, uvc_frame_t *frame) {
 		uvc_frame_t *callback_frame = frame;
 		if (mFrameCallbackObj) {
 			if (mFrameCallbackFunc) {
-				callback_frame = uvc_allocate_frame(callbackPixelBytes);
+				callback_frame = get_frame(callbackPixelBytes);
 				if (LIKELY(callback_frame)) {
 					int b = mFrameCallbackFunc(frame, callback_frame);
-					uvc_free_frame(frame);
+					recycle_frame(frame);
 					if (UNLIKELY(b)) {
 						LOGW("failed to convert for callback frame");
 						goto SKIP;
@@ -785,7 +855,7 @@ void UVCPreview::do_capture_callback(JNIEnv *env, uvc_frame_t *frame) {
 			env->DeleteLocalRef(buf);
 		}
  SKIP:
-		uvc_free_frame(callback_frame);
+		recycle_frame(callback_frame);
 	}
 	EXIT();
 }
