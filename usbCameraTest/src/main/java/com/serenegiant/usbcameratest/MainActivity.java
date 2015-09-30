@@ -25,7 +25,6 @@ package com.serenegiant.usbcameratest;
 
 import android.app.Activity;
 import android.graphics.SurfaceTexture;
-import android.hardware.Camera;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
 import android.view.Surface;
@@ -75,7 +74,6 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 
 		mUSBMonitor = new USBMonitor(this, mOnDeviceConnectListener);
 
-		Toast.makeText(this, "" + Camera.getNumberOfCameras(), Toast.LENGTH_LONG).show();
 	}
 
 	@Override
@@ -157,7 +155,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 						if (st != null)
 							mPreviewSurface = new Surface(st);
 						mUVCCamera.setPreviewDisplay(mPreviewSurface);
-//						mUVCCamera.setFrameCallback(mIFrameCallback, UVCCamera.PIXEL_FORMAT_NV21);
+//						mUVCCamera.setFrameCallback(mIFrameCallback, UVCCamera.PIXEL_FORMAT_RGB565/*UVCCamera.PIXEL_FORMAT_NV21*/);
 						mUVCCamera.startPreview();
 					}
 				}
@@ -195,11 +193,26 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 		return mUSBMonitor;
 	}
 
-/*
 	// if you need frame data as byte array on Java side, you can use this callback method with UVCCamera#setFrameCallback
+	// if you need to create Bitmap in IFrameCallback, please refer following snippet.
+/*	final Bitmap bitmap = Bitmap.createBitmap(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, Bitmap.Config.RGB_565);
 	private final IFrameCallback mIFrameCallback = new IFrameCallback() {
 		@Override
 		public void onFrame(final ByteBuffer frame) {
+			frame.clear();
+			synchronized (bitmap) {
+				bitmap.copyPixelsFromBuffer(frame);
+			}
+			mImageView.post(mUpdateImageTask);
+		}
+	};
+	
+	private final Runnable mUpdateImageTask = new Runnable() {
+		@Override
+		public void run() {
+			synchronized (bitmap) {
+				mImageView.setImageBitmap(bitmap);
+			}
 		}
 	}; */
 }
