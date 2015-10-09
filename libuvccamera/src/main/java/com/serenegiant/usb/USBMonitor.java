@@ -52,13 +52,14 @@ public final class USBMonitor {
 	private static final String ACTION_USB_PERMISSION_BASE = "com.serenegiant.USB_PERMISSION.";
 	private final String ACTION_USB_PERMISSION = ACTION_USB_PERMISSION_BASE + hashCode();
 
-	private final ConcurrentHashMap<UsbDevice, UsbControlBlock> mCtrlBlocks = new ConcurrentHashMap<UsbDevice, UsbControlBlock>();
+	public static final String ACTION_USB_DEVICE_ATTACHED = "android.hardware.usb.action.USB_DEVICE_ATTACHED";
 
+	private final ConcurrentHashMap<UsbDevice, UsbControlBlock> mCtrlBlocks = new ConcurrentHashMap<UsbDevice, UsbControlBlock>();
 	private final WeakReference<Context> mWeakContext;
 	private final UsbManager mUsbManager;
 	private final OnDeviceConnectListener mOnDeviceConnectListener;
 	private PendingIntent mPermissionIntent = null;
-	private DeviceFilter mDeviceFilter;
+	private List<DeviceFilter> mDeviceFilters = new ArrayList<DeviceFilter>();
 
 	private final Handler mHandler = new Handler();
 
@@ -76,7 +77,6 @@ public final class USBMonitor {
 		/**
 		 * called after device opend
 		 * @param device
-		 * @param connection
 		 * @param createNew
 		 */
 		public void onConnect(UsbDevice device, UsbControlBlock ctrlBlock, boolean createNew);
@@ -122,7 +122,6 @@ public final class USBMonitor {
 
 	/**
 	 * register BroadcastReceiver to monitor USB events
-	 * @param context
 	 */
 	public synchronized void register() {
 		if (mPermissionIntent == null) {
@@ -141,7 +140,6 @@ public final class USBMonitor {
 
 	/**
 	 * unregister BroadcastReceiver
-	 * @param context
 	 */
 	public synchronized void unregister() {
 		if (mPermissionIntent != null) {
@@ -165,7 +163,17 @@ public final class USBMonitor {
 	 * @param filter
 	 */
 	public void setDeviceFilter(final DeviceFilter filter) {
-		mDeviceFilter = filter;
+		mDeviceFilters.clear();
+		mDeviceFilters.add(filter);
+	}
+
+	/**
+	 * set device filters
+	 * @param filters
+	 */
+	public void setDeviceFilter(final List<DeviceFilter> filters) {
+		mDeviceFilters.clear();
+		mDeviceFilters.addAll(filters);
 	}
 
 	/**
@@ -181,7 +189,30 @@ public final class USBMonitor {
 	 * @return
 	 */
 	public List<UsbDevice> getDeviceList() {
-		return getDeviceList(mDeviceFilter);
+		return getDeviceList(mDeviceFilters);
+	}
+
+	/**
+	 * return device list, return empty list if no device matched
+	 * @param filters
+	 * @return
+	 */
+	public List<UsbDevice> getDeviceList(final List<DeviceFilter> filters) {
+		final HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
+		final List<UsbDevice> result = new ArrayList<UsbDevice>();
+		if (deviceList != null) {
+			for (final DeviceFilter filter: filters) {
+				final Iterator<UsbDevice> iterator = deviceList.values().iterator();
+				UsbDevice device;
+				while (iterator.hasNext()) {
+					device = iterator.next();
+					if ((filter == null) || (filter.matches(device))) {
+						result.add(device);
+					}
+				}
+			}
+		}
+		return result;
 	}
 
 	/**
@@ -486,7 +517,6 @@ public final class USBMonitor {
 
 		/**
 		 * close specified interface. USB device itself still keep open.
-		 * @param interfaceIndex
 		 */
 		public synchronized void close() {
 			if (DEBUG) Log.i(TAG, "UsbControlBlock#close:");
