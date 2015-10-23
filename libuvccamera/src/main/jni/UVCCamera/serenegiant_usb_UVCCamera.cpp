@@ -229,6 +229,19 @@ static jint nativeSetFrameCallback(JNIEnv *env, jobject thiz,
 	RETURN(result, jint);
 }
 
+static jint nativeSetStatusCallback(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jobject jIStatusCallback) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		jobject status_callback_obj = env->NewGlobalRef(jIStatusCallback);
+		result = camera->setStatusCallback(env, status_callback_obj);
+	}
+	RETURN(result, jint);
+}
+
 static jint nativeSetCaptureDisplay(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera, jobject jSurface) {
 
@@ -844,6 +857,7 @@ static JNINativeMethod methods[] = {
 	{ "nativeStopPreview",				"(J)I", (void *) nativeStopPreview },
 	{ "nativeSetPreviewDisplay",		"(JLandroid/view/Surface;)I", (void *) nativeSetPreviewDisplay },
 	{ "nativeSetFrameCallback",			"(JLcom/serenegiant/usb/IFrameCallback;I)I", (void *) nativeSetFrameCallback },
+	{ "nativeSetStatusCallback",		"(JLcom/serenegiant/usb/IStatusCallback;)I", (void *) nativeSetStatusCallback },
 
 	{ "nativeSetCaptureDisplay",		"(JLandroid/view/Surface;)I", (void *) nativeSetCaptureDisplay },
 

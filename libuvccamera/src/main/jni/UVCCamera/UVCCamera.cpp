@@ -44,6 +44,7 @@ UVCCamera::UVCCamera()
 	mContext(NULL),
 	mDevice(NULL),
 	mDeviceHandle(NULL),
+	mStatusCallback(NULL),
 	mPreview(NULL),
 	mCtrlSupports(0),
 	mPUSupports(0) {
@@ -106,6 +107,7 @@ int UVCCamera::connect(int vid, int pid, int fd, const char *usbfs) {
 #endif
 				mFd = fd;
 				mPreview = new UVCPreview(mDeviceHandle);
+				mStatusCallback = new UVCStatusCallback(mDeviceHandle);
 			} else {
 				LOGE("could not open camera:err=%d", result);
 				uvc_unref_device(mDevice);
@@ -128,6 +130,7 @@ int UVCCamera::release() {
 	stopPreview();
 	if (LIKELY(mDeviceHandle)) {
 		SAFE_DELETE(mPreview);
+		SAFE_DELETE(mStatusCallback);
 		uvc_close(mDeviceHandle);
 		mDeviceHandle = NULL;
 	}
@@ -176,6 +179,15 @@ int UVCCamera::setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pix
 	int result = EXIT_FAILURE;
 	if (mPreview) {
 		result = mPreview->setFrameCallback(env, frame_callback_obj, pixel_format);
+	}
+	RETURN(result, int);
+}
+
+int UVCCamera::setStatusCallback(JNIEnv *env, jobject status_callback_obj) {
+	ENTER();
+	int result = EXIT_FAILURE;
+	if (mStatusCallback) {
+		result = mStatusCallback->setStatusCallback(env, status_callback_obj);
 	}
 	RETURN(result, int);
 }

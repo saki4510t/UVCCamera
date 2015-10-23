@@ -57,6 +57,7 @@ LOCAL_SRC_FILES := \
 		utilbase.cpp \
 		UVCCamera.cpp \
 		UVCPreview.cpp \
+		UVCStatusCallback.cpp \
 		Parameters.cpp \
 		serenegiant_usb_UVCCamera.cpp
 
