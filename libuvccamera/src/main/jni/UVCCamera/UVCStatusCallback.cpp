@@ -41,7 +41,7 @@ int UVCStatusCallback::setStatusCallback(JNIEnv *env, jobject status_callback_ob
 				jclass clazz = env->GetObjectClass(status_callback_obj);
 				if (LIKELY(clazz)) {
 					istatuscallback_fields.onStatus = env->GetMethodID(clazz,
-						"onStatus",	"(I;I;I;I;Ljava/nio/ByteBuffer;)V");
+						"onStatus",	"(IIIILjava/nio/ByteBuffer;)V");
 				} else {
 					LOGW("failed to get object class");
 				}
