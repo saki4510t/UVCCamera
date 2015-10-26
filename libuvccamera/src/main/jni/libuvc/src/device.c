@@ -1632,9 +1632,26 @@ void uvc_process_status_xfer(uvc_device_handle_t *devh,
 		break;
 	}
 	case 2: /* VideoStreaming interface */
-		UVC_DEBUG("Unhandled update from VideoStreaming interface");
-		UVC_EXIT_VOID();
-		return; /* @todo VideoStreaming updates */
+		if (transfer->actual_length < 3) {
+			UVC_DEBUG("Invalid streaming status event received.\n");
+			UVC_EXIT_VOID();
+			return;
+		}
+		if (transfer->buffer[2] == 0) {
+			if (transfer->actual_length < 4) {
+				UVC_DEBUG("Invalid streaming status event received.\n");
+				UVC_EXIT_VOID();
+				return;
+			}
+			UVC_DEBUG("Button (intf %u) %s len %d\n",
+				transfer->buffer[1], transfer->buffer[3] ? "pressed" : "released", transfer->actual_length);
+		} else {
+			UVC_DEBUG("Stream %u error event %02x %02x "
+				"len %d.\n", transfer->buffer[1], transfer->buffer[2], transfer->buffer[3], transfer->actual_length);
+		}
+		data = transfer->buffer;
+		data_len = transfer->actual_length;
+		break;
 	}
 
 	UVC_DEBUG("Event: class=%d, event=%d, selector=%d, attribute=%d, data_len=%zd",
