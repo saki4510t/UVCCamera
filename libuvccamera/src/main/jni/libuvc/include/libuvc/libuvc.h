@@ -423,6 +423,13 @@ typedef void (uvc_status_callback_t)(enum uvc_status_class status_class,
 		int event, int selector, enum uvc_status_attribute status_attribute,
 		void *data, size_t data_len, void *user_ptr);
 
+/** A callback function to accept button events
+ * @ingroup device
+ */
+typedef void(uvc_button_callback_t)(int button,
+                                    int state,
+                                    void *user_ptr);
+
 /** Structure representing a UVC device descriptor.
  *
  * (This isn't a standard structure.)
@@ -550,6 +557,10 @@ void uvc_unref_device(uvc_device_t *dev);
 
 void uvc_set_status_callback(uvc_device_handle_t *devh,
 		uvc_status_callback_t cb, void *user_ptr);
+
+void uvc_set_button_callback(uvc_device_handle_t *devh,
+                             uvc_button_callback_t cb,
+                             void *user_ptr);
 
 const uvc_input_terminal_t *uvc_get_input_terminals(uvc_device_handle_t *devh);
 const uvc_output_terminal_t *uvc_get_output_terminals(uvc_device_handle_t *devh);

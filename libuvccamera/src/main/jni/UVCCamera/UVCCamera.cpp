@@ -44,6 +44,8 @@ UVCCamera::UVCCamera()
 	mContext(NULL),
 	mDevice(NULL),
 	mDeviceHandle(NULL),
+	mStatusCallback(NULL),
+	mButtonCallback(NULL),
 	mPreview(NULL),
 	mCtrlSupports(0),
 	mPUSupports(0) {
@@ -105,6 +107,8 @@ int UVCCamera::connect(int vid, int pid, int fd, const char *usbfs) {
 				uvc_print_diag(mDeviceHandle, stderr);
 #endif
 				mFd = fd;
+				mStatusCallback = new UVCStatusCallback(mDeviceHandle);
+				mButtonCallback = new UVCButtonCallback(mDeviceHandle);
 				mPreview = new UVCPreview(mDeviceHandle);
 			} else {
 				LOGE("could not open camera:err=%d", result);
@@ -127,6 +131,8 @@ int UVCCamera::release() {
 	ENTER();
 	stopPreview();
 	if (LIKELY(mDeviceHandle)) {
+		SAFE_DELETE(mStatusCallback);
+		SAFE_DELETE(mButtonCallback);
 		SAFE_DELETE(mPreview);
 		uvc_close(mDeviceHandle);
 		mDeviceHandle = NULL;
@@ -142,6 +148,24 @@ int UVCCamera::release() {
 		mFd = 0;
 	}
 	RETURN(0, int);
+}
+
+int UVCCamera::setStatusCallback(JNIEnv *env, jobject status_callback_obj) {
+	ENTER();
+	int result = EXIT_FAILURE;
+	if (mStatusCallback) {
+		result = mStatusCallback->setCallback(env, status_callback_obj);
+	}
+	RETURN(result, int);
+}
+
+int UVCCamera::setButtonCallback(JNIEnv *env, jobject button_callback_obj) {
+	ENTER();
+	int result = EXIT_FAILURE;
+	if (mButtonCallback) {
+		result = mButtonCallback->setCallback(env, button_callback_obj);
+	}
+	RETURN(result, int);
 }
 
 char *UVCCamera::getSupportedSize() {

@@ -31,6 +31,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <android/native_window.h>
+#include "UVCStatusCallback.h"
+#include "UVCButtonCallback.h"
 #include "UVCPreview.h"
 
 #define	CTRL_SCANNING		0x000001	// D0:  Scanning Mode
@@ -96,6 +98,8 @@ class UVCCamera {
 	int mFd;
 	uvc_device_t *mDevice;
 	uvc_device_handle_t *mDeviceHandle;
+	UVCStatusCallback *mStatusCallback;
+	UVCButtonCallback *mButtonCallback;
 	UVCPreview *mPreview;
 	uint64_t mCtrlSupports;
 	uint64_t mPUSupports;
@@ -120,6 +124,10 @@ public:
 
 	int connect(int vid, int pid, int fd, const char *usbfs);
 	int release();
+
+	int setStatusCallback(JNIEnv *env, jobject status_callback_obj);
+	int setButtonCallback(JNIEnv *env, jobject button_callback_obj);
+
 	char *getSupportedSize();
 	int setPreviewSize(int width, int height, int mode, float bandwidth = DEFAULT_BANDWIDTH);
 	int setPreviewDisplay(ANativeWindow *preview_window);
