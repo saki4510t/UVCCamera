@@ -133,40 +133,40 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 			if (mUVCCamera != null)
 				mUVCCamera.destroy();
 			mUVCCamera = new UVCCamera();
-			mUVCCamera.setStatusCallback(new IStatusCallback() {
-				@Override
-				public void onStatus(final int statusClass, final int event, final int selector,
-									 final int statusAttribute, final ByteBuffer data) {
-					runOnUiThread(new Runnable() {
-						@Override
-						public void run() {
-							Toast.makeText(MainActivity.this, "onStatus(statusClass=" + statusClass
-									+ "; " +
-									"event=" + event + "; " +
-									"selector=" + selector + "; " +
-									"statusAttribute=" + statusAttribute + "; " +
-									"data=...)", Toast.LENGTH_SHORT).show();
-						}
-					});
-
-				}
-			});
-			mUVCCamera.setButtonCallback(new IButtonCallback() {
-				@Override
-				public void onButton(final int button, final int state) {
-					runOnUiThread(new Runnable() {
-						@Override
-						public void run() {
-							Toast.makeText(MainActivity.this, "onButton(button=" + button + "; " +
-									"state=" + state + ")", Toast.LENGTH_SHORT).show();
-						}
-					});
-				}
-			});
 			EXECUTER.execute(new Runnable() {
 				@Override
 				public void run() {
 					mUVCCamera.open(ctrlBlock);
+					mUVCCamera.setStatusCallback(new IStatusCallback() {
+						@Override
+						public void onStatus(final int statusClass, final int event, final int selector,
+											 final int statusAttribute, final ByteBuffer data) {
+							runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
+									Toast.makeText(MainActivity.this, "onStatus(statusClass=" + statusClass
+											+ "; " +
+											"event=" + event + "; " +
+											"selector=" + selector + "; " +
+											"statusAttribute=" + statusAttribute + "; " +
+											"data=...)", Toast.LENGTH_SHORT).show();
+								}
+							});
+
+						}
+					});
+					mUVCCamera.setButtonCallback(new IButtonCallback() {
+						@Override
+						public void onButton(final int button, final int state) {
+							runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
+									Toast.makeText(MainActivity.this, "onButton(button=" + button + "; " +
+											"state=" + state + ")", Toast.LENGTH_SHORT).show();
+								}
+							});
+						}
+					});
 //					mUVCCamera.setPreviewTexture(mUVCCameraView.getSurfaceTexture());
 					if (mPreviewSurface != null) {
 						mPreviewSurface.release();
