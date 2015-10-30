@@ -57,7 +57,7 @@ LOCAL_EXPORT_LDLIBS := -llog
 
 LOCAL_ARM_MODE := arm
 
-LOCAL_STATIC_LIBRARIES += jpeg_static
+LOCAL_STATIC_LIBRARIES += jpeg-turbo1400_static
 LOCAL_SHARED_LIBRARIES += usb100
 
 LOCAL_SRC_FILES := \
@@ -73,7 +73,7 @@ LOCAL_MODULE := libuvc_static
 include $(BUILD_STATIC_LIBRARY)
 
 ######################################################################
-# libuvc.so (shared library with static link to libusb, libjpeg)
+# libuvc.so (shared library with static link to libjpeg-turbo)
 ######################################################################
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional
