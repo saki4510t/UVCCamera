@@ -153,6 +153,32 @@ static jint nativeRelease(JNIEnv *env, jobject thiz,
 	RETURN(result, jint);
 }
 
+static jint nativeSetStatusCallback(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jobject jIStatusCallback) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		jobject status_callback_obj = env->NewGlobalRef(jIStatusCallback);
+		result = camera->setStatusCallback(env, status_callback_obj);
+	}
+	RETURN(result, jint);
+}
+
+static jint nativeSetButtonCallback(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jobject jIButtonCallback) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		jobject button_callback_obj = env->NewGlobalRef(jIButtonCallback);
+		result = camera->setButtonCallback(env, button_callback_obj);
+	}
+	RETURN(result, jint);
+}
+
 static jobject nativeGetSupportedSize(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera) {
 
@@ -837,6 +863,9 @@ static JNINativeMethod methods[] = {
 
 	{ "nativeConnect",					"(JIIILjava/lang/String;)I", (void *) nativeConnect },
 	{ "nativeRelease",					"(J)I", (void *) nativeRelease },
+
+	{ "nativeSetStatusCallback",		"(JLcom/serenegiant/usb/IStatusCallback;)I", (void *) nativeSetStatusCallback },
+	{ "nativeSetButtonCallback",		"(JLcom/serenegiant/usb/IButtonCallback;)I", (void *) nativeSetButtonCallback },
 
 	{ "nativeGetSupportedSize",			"(J)Ljava/lang/String;", (void *) nativeGetSupportedSize },
 	{ "nativeSetPreviewSize",			"(JIIIF)I", (void *) nativeSetPreviewSize },

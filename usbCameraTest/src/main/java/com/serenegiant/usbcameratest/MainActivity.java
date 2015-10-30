@@ -34,12 +34,15 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 
 import com.serenegiant.usb.CameraDialog;
+import com.serenegiant.usb.IButtonCallback;
+import com.serenegiant.usb.IStatusCallback;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.widget.UVCCameraTextureView;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -134,6 +137,36 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 				@Override
 				public void run() {
 					mUVCCamera.open(ctrlBlock);
+					mUVCCamera.setStatusCallback(new IStatusCallback() {
+						@Override
+						public void onStatus(final int statusClass, final int event, final int selector,
+											 final int statusAttribute, final ByteBuffer data) {
+							runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
+									Toast.makeText(MainActivity.this, "onStatus(statusClass=" + statusClass
+											+ "; " +
+											"event=" + event + "; " +
+											"selector=" + selector + "; " +
+											"statusAttribute=" + statusAttribute + "; " +
+											"data=...)", Toast.LENGTH_SHORT).show();
+								}
+							});
+
+						}
+					});
+					mUVCCamera.setButtonCallback(new IButtonCallback() {
+						@Override
+						public void onButton(final int button, final int state) {
+							runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
+									Toast.makeText(MainActivity.this, "onButton(button=" + button + "; " +
+											"state=" + state + ")", Toast.LENGTH_SHORT).show();
+								}
+							});
+						}
+					});
 //					mUVCCamera.setPreviewTexture(mUVCCameraView.getSurfaceTexture());
 					if (mPreviewSurface != null) {
 						mPreviewSurface.release();

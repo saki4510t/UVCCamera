@@ -100,6 +100,17 @@ public class UVCCamera {
     public static final int PU_AVIDEO_LOCK		= 0x80020000;	// D17: Analog Video Lock Status
     public static final int PU_CONTRAST_AUTO	= 0x80040000;	// D18: Contrast, Auto
 
+	// uvc_status_class from libuvc.h
+	public static final int STATUS_CLASS_CONTROL = 0x10;
+	public static final int STATUS_CLASS_CONTROL_CAMERA = 0x11;
+	public static final int STATUS_CLASS_CONTROL_PROCESSING = 0x12;
+
+	// uvc_status_attribute from libuvc.h
+	public static final int STATUS_ATTRIBUTE_VALUE_CHANGE = 0x00;
+	public static final int STATUS_ATTRIBUTE_INFO_CHANGE = 0x01;
+	public static final int STATUS_ATTRIBUTE_FAILURE_CHANGE = 0x02;
+	public static final int STATUS_ATTRIBUTE_UNKNOWN = 0xff;
+
 	private static boolean isLoaded;
 	static {
 		if (!isLoaded) {
@@ -154,6 +165,26 @@ public class UVCCamera {
     	}
 		nativeSetPreviewSize(mNativePtr, DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT, DEFAULT_PREVIEW_MODE, DEFAULT_BANDWIDTH);
     }
+
+	/**
+	 * set status callback
+	 * @param callback
+	 */
+	public void setStatusCallback(final IStatusCallback callback) {
+		if (mNativePtr != 0) {
+			nativeSetStatusCallback(mNativePtr, callback);
+		}
+	}
+
+	/**
+	 * set button callback
+	 * @param callback
+	 */
+	public void setButtonCallback(final IButtonCallback callback) {
+		if (mNativePtr != 0) {
+			nativeSetButtonCallback(mNativePtr, callback);
+		}
+	}
 
     /**
      * close and release UVC camera
@@ -910,6 +941,9 @@ public class UVCCamera {
 
     private static final native int nativeConnect(final long id_camera, final int venderId, final int productId, final int fileDescriptor, String usbfs);
     private static final native int nativeRelease(final long id_camera);
+
+	private static final native int nativeSetStatusCallback(final long mNativePtr, final IStatusCallback callback);
+	private static final native int nativeSetButtonCallback(final long mNativePtr, final IButtonCallback callback);
 
     private static final native int nativeSetPreviewSize(final long id_camera, final int width, final int height, final int mode, final float bandwidth);
     private static final native String nativeGetSupportedSize(final long id_camera);
