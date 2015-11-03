@@ -16,6 +16,9 @@
 
 //#define UVC_DEBUGGING
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 /** Converts an unaligned 8-byte little-endian integer into an int64 */
 #define QW_TO_LONG(p) \
  ((p)[0] | ((p)[1] << 8) | ((p)[2] << 16) | ((p)[3] << 24) \

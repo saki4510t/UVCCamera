@@ -1369,6 +1369,9 @@ uvc_error_t uvc_parse_vs_frame_uncompressed(
 		size_t block_size) {
 	uvc_format_desc_t *format;
 	uvc_frame_desc_t *frame;
+	uint8_t frame_type;
+	uint8_t n;
+	uint32_t interval;
 
 	const unsigned char *p;
 	int i;
@@ -1380,7 +1383,7 @@ uvc_error_t uvc_parse_vs_frame_uncompressed(
 
 	frame->parent = format;
 
-	frame->bDescriptorSubtype = block[2];
+	frame_type = frame->bDescriptorSubtype = block[2];
 	frame->bFrameIndex = block[3];
 	frame->bmCapabilities = block[4];
 	frame->wWidth = block[5] + (block[6] << 8);
@@ -1389,23 +1392,34 @@ uvc_error_t uvc_parse_vs_frame_uncompressed(
 	frame->dwMaxBitRate = DW_TO_INT(&block[13]);
 	frame->dwMaxVideoFrameBufferSize = DW_TO_INT(&block[17]);
 	frame->dwDefaultFrameInterval = DW_TO_INT(&block[21]);
-	frame->bFrameIntervalType = block[25];
+	n = frame->bFrameIntervalType = block[25];
 
-	if (block[25] == 0) {
+	if (!n) {
 		frame->dwMinFrameInterval = DW_TO_INT(&block[26]);
 		frame->dwMaxFrameInterval = DW_TO_INT(&block[30]);
 		frame->dwFrameIntervalStep = DW_TO_INT(&block[34]);
 	} else {
-		frame->intervals = calloc(block[25] + 1, sizeof(frame->intervals[0]));
+		frame->intervals = calloc(n + 1, sizeof(frame->intervals[0]));
 		p = &block[26];
 
-		for (i = 0; i < block[25]; ++i) {
-			frame->intervals[i] = DW_TO_INT(p);
+		for (i = 0; i < n; ++i) {
+			interval = DW_TO_INT(p);
+			frame->intervals[i] = interval ? interval : 1;
 			p += 4;
 		}
-		frame->intervals[block[25]] = 0;
+		frame->intervals[n] = 0;
+		
+		frame->dwDefaultFrameInterval
+			= MIN(frame->intervals[n-1],
+				MAX(frame->intervals[0], frame->dwDefaultFrameInterval));
 	}
-
+	
+	if (frame_type == UVC_VS_FRAME_UNCOMPRESSED) {
+		frame->dwMaxVideoFrameBufferSize
+			= format->bBitsPerPixel * frame->wWidth * frame->wHeight / 8;
+	}
+	
+	
 	DL_APPEND(format->frame_descs, frame);
 
 	UVC_EXIT(UVC_SUCCESS);
