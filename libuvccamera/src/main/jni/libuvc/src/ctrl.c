@@ -1669,7 +1669,7 @@ uvc_error_t uvc_set_analog_video_standard(uvc_device_handle_t *devh, uint8_t sta
 	uint8_t data[1];
 	uvc_error_t ret;
 
-	data[1] = standard;
+	data[0] = standard;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
 			UVC_PU_ANALOG_VIDEO_STANDARD_CONTROL << 8,
@@ -1705,7 +1705,7 @@ uvc_error_t uvc_set_analog_video_lockstate(uvc_device_handle_t *devh, uint8_t lo
 	uint8_t data[1];
 	uvc_error_t ret;
 
-	data[1] = lock_state;
+	data[0] = lock_state;
 
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
 			UVC_PU_ANALOG_LOCK_STATUS_CONTROL << 8,
