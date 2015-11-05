@@ -136,8 +136,9 @@ uvc_error_t uvc_duplicate_frame(uvc_frame_t *in, uvc_frame_t *out) {
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
+	out->actual_bytes = in->actual_bytes;	// XXX
 
-#if USE_STRIDE
+#if USE_STRIDE	 // XXX
 	if (in->step && out->step) {
 		const int istep = in->step;
 		const int ostep = out->step;
@@ -158,10 +159,10 @@ uvc_error_t uvc_duplicate_frame(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		memcpy(out->data, in->data, in->data_bytes);
+		memcpy(out->data, in->data, in->actual_bytes);
 	}
 #else
-	memcpy(out->data, in->data, in->data_bytes);
+	memcpy(out->data, in->data, in->actual_bytes); // XXX
 #endif
 	return UVC_SUCCESS;
 }
@@ -1244,6 +1245,10 @@ uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
 uvc_error_t uvc_any2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 
 	switch (in->frame_format) {
+#ifdef LIBUVC_HAS_JPEG
+	case UVC_FRAME_FORMAT_MJPEG:
+		return uvc_mjpeg2rgb565(in, out);
+#endif
 	case UVC_FRAME_FORMAT_YUYV:
 		return uvc_yuyv2rgb565(in, out);
 	case UVC_FRAME_FORMAT_UYVY:
@@ -1266,6 +1271,10 @@ uvc_error_t uvc_any2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 uvc_error_t uvc_any2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 
 	switch (in->frame_format) {
+#ifdef LIBUVC_HAS_JPEG
+	case UVC_FRAME_FORMAT_MJPEG:
+		return uvc_mjpeg2rgb(in, out);
+#endif
 	case UVC_FRAME_FORMAT_YUYV:
 		return uvc_yuyv2rgb(in, out);
 	case UVC_FRAME_FORMAT_UYVY:
@@ -1286,6 +1295,10 @@ uvc_error_t uvc_any2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 uvc_error_t uvc_any2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 
 	switch (in->frame_format) {
+#ifdef LIBUVC_HAS_JPEG
+	case UVC_FRAME_FORMAT_MJPEG:
+		return uvc_mjpeg2bgr(in, out);
+#endif
 	case UVC_FRAME_FORMAT_YUYV:
 		return uvc_yuyv2bgr(in, out);
 	case UVC_FRAME_FORMAT_UYVY:
@@ -1300,12 +1313,16 @@ uvc_error_t uvc_any2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 /** @brief Convert a frame to RGBX8888
  * @ingroup frame
  *
- * @param in non-RGB565 frame
- * @param out RGBX8888 frame
+ * @param in non-rgbx frame
+ * @param out rgbx frame
  */
 uvc_error_t uvc_any2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 
 	switch (in->frame_format) {
+#ifdef LIBUVC_HAS_JPEG
+	case UVC_FRAME_FORMAT_MJPEG:
+		return uvc_mjpeg2rgbx(in, out);
+#endif
 	case UVC_FRAME_FORMAT_YUYV:
 		return uvc_yuyv2rgbx(in, out);
 	case UVC_FRAME_FORMAT_UYVY:
@@ -1317,4 +1334,62 @@ uvc_error_t uvc_any2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	default:
 		return UVC_ERROR_NOT_SUPPORTED;
 	}
+}
+
+/** @brief Convert a frame to yuyv
+ * @ingroup frame
+ *
+ * @param in non-yuyv frame
+ * @param out yuyv frame
+ */
+uvc_error_t uvc_any2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
+
+	switch (in->frame_format) {
+#ifdef LIBUVC_HAS_JPEG
+	case UVC_FRAME_FORMAT_MJPEG:
+		return uvc_mjpeg2yuyv(in, out);
+#endif
+	case UVC_FRAME_FORMAT_YUYV:
+		return uvc_duplicate_frame(in, out);
+	default:
+		return UVC_ERROR_NOT_SUPPORTED;
+	}
+}
+
+/** @brief Convert a frame to yuv420sp
+ * @ingroup frame
+ *
+ * @param in non-yuv420sp frame
+ * @param out yuv420sp frame
+ */
+uvc_error_t uvc_any2yuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
+	uvc_error_t result = UVC_ERROR_NO_MEM;
+	uvc_frame_t *yuv = uvc_allocate_frame((in->width * in->height * 3) / 2);
+	if (yuv) {
+		result = uvc_any2yuyv(in, yuv);
+		if (LIKELY(!result)) {
+			result = uvc_yuyv2yuv420SP(yuv, out);
+		}
+		uvc_free_frame(yuv);
+	}
+	return result;
+}
+
+/** @brief Convert a frame to iyuv420sp(NV21)
+ * @ingroup frame
+ *
+ * @param in non-iyuv420SP(NV21) frame
+ * @param out iyuv420SP(NV21) frame
+ */
+uvc_error_t uvc_any2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
+	uvc_error_t result = UVC_ERROR_NO_MEM;
+	uvc_frame_t *yuv = uvc_allocate_frame((in->width * in->height * 3) / 2);
+	if (yuv) {
+		result = uvc_any2yuyv(in, yuv);
+		if (LIKELY(!result)) {
+			result = uvc_yuyv2iyuv420SP(yuv, out);
+		}
+		uvc_free_frame(yuv);
+	}
+	return result;
 }

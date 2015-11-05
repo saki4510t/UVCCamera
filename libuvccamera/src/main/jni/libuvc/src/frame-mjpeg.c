@@ -231,6 +231,225 @@ fail:
 	return UVC_ERROR_OTHER+1;
 }
 
+/** @brief Convert an MJPEG frame to BGR
+ * @ingroup frame
+ *
+ * @param in MJPEG frame
+ * @param out RGB frame
+ */
+uvc_error_t uvc_mjpeg2bgr(uvc_frame_t *in, uvc_frame_t *out) {
+	struct jpeg_decompress_struct dinfo;
+	struct error_mgr jerr;
+	size_t lines_read;
+	// local copy
+	uint8_t *data = out->data;
+	const int out_step = out->step;
+
+	int num_scanlines, i;
+	lines_read = 0;
+	unsigned char *buffer[MAX_READLINE];
+
+	out->actual_bytes = 0;	// XXX
+	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
+		return UVC_ERROR_INVALID_PARAM;
+
+	if (uvc_ensure_frame_size(out, in->width * in->height * 3) < 0)
+		return UVC_ERROR_NO_MEM;
+
+	out->width = in->width;
+	out->height = in->height;
+	out->frame_format = UVC_FRAME_FORMAT_BGR;
+	out->step = in->width * 3;
+	out->sequence = in->sequence;
+	out->capture_time = in->capture_time;
+	out->source = in->source;
+
+	dinfo.err = jpeg_std_error(&jerr.super);
+	jerr.super.error_exit = _error_exit;
+
+	if (setjmp(jerr.jmp)) {
+		goto fail;
+	}
+
+	jpeg_create_decompress(&dinfo);
+	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);
+	jpeg_read_header(&dinfo, TRUE);
+
+	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
+		/* This frame is missing the Huffman tables: fill in the standard ones */
+		insert_huff_tables(&dinfo);
+	}
+
+	dinfo.out_color_space = JCS_EXT_BGR;
+	dinfo.dct_method = JDCT_IFAST;
+
+	jpeg_start_decompress(&dinfo);
+
+	if (LIKELY(dinfo.output_height == out->height)) {
+		for (; dinfo.output_scanline < dinfo.output_height ;) {
+			buffer[0] = data + (lines_read) * out_step;
+			for (i = 1; i < MAX_READLINE; i++)
+				buffer[i] = buffer[i-1] + out_step;
+			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, MAX_READLINE);
+			lines_read += num_scanlines;
+		}
+		out->actual_bytes = in->width * in->height * 3;	// XXX
+	}
+	jpeg_finish_decompress(&dinfo);
+	jpeg_destroy_decompress(&dinfo);
+	return lines_read == out->height ? UVC_SUCCESS : UVC_ERROR_OTHER;	// XXX
+
+fail:
+	jpeg_destroy_decompress(&dinfo);
+	return UVC_ERROR_OTHER+1;
+}
+
+/** @brief Convert an MJPEG frame to RGB565
+ * @ingroup frame
+ *
+ * @param in MJPEG frame
+ * @param out RGB frame
+ */
+uvc_error_t uvc_mjpeg2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
+	struct jpeg_decompress_struct dinfo;
+	struct error_mgr jerr;
+	size_t lines_read;
+	// local copy
+	uint8_t *data = out->data;
+	const int out_step = out->step;
+
+	int num_scanlines, i;
+	lines_read = 0;
+	unsigned char *buffer[MAX_READLINE];
+
+	out->actual_bytes = 0;	// XXX
+	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
+		return UVC_ERROR_INVALID_PARAM;
+
+	if (uvc_ensure_frame_size(out, in->width * in->height * 2) < 0)
+		return UVC_ERROR_NO_MEM;
+
+	out->width = in->width;
+	out->height = in->height;
+	out->frame_format = UVC_FRAME_FORMAT_RGB565;
+	out->step = in->width * 2;
+	out->sequence = in->sequence;
+	out->capture_time = in->capture_time;
+	out->source = in->source;
+
+	dinfo.err = jpeg_std_error(&jerr.super);
+	jerr.super.error_exit = _error_exit;
+
+	if (setjmp(jerr.jmp)) {
+		goto fail;
+	}
+
+	jpeg_create_decompress(&dinfo);
+	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);
+	jpeg_read_header(&dinfo, TRUE);
+
+	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
+		/* This frame is missing the Huffman tables: fill in the standard ones */
+		insert_huff_tables(&dinfo);
+	}
+
+	dinfo.out_color_space = JCS_RGB565;
+	dinfo.dct_method = JDCT_IFAST;
+
+	jpeg_start_decompress(&dinfo);
+
+	if (LIKELY(dinfo.output_height == out->height)) {
+		for (; dinfo.output_scanline < dinfo.output_height ;) {
+			buffer[0] = data + (lines_read) * out_step;
+			for (i = 1; i < MAX_READLINE; i++)
+				buffer[i] = buffer[i-1] + out_step;
+			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, MAX_READLINE);
+			lines_read += num_scanlines;
+		}
+		out->actual_bytes = in->width * in->height * 2;	// XXX
+	}
+	jpeg_finish_decompress(&dinfo);
+	jpeg_destroy_decompress(&dinfo);
+	return lines_read == out->height ? UVC_SUCCESS : UVC_ERROR_OTHER;	// XXX
+
+fail:
+	jpeg_destroy_decompress(&dinfo);
+	return UVC_ERROR_OTHER+1;
+}
+
+/** @brief Convert an MJPEG frame to RGB
+ * @ingroup frame
+ *
+ * @param in MJPEG frame
+ * @param out RGB frame
+ */
+uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
+	struct jpeg_decompress_struct dinfo;
+	struct error_mgr jerr;
+	size_t lines_read;
+	// local copy
+	uint8_t *data = out->data;
+	const int out_step = out->step;
+
+	int num_scanlines, i;
+	lines_read = 0;
+	unsigned char *buffer[MAX_READLINE];
+
+	out->actual_bytes = 0;	// XXX
+	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
+		return UVC_ERROR_INVALID_PARAM;
+
+	if (uvc_ensure_frame_size(out, in->width * in->height * 4) < 0)
+		return UVC_ERROR_NO_MEM;
+
+	out->width = in->width;
+	out->height = in->height;
+	out->frame_format = UVC_FRAME_FORMAT_RGBX;	// XXX
+	out->step = in->width * 4;
+	out->sequence = in->sequence;
+	out->capture_time = in->capture_time;
+	out->source = in->source;
+
+	dinfo.err = jpeg_std_error(&jerr.super);
+	jerr.super.error_exit = _error_exit;
+
+	if (setjmp(jerr.jmp)) {
+		goto fail;
+	}
+
+	jpeg_create_decompress(&dinfo);
+	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);	// XXX
+	jpeg_read_header(&dinfo, TRUE);
+
+	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
+		/* This frame is missing the Huffman tables: fill in the standard ones */
+		insert_huff_tables(&dinfo);
+	}
+
+	dinfo.out_color_space = JCS_EXT_RGBA;
+	dinfo.dct_method = JDCT_IFAST;
+
+	jpeg_start_decompress(&dinfo);
+
+	if (LIKELY(dinfo.output_height == out->height)) {
+		for (; dinfo.output_scanline < dinfo.output_height ;) {
+			buffer[0] = data + (lines_read) * out_step;
+			for (i = 1; i < MAX_READLINE; i++)
+				buffer[i] = buffer[i-1] + out_step;
+			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, MAX_READLINE);
+			lines_read += num_scanlines;
+		}
+		out->actual_bytes = in->width * in->height * 4;	// XXX
+	}
+	jpeg_finish_decompress(&dinfo);
+	jpeg_destroy_decompress(&dinfo);
+	return lines_read == out->height ? UVC_SUCCESS : UVC_ERROR_OTHER;	// XXX
+
+fail:
+	jpeg_destroy_decompress(&dinfo);
+	return UVC_ERROR_OTHER+1;
+}
+
 static inline unsigned char sat(int i) {
 	return (unsigned char) (i >= 255 ? 255 : (i < 0 ? 0 : i));
 }

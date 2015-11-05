@@ -797,26 +797,34 @@ uvc_error_t uvc_any2bgr(uvc_frame_t *in, uvc_frame_t *out);
 
 #ifdef LIBUVC_HAS_JPEG
 uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out);
+uvc_error_t uvc_mjpeg2bgr(uvc_frame_t *in, uvc_frame_t *out);		// XXX
+uvc_error_t uvc_mjpeg2rgb565(uvc_frame_t *in, uvc_frame_t *out);	// XXX
+uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
+uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out);		// XXX
 #endif
 
-uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_any2rgb565(uvc_frame_t *in, uvc_frame_t *out);
+uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out);		// XXX
+uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out);		// XXX
+uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out);		// XXX
+uvc_error_t uvc_any2rgb565(uvc_frame_t *in, uvc_frame_t *out);		// XXX
 
-uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_any2rgbx(uvc_frame_t *in, uvc_frame_t *out);
+uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
+uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
+uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
+uvc_error_t uvc_any2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
 
-uvc_error_t uvc_yuyv2yuv420P(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_yuyv2iyuv420P(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_yuyv2yuv420SP(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out);
+uvc_error_t uvc_yuyv2yuv420P(uvc_frame_t *in, uvc_frame_t *out);	// XXX
+uvc_error_t uvc_yuyv2yuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
+uvc_error_t uvc_any2yuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
+
+uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
+uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
+uvc_error_t uvc_any2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
+
+uvc_error_t uvc_any2yuyv(uvc_frame_t *in, uvc_frame_t *out);		// XXX
+
 //**********************************************************************
-// added for diagonostic
+// added for diagnostic
 // t_saki@serenegiant.com
 void uvc_print_format_desc_one(uvc_format_desc_t *format_descriptors, FILE *stream);
 void uvc_print_format_desc(uvc_format_desc_t *format_descriptors, FILE *stream);
