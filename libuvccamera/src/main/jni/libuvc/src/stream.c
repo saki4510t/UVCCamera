@@ -206,7 +206,7 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 		// when libusb_control_transfer returned error or transfer bytes was zero.
 		if (!err) {
 			UVC_DEBUG("libusb_control_transfer transfered zero length data");
-			err = LIBUSB_ERROR_OTHER;
+			err = UVC_ERROR_OTHER;
 		}
 		return err;
 	}
@@ -216,7 +216,7 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 #else
 		LOGE("transfered bytes is smaller than data bytes:%d expected %ld", err, len);
 #endif
-		return LIBUSB_ERROR_OTHER;
+		return UVC_ERROR_OTHER;
 	}
 	/* now decode following a GET transfer */
 	if (req != UVC_SET_CUR) {
