@@ -168,9 +168,6 @@ uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	struct jpeg_decompress_struct dinfo;
 	struct error_mgr jerr;
 	size_t lines_read;
-	// local copy
-	uint8_t *data = out->data;
-	const int out_step = out->step;
 
 	int num_scanlines, i;
 	lines_read = 0;
@@ -212,6 +209,10 @@ uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 
 	jpeg_start_decompress(&dinfo);
 
+	// local copy
+	uint8_t *data = out->data;
+	const int out_step = out->step;
+
 	if (LIKELY(dinfo.output_height == out->height)) {
 		for (; dinfo.output_scanline < dinfo.output_height ;) {
 			buffer[0] = data + (lines_read) * out_step;
@@ -241,9 +242,6 @@ uvc_error_t uvc_mjpeg2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	struct jpeg_decompress_struct dinfo;
 	struct error_mgr jerr;
 	size_t lines_read;
-	// local copy
-	uint8_t *data = out->data;
-	const int out_step = out->step;
 
 	int num_scanlines, i;
 	lines_read = 0;
@@ -285,6 +283,10 @@ uvc_error_t uvc_mjpeg2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 
 	jpeg_start_decompress(&dinfo);
 
+	// local copy
+	uint8_t *data = out->data;
+	const int out_step = out->step;
+
 	if (LIKELY(dinfo.output_height == out->height)) {
 		for (; dinfo.output_scanline < dinfo.output_height ;) {
 			buffer[0] = data + (lines_read) * out_step;
@@ -314,9 +316,6 @@ uvc_error_t uvc_mjpeg2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	struct jpeg_decompress_struct dinfo;
 	struct error_mgr jerr;
 	size_t lines_read;
-	// local copy
-	uint8_t *data = out->data;
-	const int out_step = out->step;
 
 	int num_scanlines, i;
 	lines_read = 0;
@@ -358,6 +357,10 @@ uvc_error_t uvc_mjpeg2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 
 	jpeg_start_decompress(&dinfo);
 
+	// local copy
+	uint8_t *data = out->data;
+	const int out_step = out->step;
+
 	if (LIKELY(dinfo.output_height == out->height)) {
 		for (; dinfo.output_scanline < dinfo.output_height ;) {
 			buffer[0] = data + (lines_read) * out_step;
@@ -387,9 +390,6 @@ uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	struct jpeg_decompress_struct dinfo;
 	struct error_mgr jerr;
 	size_t lines_read;
-	// local copy
-	uint8_t *data = out->data;
-	const int out_step = out->step;
 
 	int num_scanlines, i;
 	lines_read = 0;
@@ -430,6 +430,10 @@ uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	dinfo.dct_method = JDCT_IFAST;
 
 	jpeg_start_decompress(&dinfo);
+
+	// local copy
+	uint8_t *data = out->data;
+	const int out_step = out->step;
 
 	if (LIKELY(dinfo.output_height == out->height)) {
 		for (; dinfo.output_scanline < dinfo.output_height ;) {
