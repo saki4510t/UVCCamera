@@ -73,7 +73,7 @@ public class CameraFragment extends Fragment {
 
 	public CameraFragment() {
 		if (DEBUG) Log.v(TAG, "Constructor:");
-		setRetainInstance(true);
+//		setRetainInstance(true);
 	}
 
 	@Override

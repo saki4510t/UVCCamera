@@ -120,10 +120,12 @@ public final class CameraServer extends Handler {
 //********************************************************************************
 	public void resize(final int width, final int height) {
 		if (DEBUG) Log.d(TAG, String.format("resize(%d,%d)", width, height));
-		mFrameWidth = width;
-		mFrameHeight = height;
-		if (mRendererHolder != null) {
-			mRendererHolder.resize(width, height);
+		if (!isRecording()) {
+			mFrameWidth = width;
+			mFrameHeight = height;
+			if (mRendererHolder != null) {
+				mRendererHolder.resize(width, height);
+			}
 		}
 	}
 	
@@ -293,6 +295,7 @@ public final class CameraServer extends Handler {
 		private boolean mIsRecording;
 	    private final WeakReference<Context> mWeakContext;
 		private int mEncoderSurfaceId;
+		private int mFrameWidth, mFrameHeight;
 		/**
 		 * shutter sound
 		 */
@@ -390,6 +393,8 @@ public final class CameraServer extends Handler {
 				}
 				if (mUVCCamera == null) return;
 //				mUVCCamera.setFrameCallback(mIFrameCallback, UVCCamera.PIXEL_FORMAT_YUV);
+				mFrameWidth = width;
+				mFrameHeight = height;
 				mUVCCamera.setPreviewDisplay(surface);
 				mUVCCamera.startPreview();
 			}
@@ -422,6 +427,8 @@ public final class CameraServer extends Handler {
 							}
 						}
 						if (mUVCCamera == null) return;
+						mFrameWidth = width;
+						mFrameHeight = height;
 						mUVCCamera.setPreviewDisplay(surface);
 						mUVCCamera.startPreview();
 					}
@@ -440,7 +447,7 @@ public final class CameraServer extends Handler {
 			try {
 				if ((mUVCCamera == null) || (mMuxer != null)) return;
 				mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
-				new MediaSurfaceEncoder(mMuxer, mMediaEncoderListener);
+				new MediaSurfaceEncoder(mFrameWidth, mFrameHeight, mMuxer, mMediaEncoderListener);
 				if (true) {
 					// for audio capturing
 					new MediaAudioEncoder(mMuxer, mMediaEncoderListener);

@@ -39,16 +39,22 @@ public class MediaSurfaceEncoder extends MediaEncoder {
 	private static final String MIME_TYPE = "video/avc";
 	// parameters for recording
 	// VIDEO_WITH and VIDEO_HEIGHT should be same as the camera preview size.
-    private static final int VIDEO_WIDTH = 640;
-    private static final int VIDEO_HEIGHT = 480;
+    private final int VIDEO_WIDTH;
+    private final int VIDEO_HEIGHT;
     private static final int FRAME_RATE = 15;
     private static final float BPP = 0.125f;
 
     private Surface mSurface;
 
 	public MediaSurfaceEncoder(final MediaMuxerWrapper muxer, final MediaEncoderListener listener) {
+		this(640, 480, muxer, listener);
+	}
+	
+	public MediaSurfaceEncoder(final int width, final int height, final MediaMuxerWrapper muxer, final MediaEncoderListener listener) {
 		super(muxer, listener);
 		if (DEBUG) Log.i(TAG, "MediaVideoEncoder: ");
+		VIDEO_WIDTH = width;
+		VIDEO_HEIGHT = height;
 	}
 
 	/**

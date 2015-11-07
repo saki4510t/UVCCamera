@@ -305,11 +305,7 @@ public class RendererHolder implements Runnable {
 
     	@Override
 		public void run() {
-			if (DEBUG) Log.v(TAG, "captureTask start");
-			int width = mFrameWidth;
-			int height = mFrameHeight;
-			ByteBuffer buf = ByteBuffer.allocateDirect(width * height * 4);
-			buf.order(ByteOrder.LITTLE_ENDIAN);
+			if (DEBUG) Log.v(TAG, "captureTask:start");
 			synchronized (mSync) {
 				if (!isRunning) {
 					try {
@@ -319,9 +315,13 @@ public class RendererHolder implements Runnable {
 				}
 			}
 			init();
+			int width = mFrameWidth;
+			int height = mFrameHeight;
+			ByteBuffer buf = ByteBuffer.allocateDirect(width * height * 4);
+			buf.order(ByteOrder.LITTLE_ENDIAN);
 			File captureFile = null;
-			if (DEBUG) Log.v(TAG, "captureTask loop");
-			while (isRunning) {
+			if (DEBUG) Log.v(TAG, "captureTask:loop");
+			for ( ; isRunning ; ) {
 				if (captureFile == null)
 				synchronized (mSync) {
 					if (mCaptureFile == null) {
@@ -344,18 +344,17 @@ public class RendererHolder implements Runnable {
 						}
 					}
 					if (isRunning && (captureFile != null)) {
-						synchronized (mSync) {
-							if ((width != mFrameWidth) || (height != mFrameHeight)) {
-								width = mFrameWidth;
-								height = mFrameHeight;
-								buf = ByteBuffer.allocateDirect(width * height * 4);
-								buf.order(ByteOrder.LITTLE_ENDIAN);
-								if (captureSurface != null) {
-									captureSurface.release();
-									captureSurface =null;
-								}
-								captureSurface = egl.createOffscreen(mFrameWidth, mFrameHeight);
+						if ((width != mFrameWidth) || (height != mFrameHeight)) {
+							width = mFrameWidth;
+							height = mFrameHeight;
+							if (DEBUG) Log.v(TAG, String.format("resize capture size(%d,%d)", width, height));
+							buf = ByteBuffer.allocateDirect(width * height * 4);
+							buf.order(ByteOrder.LITTLE_ENDIAN);
+							if (captureSurface != null) {
+								captureSurface.release();
+								captureSurface = null;
 							}
+							captureSurface = egl.createOffscreen(width, height);
 						}
 						captureSurface.makeCurrent();
 						drawer.draw(mTexId, mTexMatrix);
@@ -363,7 +362,7 @@ public class RendererHolder implements Runnable {
 				        buf.clear();
 						GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf);
 						// if you save every frame as a Bitmap, app may crash by Out of Memory exception...
-				        if (DEBUG) Log.v(TAG, "save pixels to png file:" + captureFile);
+				        if (DEBUG) Log.v(TAG, String.format("save pixels(%dx%d) to png file:", width, height) + captureFile);
 				        BufferedOutputStream os = null;
 						try {
 					        try {
@@ -390,13 +389,15 @@ public class RendererHolder implements Runnable {
 		}
 
 		private final void init() {
+			if (DEBUG) Log.v(TAG, "captureTask:init");
 	    	egl = new EGLBase(mMasterEgl.getContext(), false, false);
+			captureSurface = egl.createOffscreen(mFrameWidth, mFrameHeight);
 	    	drawer = new GLDrawer2D();
 	    	drawer.getMvpMatrxi()[5] *= -1.0f;	// flip up-side down
-			captureSurface = egl.createOffscreen(mFrameWidth, mFrameHeight);
 		}
 
 		private final void release() {
+			if (DEBUG) Log.v(TAG, "captureTask:release");
 			captureSurface.release();
 			captureSurface = null;
 			drawer.release();
