@@ -89,6 +89,13 @@ public class CameraClient implements ICameraClient {
 	}
 
 	@Override
+	public void resize(final int width, final int height) {
+		if (DEBUG) Log.v(TAG, "connect:");
+		final CameraHandler handler = mWeakHandler.get();
+		handler.sendMessage(handler.obtainMessage(MSG_RESIZE, width, height));
+	}
+	
+	@Override
 	public void connect() {
 		if (DEBUG) Log.v(TAG, "connect:");
 		mWeakHandler.get().sendEmptyMessage(MSG_CONNECT);
@@ -218,7 +225,8 @@ public class CameraClient implements ICameraClient {
 	private static final int MSG_START_RECORDING = 6;
 	private static final int MSG_STOP_RECORDING = 7;
 	private static final int MSG_CAPTURE_STILL = 8;
-	private static final int MSG_RELEASE = 9;
+	private static final int MSG_RESIZE = 9;
+	private static final int MSG_RELEASE = 99;
 
 	private static final class CameraHandler extends Handler {
 
@@ -270,6 +278,9 @@ public class CameraClient implements ICameraClient {
 				break;
 			case MSG_CAPTURE_STILL:
 				mCameraTask.handleCaptureStill((String)msg.obj);
+				break;
+			case MSG_RESIZE:
+				mCameraTask.handleResize(msg.arg1, msg.arg2);
 				break;
 			case MSG_RELEASE:
 				mCameraTask.handleRelease();
@@ -447,6 +458,17 @@ public class CameraClient implements ICameraClient {
 					service.captureStillImage(mServiceId, path);
 				} catch (final RemoteException e) {
 					if (DEBUG) Log.e(TAG_CAMERA, "handleCaptureStill:", e);
+				}
+			}
+			
+			public void handleResize(final int width, final int height) {
+				if (DEBUG) Log.v(TAG, String.format("handleResize(%d,%d)", width, height));
+				final IUVCService service = mParent.getService();
+				if (service != null)
+				try {
+					service.resize(mServiceId, width, height);
+				} catch (final RemoteException e) {
+					if (DEBUG) Log.e(TAG_CAMERA, "handleResize:", e);
 				}
 			}
 		}

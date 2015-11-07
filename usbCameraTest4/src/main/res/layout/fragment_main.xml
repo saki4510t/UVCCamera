@@ -51,7 +51,7 @@
         android:id="@+id/preview_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
+        android:layout_alignLeft="@+id/camera_view"
         android:layout_gravity="center_horizontal"
         android:text="ToggleButton" />
 
@@ -67,7 +67,7 @@
         android:id="@+id/record_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
+        android:layout_alignLeft="@+id/camera_view"
         android:layout_below="@id/preview_button"
         android:layout_marginLeft="@dimen/horizontal_margin"
         android:layout_marginTop="@dimen/vertical_margin"
@@ -78,7 +78,7 @@
         android:id="@+id/still_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
+        android:layout_alignLeft="@+id/camera_view"
         android:layout_below="@id/record_button"
         android:layout_marginLeft="@dimen/horizontal_margin"
         android:layout_marginTop="@dimen/vertical_margin"

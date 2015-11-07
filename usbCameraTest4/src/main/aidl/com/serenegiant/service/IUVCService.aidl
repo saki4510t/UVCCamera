@@ -38,6 +38,7 @@ interface IUVCService {
 	void release(int serviceId);
 	boolean isSelected(int serviceId);
 	void releaseAll();
+	void resize(int serviceId, int width, int height);
 	void connect(int serviceId);
 	void disconnect(int serviceId);
 	boolean isConnected(int serviceId);

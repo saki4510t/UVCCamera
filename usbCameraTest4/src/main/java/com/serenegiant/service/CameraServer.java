@@ -47,6 +47,7 @@ import com.serenegiant.encoder.MediaMuxerWrapper;
 import com.serenegiant.encoder.MediaSurfaceEncoder;
 import com.serenegiant.glutils.RendererHolder;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
+import com.serenegiant.usb.Size;
 import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.usbcameratest4.R;
 
@@ -54,6 +55,11 @@ public final class CameraServer extends Handler {
 	private static final boolean DEBUG = true;
 	private static final String TAG = "CameraServer";
 
+	private static final int DEFAULT_WIDTH = 640;
+	private static final int DEFAULT_HEIGHT = 480;
+	
+	private int mFrameWidth = DEFAULT_WIDTH, mFrameHeight = DEFAULT_HEIGHT;
+	
     private static class CallbackCookie {
 		boolean isConnected;
 	}
@@ -76,7 +82,7 @@ public final class CameraServer extends Handler {
 		if (DEBUG) Log.d(TAG, "Constructor:");
 		mWeakThread = new WeakReference<CameraThread>(thread);
 		mRegisteredCallbackCount = 0;
-		mRendererHolder = new RendererHolder(null);
+		mRendererHolder = new RendererHolder(mFrameWidth, mFrameHeight, null);
 	}
 
 	@Override
@@ -112,12 +118,20 @@ public final class CameraServer extends Handler {
 
 //********************************************************************************
 //********************************************************************************
+	public void resize(final int width, final int height) {
+		mFrameWidth = width;
+		mFrameHeight = height;
+		if (mRendererHolder != null) {
+			mRendererHolder.resize(width, height);
+		}
+	}
+	
 	public void connect() {
 		if (DEBUG) Log.d(TAG, "connect:");
 		final CameraThread thread = mWeakThread.get();
 		if (!thread.isCameraOpened()) {
 			sendMessage(obtainMessage(MSG_OPEN));
-			sendMessage(obtainMessage(MSG_PREVIEW_START, mRendererHolder.getSurface()));
+			sendMessage(obtainMessage(MSG_PREVIEW_START, mFrameWidth, mFrameHeight, mRendererHolder.getSurface()));
 		} else {
 			if (DEBUG) Log.d(TAG, "already connected, just call callback");
 			processOnCameraStart();
@@ -247,7 +261,7 @@ public final class CameraServer extends Handler {
 			thread.handleClose();
 			break;
 		case MSG_PREVIEW_START:
-			thread.handleStartPreview((Surface)msg.obj);
+			thread.handleStartPreview(msg.arg1, msg.arg2, (Surface)msg.obj);
 			break;
 		case MSG_PREVIEW_STOP:
 			thread.handleStopPreview();
@@ -358,16 +372,16 @@ public final class CameraServer extends Handler {
 			if (DEBUG) Log.d(TAG_THREAD, "handleClose:finished");
 		}
 
-		public void handleStartPreview(final Surface surface) {
+		public void handleStartPreview(final int width, final int height, final Surface surface) {
 			if (DEBUG) Log.d(TAG_THREAD, "handleStartPreview:");
 			synchronized (mSync) {
 				if (mUVCCamera == null) return;
 				try {
-					mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
+					mUVCCamera.setPreviewSize(width, height, UVCCamera.FRAME_FORMAT_MJPEG);
 				} catch (final IllegalArgumentException e) {
 					try {
 						// fallback to YUV mode
-						mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
+						mUVCCamera.setPreviewSize(width, height, UVCCamera.DEFAULT_PREVIEW_MODE);
 					} catch (final IllegalArgumentException e1) {
 						mUVCCamera.destroy();
 						mUVCCamera = null;
@@ -389,6 +403,31 @@ public final class CameraServer extends Handler {
 			}
 		}
 
+		private void handleResize(final int width, final int height, final Surface surface) {
+			synchronized (mSync) {
+				if (mUVCCamera != null) {
+					final Size sz = mUVCCamera.getPreviewSize();
+					if ((sz != null) && ((width != sz.width) || (height != sz.height))) {
+						mUVCCamera.stopPreview();
+						try {
+							mUVCCamera.setPreviewSize(width, height);
+						} catch (final IllegalArgumentException e) {
+							try {
+								mUVCCamera.setPreviewSize(sz.width, sz.height);
+							} catch (final IllegalArgumentException e1) {
+								// unexpectly #setPreviewSize failed
+								mUVCCamera.destroy();
+								mUVCCamera = null;
+							}
+						}
+						if (mUVCCamera == null) return;
+						mUVCCamera.setPreviewDisplay(surface);
+						mUVCCamera.startPreview();
+					}
+				}
+			}
+		}
+		
 		public void handleCaptureStill(final String path) {
 			if (DEBUG) Log.d(TAG_THREAD, "handleCaptureStill:");
 

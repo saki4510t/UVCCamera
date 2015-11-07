@@ -288,6 +288,15 @@ public class UVCService extends Service {
 		}
 
 		@Override
+		public void resize(final int serviceId, final int width, final int height) {
+			final CameraServer server = getCameraServer(serviceId);
+			if (server == null) {
+				throw new IllegalArgumentException("invalid serviceId");
+			}
+			server.resize(width, height);
+		}
+
+		@Override
 		public void connect(final int serviceId) throws RemoteException {
 			if (DEBUG) Log.d(TAG, "mBasicBinder#connect:");
 			final CameraServer server = getCameraServer(serviceId);

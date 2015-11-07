@@ -125,6 +125,7 @@ public class UVCCamera {
     protected long mControlSupports;			// カメラコントロールでサポートしている機能フラグ
     protected long mProcSupports;				// プロセッシングユニットでサポートしている機能フラグ
     protected int mCurrentPreviewMode = 0;
+	protected int mCurrentPreviewWidth = DEFAULT_PREVIEW_WIDTH, mCurrentPreviewHeight = DEFAULT_PREVIEW_HEIGHT;
     protected String mSupportedSize;
 	// these fields from here are accessed from native code and do not change name and remove
     protected long mNativePtr;
@@ -139,7 +140,6 @@ public class UVCCamera {
     protected int mHueMin, mHueMax, mHueDef;
     protected int mZoomMin, mZoomMax, mZoomDef;
     // until here
-
     /**
      * the sonctructor of this class should be call within the thread that has a looper
      * (UI thread or a thread that called Looper.prepare)
@@ -215,6 +215,29 @@ public class UVCCamera {
     	return !TextUtils.isEmpty(mSupportedSize) ? mSupportedSize : (mSupportedSize = nativeGetSupportedSize(mNativePtr));
     }
 
+	public Size getPreviewSize() {
+		Size result = null;
+		final List<Size> list = getSupportedSizeList();
+		for (final Size sz: list) {
+			if ((sz.width == mCurrentPreviewWidth)
+				|| (sz.height == mCurrentPreviewHeight)) {
+				result =sz;
+				break;
+			}
+		}
+		return result;
+	}
+	
+	/**
+	 * Set preview size and preview mode
+	 * @param width
+	   @param height
+	   @param mode 0:yuyv, other:MJPEG
+	 */
+	public void setPreviewSize(final int width, final int height) {
+		setPreviewSize(width, height, mCurrentPreviewMode, 0);
+	}
+
 	/**
 	 * Set preview size and preview mode
 	 * @param width
@@ -240,6 +263,8 @@ public class UVCCamera {
 			if (result != 0)
 				throw new IllegalArgumentException("Failed to set preview size");
 			mCurrentPreviewMode = mode;
+			mCurrentPreviewWidth = width;
+			mCurrentPreviewHeight = height;
 		}
 	}
 

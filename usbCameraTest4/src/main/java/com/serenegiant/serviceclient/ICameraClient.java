@@ -30,6 +30,7 @@ public interface ICameraClient {
 	public void select(UsbDevice device);
 	public void release();
 	public UsbDevice getDevice();
+	public void resize(int width, int height);
 	public void connect();
 	public void disconnect();
 	public void addSurface(Surface surface, boolean isRecordable);

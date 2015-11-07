@@ -58,6 +58,9 @@ public class CameraFragment extends Fragment {
 	private static final boolean DEBUG = true;
 	private static final String TAG = "CameraFragment";
 
+	private static final int DEFAULT_WIDTH = 640;
+	private static final int DEFAULT_HEIGHT = 480;
+
 	private USBMonitor mUSBMonitor;
 	private ICameraClient mCameraClient;
 
@@ -108,7 +111,7 @@ public class CameraFragment extends Fragment {
 		mStillCaptureButton.setOnClickListener(mOnClickListener);
 		mStillCaptureButton.setEnabled(false);
 		mCameraView = (CameraViewInterface)rootView.findViewById(R.id.camera_view);
-		mCameraView.setAspectRatio(640 / 480.f);
+		mCameraView.setAspectRatio(DEFAULT_WIDTH / (float)DEFAULT_HEIGHT);
 		mCameraView.setCallback(mCallback);
 		mCameraViewSub = (SurfaceView)rootView.findViewById(R.id.camera_view_sub);
 		mCameraViewSub.setOnClickListener(mOnClickListener);
@@ -222,6 +225,7 @@ public class CameraFragment extends Fragment {
 			if (mCameraClient == null)
 				mCameraClient = new CameraClient(getActivity(), mCameraListener);
 			mCameraClient.select(list.get(index));
+			mCameraClient.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
 			mCameraClient.connect();
 		}
 	}
