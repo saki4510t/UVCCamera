@@ -70,7 +70,7 @@ public class CameraClient implements ICameraClient {
 
 	@Override
 	public void select(final UsbDevice device) {
-		if (DEBUG) Log.v(TAG, "select:device=" + device);
+		if (DEBUG) Log.v(TAG, "select:device=" + (device != null ? device.getDeviceName() : null));
 		mUsbDevice = device;
 		final CameraHandler handler = mWeakHandler.get();
 		handler.sendMessage(handler.obtainMessage(MSG_SELECT, device));
@@ -90,7 +90,7 @@ public class CameraClient implements ICameraClient {
 
 	@Override
 	public void resize(final int width, final int height) {
-		if (DEBUG) Log.v(TAG, "connect:");
+		if (DEBUG) Log.v(TAG, String.format("resize(%d,%d)", width, height));
 		final CameraHandler handler = mWeakHandler.get();
 		handler.sendMessage(handler.obtainMessage(MSG_RESIZE, width, height));
 	}
@@ -383,6 +383,8 @@ public class CameraClient implements ICameraClient {
 				try {
 					if (!mIsConnected/*!service.isConnected(mServiceId)*/) {
 						service.connect(mServiceId);
+					} else {
+						onConnected();
 					}
 				} catch (final RemoteException e) {
 					if (DEBUG) Log.e(TAG_CAMERA, "handleConnect:", e);
@@ -394,8 +396,11 @@ public class CameraClient implements ICameraClient {
 				final IUVCService service = mParent.getService();
 				if (service != null)
 				try {
-					if (service.isConnected(mServiceId))
+					if (service.isConnected(mServiceId)) {
 						service.disconnect(mServiceId);
+					} else {
+						onDisConnected();
+					}
 				} catch (final RemoteException e) {
 					if (DEBUG) Log.e(TAG_CAMERA, "handleDisconnect:", e);
 				}

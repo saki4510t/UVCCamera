@@ -368,6 +368,7 @@ public class RendererHolder implements Runnable {
 						try {
 					        try {
 					            os = new BufferedOutputStream(new FileOutputStream(captureFile));
+								final Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
 						        buf.clear();
 					            bmp.copyPixelsFromBuffer(buf);
 					            bmp.compress(Bitmap.CompressFormat.PNG, 90, os);
@@ -375,7 +376,6 @@ public class RendererHolder implements Runnable {
 					        } finally {
 					            if (os != null) os.close();
 					        }
-								final Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
 						} catch (final FileNotFoundException e) {
 						} catch (final IOException e) {
 						}

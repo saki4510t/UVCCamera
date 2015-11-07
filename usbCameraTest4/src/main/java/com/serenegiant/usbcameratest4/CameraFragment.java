@@ -88,8 +88,8 @@ public class CameraFragment extends Fragment {
 		if (DEBUG) Log.v(TAG, "onCreate:");
 		if (mUSBMonitor == null) {
 			mUSBMonitor = new USBMonitor(getActivity().getApplicationContext(), mOnDeviceConnectListener);
-			final List<DeviceFilter> filter = DeviceFilter.getDeviceFilters(getActivity(), R.xml.device_filter);
-			mUSBMonitor.setDeviceFilter(filter.get(0));
+			final List<DeviceFilter> filters = DeviceFilter.getDeviceFilters(getActivity(), R.xml.device_filter);
+			mUSBMonitor.setDeviceFilter(filters);
 		}
 	}
 
@@ -225,7 +225,7 @@ public class CameraFragment extends Fragment {
 			if (mCameraClient == null)
 				mCameraClient = new CameraClient(getActivity(), mCameraListener);
 			mCameraClient.select(list.get(index));
-			mCameraClient.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+			mCameraClient.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
 			mCameraClient.connect();
 		}
 	}
@@ -233,7 +233,7 @@ public class CameraFragment extends Fragment {
 	private final CameraViewInterface.Callback mCallback = new CameraViewInterface.Callback() {
 		@Override
 		public void onSurfaceCreated(final Surface surface) {
-			tryOpenUVCCamera(true);
+//			tryOpenUVCCamera(true);
 		}
 		@Override
 		public void onSurfaceChanged(final Surface surface, final int width, final int height) {
@@ -276,6 +276,7 @@ public class CameraFragment extends Fragment {
 					if (mCameraClient == null)
 						mCameraClient = new CameraClient(getActivity(), mCameraListener);
 					mCameraClient.select(list.get(0));
+					mCameraClient.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
 					mCameraClient.connect();
 					setPreviewButton(false);
 				}

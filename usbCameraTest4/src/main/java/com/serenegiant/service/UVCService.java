@@ -216,7 +216,7 @@ public class UVCService extends Service {
 
 		@Override
 		public int select(final UsbDevice device, final IUVCServiceCallback callback) throws RemoteException {
-			if (DEBUG) Log.d(TAG, "mBasicBinder#select:device=" + device);
+			if (DEBUG) Log.d(TAG, "mBasicBinder#select:device=" + (device !=null ? device.getDeviceName() : null));
 			mCallback = callback;
 			final int serviceId = device.hashCode();
 			CameraServer server = null;
@@ -289,6 +289,7 @@ public class UVCService extends Service {
 
 		@Override
 		public void resize(final int serviceId, final int width, final int height) {
+			if (DEBUG) Log.d(TAG, "mBasicBinder#resize:");
 			final CameraServer server = getCameraServer(serviceId);
 			if (server == null) {
 				throw new IllegalArgumentException("invalid serviceId");

@@ -119,6 +119,7 @@ public final class CameraServer extends Handler {
 //********************************************************************************
 //********************************************************************************
 	public void resize(final int width, final int height) {
+		if (DEBUG) Log.d(TAG, String.format("resize(%d,%d)", width, height));
 		mFrameWidth = width;
 		mFrameHeight = height;
 		if (mRendererHolder != null) {
