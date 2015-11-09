@@ -145,6 +145,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 		}
 	};
 
+	private static final float[] BANDWIDTH_FACTORS = { 0.67f, 0.67f };
 	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
 		@Override
 		public void onAttach(final UsbDevice device) {
@@ -160,14 +161,15 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 			EXECUTER.execute(new Runnable() {
 				@Override
 				public void run() {
+					final int open_camera_nums = (mLeftCamera != null ? 1 : 0) + (mRightCamera != null ? 1 : 0);
 					camera.open(ctrlBlock);
 //					camera.setPreviewTexture(mRightCameraView.getSurfaceTexture());
 					try {
-						camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG, 0.5f);
+						camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG, BANDWIDTH_FACTORS[open_camera_nums]);
 					} catch (final IllegalArgumentException e) {
 						// fallback to YUV mode
 						try {
-							camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE, 0.5f);
+							camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE, BANDWIDTH_FACTORS[open_camera_nums]);
 						} catch (final IllegalArgumentException e1) {
 							camera.destroy();
 							return;
