@@ -167,7 +167,7 @@ int UVCPreview::setPreviewSize(int width, int height, int mode, float bandwidth)
 		uvc_stream_ctrl_t ctrl;
 		result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
 			!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
-			requestWidth, requestHeight, 1, 30);
+			requestWidth, requestHeight, 1, requestFps);
 	}
 	
 	RETURN(result, int);
@@ -463,7 +463,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 	ENTER();
 	result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, ctrl,
 		!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
-		requestWidth, requestHeight, 1, 30
+		requestWidth, requestHeight, 1, requestFps
 	);
 	if (LIKELY(!result)) {
 #if LOCAL_DEBUG
