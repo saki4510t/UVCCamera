@@ -724,15 +724,27 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 
 		strmh->fid = header_info & UVC_STREAM_FID;
 
-		if (header_info & UVC_STREAM_PTS/*(1 << 2)*/) {
-			strmh->pts = DW_TO_INT(payload + variable_offset);
-			variable_offset += 4;
+		if (header_info & UVC_STREAM_PTS) {
+			// XXX saki some camera may send broken packet or failed to receive all data
+			if (LIKELY(variable_offset + 4 <= header_len)) {
+				strmh->pts = DW_TO_INT(payload + variable_offset);
+				variable_offset += 4;
+			} else {
+				MARK("bogus packet: header info has UVC_STREAM_PTS, but no data");
+				strmh->pts = 0;
+			}
 		}
 
-		if (header_info & UVC_STREAM_SCR/*(1 << 3)*/) {
+		if (header_info & UVC_STREAM_SCR) {
 			// @todo read the SOF token counter
-			strmh->last_scr = DW_TO_INT(payload + variable_offset);
-			variable_offset += 6;
+			// XXX saki some camera may send broken packet or failed to receive all data
+			if (LIKELY(variable_offset + 4 <= header_len)) {
+				strmh->last_scr = DW_TO_INT(payload + variable_offset);
+				variable_offset += 4;
+			} else {
+				MARK("bogus packet: header info has UVC_STREAM_SCR, but no data");
+				strmh->last_scr = 0;
+			}
 		}
 	}
 
@@ -778,6 +790,7 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 	uint8_t *pktbuf;
 	uint8_t check_header;
 	size_t header_len;
+	uint8_t header_info;
 	struct libusb_iso_packet_descriptor *pkt;
 
 	/* magic numbers for identifying header packets from some iSight cameras */
@@ -832,33 +845,48 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 			}
 
 			if (LIKELY(check_header)) {
-				if (UNLIKELY(pktbuf[1] & UVC_STREAM_ERR)) {
+				header_info = pktbuf[1];
+				if (UNLIKELY(header_info & UVC_STREAM_ERR)) {
 //					strmh->bfh_err |= UVC_STREAM_ERR;
-					MARK("bad packet:status=0x%2x", pktbuf[1]);
+					MARK("bad packet:status=0x%2x", header_info);
 					libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
 //					uvc_vc_get_error_code(strmh->devh, &vc_error_code, UVC_GET_CUR);
 					uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
 					continue;
 				}
 #ifdef USE_EOF
-				if ((strmh->fid != (pktbuf[1] & UVC_STREAM_FID)) && strmh->got_bytes) {	// got_bytesを取ると殆ど画面更新されない
+				if ((strmh->fid != (header_info & UVC_STREAM_FID)) && strmh->got_bytes) {	// got_bytesを取ると殆ど画面更新されない
 				/* The frame ID bit was flipped, but we have image data sitting
 	             around from prior transfers. This means the camera didn't send
     		     an EOF for the last transfer of the previous frame or some frames losted. */
 					_uvc_swap_buffers(strmh);
 				}
-				strmh->fid = pktbuf[1] & UVC_STREAM_FID;
+				strmh->fid = header_info & UVC_STREAM_FID;
 #else
-				if (strmh->fid != (pktbuf[1] & UVC_STREAM_FID)) {	// when FID is toggled
+				if (strmh->fid != (header_info & UVC_STREAM_FID)) {	// when FID is toggled
 					_uvc_swap_buffers(strmh);
-					strmh->fid = pktbuf[1] & UVC_STREAM_FID;
+					strmh->fid = header_info & UVC_STREAM_FID;
 				}
 #endif
-				if (pktbuf[1] & UVC_STREAM_PTS)
-					strmh->pts = DW_TO_INT(pktbuf + 2);
+				if (header_info & UVC_STREAM_PTS) {
+					// XXX saki some camera may send broken packet or failed to receive all data
+					if (LIKELY(header_len >= 6)) {
+						strmh->pts = DW_TO_INT(pktbuf + 2);
+					} else {
+						MARK("bogus packet: header info has UVC_STREAM_PTS, but no data");
+						strmh->pts = 0;
+					}
+				}
 
-				if (pktbuf[1] & UVC_STREAM_SCR)
-					strmh->last_scr = DW_TO_INT(pktbuf + 6);
+				if (header_info & UVC_STREAM_SCR) {
+					// XXX saki some camera may send broken packet or failed to receive all data
+					if (LIKELY(header_len >= 10)) {
+						strmh->last_scr = DW_TO_INT(pktbuf + 6);
+					} else {
+						MARK("bogus packet: header info has UVC_STREAM_SCR, but no data");
+						strmh->last_scr = 0;
+					}
+				}
 
 #ifdef __ANDROID__	// XXX optimaization because this flag never become true on Android devices
 				if (UNLIKELY(strmh->devh->is_isight))
@@ -980,6 +1008,7 @@ static void _uvc_iso_callback(struct libusb_transfer *transfer) {
 	uint8_t *pktbuf;
 	uint8_t check_header;
 	size_t header_len;	// XXX unsigned int header_len
+	uint8_t header_info;
 	struct libusb_iso_packet_descriptor *pkt;
 
 	/* magic numbers for identifying header packets from some iSight cameras */
@@ -1038,7 +1067,8 @@ static void _uvc_iso_callback(struct libusb_transfer *transfer) {
 				}
 
 				if (LIKELY(check_header)) {
-					if (UNLIKELY(pktbuf[1] & UVC_STREAM_ERR)) {
+					header_info = pktbuf[1];
+					if (UNLIKELY(header_info & UVC_STREAM_ERR)) {
 						strmh->bfh_err |= UVC_STREAM_ERR;
 						MARK("bad packet");
 //						libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
@@ -1047,24 +1077,38 @@ static void _uvc_iso_callback(struct libusb_transfer *transfer) {
 						continue;
 					}
 #ifdef USE_EOF
-					if ((strmh->fid != (pktbuf[1] & UVC_STREAM_FID)) && strmh->got_bytes) {	// got_bytesを取ると殆ど画面更新されない
+					if ((strmh->fid != (header_info & UVC_STREAM_FID)) && strmh->got_bytes) {	// got_bytesを取ると殆ど画面更新されない
 					/* The frame ID bit was flipped, but we have image data sitting
 		             around from prior transfers. This means the camera didn't send
         		     an EOF for the last transfer of the previous frame or some frames losted. */
 						_uvc_swap_buffers(strmh);
 					}
-					strmh->fid = pktbuf[1] & UVC_STREAM_FID;
+					strmh->fid = header_info & UVC_STREAM_FID;
 #else
-					if (strmh->fid != (pktbuf[1] & UVC_STREAM_FID)) {	// when FID is toggled
+					if (strmh->fid != (header_info & UVC_STREAM_FID)) {	// when FID is toggled
 						_uvc_swap_buffers(strmh);
-						strmh->fid = pktbuf[1] & UVC_STREAM_FID;
+						strmh->fid = header_info & UVC_STREAM_FID;
 					}
 #endif
-					if (pktbuf[1] & UVC_STREAM_PTS)
-						strmh->pts = DW_TO_INT(pktbuf + 2);
+					if (header_info & UVC_STREAM_PTS) {
+						// XXX saki some camera may send broken packet or failed to receive all data
+						if (LIKELY(header_len >= 6)) {
+							strmh->pts = DW_TO_INT(pktbuf + 2);
+						} else {
+							MARK("bogus packet: header info has UVC_STREAM_PTS, but no data");
+							strmh->pts = 0;
+						}
+					}
 
-					if (pktbuf[1] & UVC_STREAM_SCR)
-						strmh->last_scr = DW_TO_INT(pktbuf + 6);
+					if (header_info & UVC_STREAM_SCR) {
+						// XXX saki some camera may send broken packet or failed to receive all data
+						if (LIKELY(header_len >= 10)) {
+							strmh->last_scr = DW_TO_INT(pktbuf + 6);
+						} else {
+							MARK("bogus packet: header info has UVC_STREAM_SCR, but no data");
+							strmh->last_scr = 0;
+						}
+					}
 
 #ifdef __ANDROID__	// XXX optimaization because this flag never become true on Android devices
 					if (UNLIKELY(strmh->devh->is_isight))
@@ -1158,13 +1202,13 @@ uvc_error_t uvc_start_streaming(uvc_device_handle_t *devh,
  * @param ctrl Control block, processed using {uvc_probe_stream_ctrl} or
  *             {uvc_get_stream_ctrl_format_size}
  * @param cb   User callback function. See {uvc_frame_callback_t} for restrictions.
- * @param bandwidth [0.0f, 1.0f]
+ * @param bandwidth_factor [0.0f, 1.0f]
  * @param flags Stream setup flags, currently undefined. Set this to zero. The lower bit
  * is reserved for backward compatibility.
  */
 uvc_error_t uvc_start_streaming_bandwidth(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl, uvc_frame_callback_t *cb, void *user_ptr,
-		float bandwidth,
+		float bandwidth_factor,
 		uint8_t flags) {
 	uvc_error_t ret;
 	uvc_stream_handle_t *strmh;
@@ -1173,7 +1217,7 @@ uvc_error_t uvc_start_streaming_bandwidth(uvc_device_handle_t *devh,
 	if (UNLIKELY(ret != UVC_SUCCESS))
 		return ret;
 
-	ret = uvc_stream_start_bandwidth(strmh, cb, user_ptr, bandwidth, flags);
+	ret = uvc_stream_start_bandwidth(strmh, cb, user_ptr, bandwidth_factor, flags);
 	if (UNLIKELY(ret != UVC_SUCCESS)) {
 		uvc_stream_close(strmh);
 		return ret;
@@ -1197,7 +1241,7 @@ uvc_error_t uvc_start_streaming_bandwidth(uvc_device_handle_t *devh,
  */
 uvc_error_t uvc_start_iso_streaming(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl, uvc_frame_callback_t *cb, void *user_ptr) {
-	return uvc_start_streaming(devh, ctrl, cb, user_ptr, 0);
+	return uvc_start_streaming_bandwidth(devh, ctrl, cb, user_ptr, 0.0f, 0);
 }
 
 static uvc_stream_handle_t *_uvc_get_stream_by_interface(
@@ -1303,8 +1347,8 @@ fail:
  * is reserved for backward compatibility.
  */
 uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
-			uvc_frame_callback_t *cb, void *user_ptr, uint8_t flags) {
-	return uvc_stream_start_bandwidth(strmh, cb, user_ptr, 1.0f, flags);
+		uvc_frame_callback_t *cb, void *user_ptr, uint8_t flags) {
+	return uvc_stream_start_bandwidth(strmh, cb, user_ptr, 0, flags);
 }
 
 /** Begin streaming video from the stream into the callback function.
@@ -1312,12 +1356,12 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
  *
  * @param strmh UVC stream
  * @param cb   User callback function. See {uvc_frame_callback_t} for restrictions.
- * @param bandwidth [0.0f,1.0f]
+ * @param bandwidth_factor [0.0f, 1.0f]
  * @param flags Stream setup flags, currently undefined. Set this to zero. The lower bit
  * is reserved for backward compatibility.
  */
 uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
-			uvc_frame_callback_t *cb, void *user_ptr, float bandwidth, uint8_t flags) {
+		uvc_frame_callback_t *cb, void *user_ptr, float bandwidth_factor, uint8_t flags) {
 	/* USB interface we'll be using */
 	const struct libusb_interface *interface;
 	int interface_id;
@@ -1393,8 +1437,8 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 		struct libusb_transfer *transfer;
 		int transfer_id;
 		
-		if ((bandwidth > 0) && (bandwidth < 1.0f)) {
-			config_bytes_per_packet = (size_t)(strmh->cur_ctrl.dwMaxPayloadTransferSize * bandwidth);
+		if ((bandwidth_factor > 0) && (bandwidth_factor < 1.0f)) {
+			config_bytes_per_packet = (size_t)(strmh->cur_ctrl.dwMaxPayloadTransferSize * bandwidth_factor);
 			if (!config_bytes_per_packet) {
 				config_bytes_per_packet = strmh->cur_ctrl.dwMaxPayloadTransferSize;
 			}
