@@ -770,8 +770,8 @@ uvc_error_t uvc_get_analog_video_standard(uvc_device_handle_t *devh, uint8_t *st
 		enum uvc_req_code req_code);
 uvc_error_t uvc_set_analog_video_standard(uvc_device_handle_t *devh, uint8_t standard);
 //----------------------------------------------------------------------
-uvc_error_t uvc_get_analog_video_lock_status(uvc_device_handle_t *devh, uint8_t* status, enum uvc_req_code req_code);
-uvc_error_t uvc_set_analog_video_lock_status(uvc_device_handle_t *devh, uint8_t status);
+uvc_error_t uvc_get_analog_video_lockstate(uvc_device_handle_t *devh, uint8_t* state, enum uvc_req_code req_code);
+uvc_error_t uvc_set_analog_video_lockstate(uvc_device_handle_t *devh, uint8_t status);
 //----------------------------------------------------------------------
 uvc_error_t uvc_get_input_select(uvc_device_handle_t *devh, uint8_t* selector, enum uvc_req_code req_code);
 uvc_error_t uvc_set_input_select(uvc_device_handle_t *devh, uint8_t selector);

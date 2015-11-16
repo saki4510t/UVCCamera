@@ -129,16 +129,42 @@ public class UVCCamera {
     protected String mSupportedSize;
 	// these fields from here are accessed from native code and do not change name and remove
     protected long mNativePtr;
-    protected int mBrightnessMin, mBrightnessMax, mBrightnessDef;
+    protected int mScanningModeMin, mScanningModeMax, mScanningModeDef;
+    protected int mExposureModeMin, mExposureModeMax, mExposureModeDef;
+    protected int mExposurePriorityMin, mExposurePriorityMax, mExposurePriorityDef;
+    protected int mExposureMin, mExposureMax, mExposureDef;
+    protected int mAutoFocusMin, mAutoFocusMax, mAutoFocusDef;
     protected int mFocusMin, mFocusMax, mFocusDef;
+    protected int mFocusRelMin, mFocusRelMax, mFocusRelDef;
+    protected int mFocusSimpleMin, mFocusSimpleMax, mFocusSimpleDef;
+    protected int mIrisMin, mIrisMax, mIrisDef;
+    protected int mIrisRelMin, mIrisRelMax, mIrisRelDef;
+    protected int mPanMin, mPanMax, mPanDef;
+    protected int mTiltMin, mTiltMax, mTiltDef;
+    protected int mRollMin, mRollMax, mRollDef;
+    protected int mPanRelMin, mPanRelMax, mPanRelDef;
+    protected int mTiltRelMin, mTiltRelMax, mTiltRelDef;
+    protected int mRollRelMin, mRollRelMax, mRollRelDef;
+    protected int mPrivacyMin, mPrivacyMax, mPrivacyDef;
+    protected int mAutoWhiteBlanceMin, mAutoWhiteBlanceMax, mAutoWhiteBlanceDef;
+    protected int mAutoWhiteBlanceCompoMin, mAutoWhiteBlanceCompoMax, mAutoWhiteBlanceCompoDef;
+    protected int mWhiteBlanceMin, mWhiteBlanceMax, mWhiteBlanceDef;
+    protected int mWhiteBlanceRelMin, mWhiteBlanceRelMax, mWhiteBlanceRelDef;
+    protected int mBacklightCompMin, mBacklightCompMax, mBacklightCompDef;
+    protected int mBrightnessMin, mBrightnessMax, mBrightnessDef;
     protected int mContrastMin, mContrastMax, mContrastDef;
     protected int mSharpnessMin, mSharpnessMax, mSharpnessDef;
     protected int mGainMin, mGainMax, mGainDef;
     protected int mGammaMin, mGammaMax, mGammaDef;
-    protected int mWhiteBlanceMin, mWhiteBlanceMax, mWhiteBlanceDef;
     protected int mSaturationMin, mSaturationMax, mSaturationDef;
     protected int mHueMin, mHueMax, mHueDef;
     protected int mZoomMin, mZoomMax, mZoomDef;
+    protected int mZoomRelMin, mZoomRelMax, mZoomRelDef;
+    protected int mPowerlineFrequencyMin, mPowerlineFrequencyMax, mPowerlineFrequencyDef;
+    protected int mMultiplierMin, mMultiplierMax, mMultiplierDef;
+    protected int mMultiplierLimitMin, mMultiplierLimitMax, mMultiplierLimitDef;
+    protected int mAnalogVideoStandardMin, mAnalogVideoStandardMax, mAnalogVideoStandardDef;
+    protected int mAnalogVideoLockStateMin, mAnalogVideoLockStateMax, mAnalogVideoLockStateDef;
     // until here
     /**
      * the sonctructor of this class should be call within the thread that has a looper
