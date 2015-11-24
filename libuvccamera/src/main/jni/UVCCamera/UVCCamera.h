@@ -130,11 +130,13 @@ class UVCCamera {
 	control_value_t mBacklightComp;
 	control_value_t mBrightness;
 	control_value_t mContrast;
+	control_value_t mAutoContrast;
 	control_value_t mSharpness;
 	control_value_t mGain;
 	control_value_t mGamma;
 	control_value_t mSaturation;
 	control_value_t mHue;
+	control_value_t mAutoHue;
 	control_value_t mZoom;
 	control_value_t mZoomRel;
 	control_value_t mFocus;
@@ -295,6 +297,10 @@ public:
 	int setContrast(uint16_t contrast);
 	int getContrast();
 
+	int updateAutoContrastLimit(int &min, int &max, int &def);
+	int setAutoContrast(bool autoFocus);
+	bool getAutoContrast();
+
 	int updateSharpnessLimit(int &min, int &max, int &def);
 	int setSharpness(int sharpness);
 	int getSharpness();
@@ -315,6 +321,10 @@ public:
 	int setHue(int hue);
 	int getHue();
 
+	int updateAutoHueLimit(int &min, int &max, int &def);
+	int setAutoHue(bool autoFocus);
+	bool getAutoHue();
+	
 	int updatePowerlineFrequencyLimit(int &min, int &max, int &def);
 	int setPowerlineFrequency(int frequency);
 	int getPowerlineFrequency();

@@ -83,11 +83,13 @@ void UVCCamera::clearCameraParams() {
 	mBacklightComp.min = mBacklightComp.max = mBacklightComp.def = 0;
 	mBrightness.min = mBrightness.max = mBrightness.def = 0;
 	mContrast.min = mContrast.max = mContrast.def = 0;
+	mAutoContrast.min = mAutoContrast.max = mAutoContrast.def = 0;
 	mSharpness.min = mSharpness.max = mSharpness.def = 0;
 	mGain.min = mGain.max = mGain.def = 0;
 	mGamma.min = mGamma.max = mGamma.def = 0;
 	mSaturation.min = mSaturation.max = mSaturation.def = 0;
 	mHue.min = mHue.max = mHue.def = 0;
+	mAutoHue.min = mAutoHue.max = mAutoHue.def = 0;
 	mZoom.min = mZoom.max = mZoom.def = 0;
 	mZoomRel.min = mZoomRel.max = mZoomRel.def = 0;
 	mFocus.min = mFocus.max = mFocus.def = 0;
@@ -1578,6 +1580,41 @@ int UVCCamera::getContrast() {
 }
 
 //======================================================================
+// オートコントラスト
+int UVCCamera::updateAutoContrastLimit(int &min, int &max, int &def) {
+	ENTER();
+	int ret = UVC_ERROR_IO;
+	if (mPUSupports & PU_CONTRAST_AUTO) {
+		UPDATE_CTRL_VALUES(mAutoFocus, uvc_get_contrast_auto);
+	}
+	RETURN(ret, int);
+}
+
+// オートコントラストをon/off
+int UVCCamera::setAutoContrast(bool autoContrast) {
+	ENTER();
+
+	int r = UVC_ERROR_ACCESS;
+	if LIKELY((mDeviceHandle) && (mPUSupports & PU_CONTRAST_AUTO)) {
+		r = uvc_set_contrast_auto(mDeviceHandle, autoContrast);
+	}
+	RETURN(r, int);
+}
+
+// オートコントラストのon/off状態を取得
+bool UVCCamera::getAutoContrast() {
+	ENTER();
+	int r = UVC_ERROR_ACCESS;
+	if LIKELY((mDeviceHandle) && (mPUSupports & PU_CONTRAST_AUTO)) {
+		uint8_t autoContrast;
+		r = uvc_get_contrast_auto(mDeviceHandle, &autoContrast, UVC_GET_CUR);
+		if (LIKELY(!r))
+			r = autoContrast;
+	}
+	RETURN(r, int);
+}
+
+//======================================================================
 // シャープネス調整
 int UVCCamera::updateSharpnessLimit(int &min, int &max, int &def) {
 	ENTER();
@@ -1901,6 +1938,41 @@ int UVCCamera::getHue() {
 		}
 	}
 	RETURN(0, int);
+}
+
+//======================================================================
+// オート色相
+int UVCCamera::updateAutoHueLimit(int &min, int &max, int &def) {
+	ENTER();
+	int ret = UVC_ERROR_IO;
+	if (mPUSupports & PU_HUE_AUTO) {
+		UPDATE_CTRL_VALUES(mAutoHue, uvc_get_hue_auto);
+	}
+	RETURN(ret, int);
+}
+
+// オート色相をon/off
+int UVCCamera::setAutoHue(bool autoHue) {
+	ENTER();
+
+	int r = UVC_ERROR_ACCESS;
+	if LIKELY((mDeviceHandle) && (mPUSupports & PU_HUE_AUTO)) {
+		r = uvc_set_hue_auto(mDeviceHandle, autoHue);
+	}
+	RETURN(r, int);
+}
+
+// オート色相のon/off状態を取得
+bool UVCCamera::getAutoHue() {
+	ENTER();
+	int r = UVC_ERROR_ACCESS;
+	if LIKELY((mDeviceHandle) && (mPUSupports & PU_HUE_AUTO)) {
+		uint8_t autoHue;
+		r = uvc_get_hue_auto(mDeviceHandle, &autoHue, UVC_GET_CUR);
+		if (LIKELY(!r))
+			r = autoHue;
+	}
+	RETURN(r, int);
 }
 
 //======================================================================

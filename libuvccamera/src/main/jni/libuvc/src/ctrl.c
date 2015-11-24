@@ -196,7 +196,7 @@ uvc_error_t uvc_set_power_mode(uvc_device_handle_t *devh,
 }
 
 /***** CAMERA TERMINAL CONTROLS *****/
-uvc_error_t uvc_get_ae_mode(uvc_device_handle_t *devh, int *mode,
+uvc_error_t uvc_get_ae_mode(uvc_device_handle_t *devh, uint8_t *mode,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
 	uvc_error_t ret;
@@ -215,7 +215,7 @@ uvc_error_t uvc_get_ae_mode(uvc_device_handle_t *devh, int *mode,
 	}
 }
 
-uvc_error_t uvc_set_ae_mode(uvc_device_handle_t *devh, int mode) {
+uvc_error_t uvc_set_ae_mode(uvc_device_handle_t *devh, uint8_t mode) {
 	uint8_t data[1];
 	uvc_error_t ret;
 
@@ -347,7 +347,7 @@ uvc_error_t uvc_set_exposure_rel(uvc_device_handle_t *devh, int step) {
 }
 
 //----------------------------------------------------------------------
-uvc_error_t uvc_get_scanning_mode(uvc_device_handle_t *devh, int *step,
+uvc_error_t uvc_get_scanning_mode(uvc_device_handle_t *devh, uint8_t *mode,
 		enum uvc_req_code req_code) {
 	uint8_t data[1];
 	uvc_error_t ret;
@@ -359,14 +359,14 @@ uvc_error_t uvc_get_scanning_mode(uvc_device_handle_t *devh, int *step,
 			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
 
 	if (LIKELY(ret == sizeof(data))) {
-		*step = data[0];
+		*mode = data[0];
 		return UVC_SUCCESS;
 	} else {
 		return ret;
 	}
 }
 
-uvc_error_t uvc_set_scanning_mode(uvc_device_handle_t *devh, int mode) {
+uvc_error_t uvc_set_scanning_mode(uvc_device_handle_t *devh, uint8_t mode) {
 	uint8_t data[1];
 	uvc_error_t ret;
 

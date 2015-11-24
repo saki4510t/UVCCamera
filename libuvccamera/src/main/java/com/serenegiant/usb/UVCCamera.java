@@ -149,6 +149,7 @@ public class UVCCamera {
     protected int mAutoWhiteBlanceMin, mAutoWhiteBlanceMax, mAutoWhiteBlanceDef;
     protected int mAutoWhiteBlanceCompoMin, mAutoWhiteBlanceCompoMax, mAutoWhiteBlanceCompoDef;
     protected int mWhiteBlanceMin, mWhiteBlanceMax, mWhiteBlanceDef;
+    protected int mWhiteBlanceCompoMin, mWhiteBlanceCompoMax, mWhiteBlanceCompoDef;
     protected int mWhiteBlanceRelMin, mWhiteBlanceRelMax, mWhiteBlanceRelDef;
     protected int mBacklightCompMin, mBacklightCompMax, mBacklightCompDef;
     protected int mBrightnessMin, mBrightnessMax, mBrightnessDef;
@@ -1120,7 +1121,11 @@ public class UVCCamera {
     private static final native int nativeSetContrast(final long id_camera, final int contrast);
     private static final native int nativeGetContrast(final long id_camera);
 
-    private final native int nativeUpdateSharpnessLimit(final long id_camera);
+	private final native int nativeUpdateAutoContrastLimit(final long id_camera);
+    private static final native int nativeSetAutoContrast(final long id_camera, final boolean autocontrast);
+    private static final native int nativeGetAutoContrast(final long id_camera);
+
+	private final native int nativeUpdateSharpnessLimit(final long id_camera);
     private static final native int nativeSetSharpness(final long id_camera, final int sharpness);
     private static final native int nativeGetSharpness(final long id_camera);
 
@@ -1140,7 +1145,11 @@ public class UVCCamera {
     private static final native int nativeSetHue(final long id_camera, final int hue);
     private static final native int nativeGetHue(final long id_camera);
 
-    private final native int nativeUpdatePowerlineFrequencyLimit(final long id_camera);
+	private final native int nativeUpdateAutoHueLimit(final long id_camera);
+	private static final native int nativeSetAutoHue(final long id_camera, final boolean autohue);
+	private static final native int nativeGetAutoHue(final long id_camera);
+
+	private final native int nativeUpdatePowerlineFrequencyLimit(final long id_camera);
     private static final native int nativeSetPowerlineFrequency(final long id_camera, final int frequency);
     private static final native int nativeGetPowerlineFrequency(final long id_camera);
 
@@ -1167,4 +1176,8 @@ public class UVCCamera {
 	private final native int nativeUpdateAnalogVideoLockStateLimit(final long id_camera);
     private static final native int nativeSetAnalogVideoLoackState(final long id_camera, final int state);
     private static final native int nativeGetAnalogVideoLoackState(final long id_camera);
+
+	private final native int nativeUpdatePrivacyLimit(final long id_camera);
+    private static final native int nativeSetPrivacy(final long id_camera, final boolean privacy);
+    private static final native int nativeGetPrivacy(final long id_camera);
 }

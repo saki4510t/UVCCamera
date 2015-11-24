@@ -1180,6 +1180,50 @@ static jint nativeGetContrast(JNIEnv *env, jobject thiz,
 }
 
 //======================================================================
+// Java method correspond to this function should not be a static mathod
+static jint nativeUpdateAutoContrastLimit(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera) {
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		int min, max, def;
+		result = camera->updateAutoContrastLimit(min, max, def);
+		if (!result) {
+			// Java側へ書き込む
+			setField_int(env, thiz, "mAutoContrastMin", min);
+			setField_int(env, thiz, "mAutoContrastMax", max);
+			setField_int(env, thiz, "mAutoContrastDef", def);
+		}
+	}
+	RETURN(result, jint);
+}
+
+static jint nativeSetAutoContrast(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jboolean autocontrast) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		result = camera->setAutoContrast(autocontrast);
+	}
+	RETURN(result, jint);
+}
+
+static jint nativeGetAutoContrast(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		result = camera->getAutoContrast();
+	}
+	RETURN(result, jint);
+}
+
+//======================================================================
 // Java mnethod correspond to this function should not be a static mathod
 static jint nativeUpdateSharpnessLimit(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera) {
@@ -1532,6 +1576,50 @@ static jint nativeGetHue(JNIEnv *env, jobject thiz,
 }
 
 //======================================================================
+// Java method correspond to this function should not be a static mathod
+static jint nativeUpdateAutoHueLimit(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera) {
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		int min, max, def;
+		result = camera->updateAutoHueLimit(min, max, def);
+		if (!result) {
+			// Java側へ書き込む
+			setField_int(env, thiz, "mAutoHueMin", min);
+			setField_int(env, thiz, "mAutoHueMax", max);
+			setField_int(env, thiz, "mAutoHueDef", def);
+		}
+	}
+	RETURN(result, jint);
+}
+
+static jint nativeSetAutoHue(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jboolean autohue) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		result = camera->setAutoHue(autohue);
+	}
+	RETURN(result, jint);
+}
+
+static jint nativeGetAutoHue(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		result = camera->getAutoHue();
+	}
+	RETURN(result, jint);
+}
+
+//======================================================================
 // Java mnethod correspond to this function should not be a static mathod
 static jint nativeUpdatePowerlineFrequencyLimit(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera) {
@@ -1839,6 +1927,50 @@ static jint nativeGetAnalogVideoLockState(JNIEnv *env, jobject thiz,
 	RETURN(result, jint);
 }
 
+//======================================================================
+// Java method correspond to this function should not be a static mathod
+static jint nativeUpdatePrivacyLimit(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera) {
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		int min, max, def;
+		result = camera->updatePrivacyLimit(min, max, def);
+		if (!result) {
+			// Java側へ書き込む
+			setField_int(env, thiz, "mPrivacyMin", min);
+			setField_int(env, thiz, "mPrivacyMax", max);
+			setField_int(env, thiz, "mPrivacyDef", def);
+		}
+	}
+	RETURN(result, jint);
+}
+
+static jint nativeSetPrivacy(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jboolean privacy) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		result = camera->setPrivacy(privacy ? 1: 0);
+	}
+	RETURN(result, jint);
+}
+
+static jint nativeGetPrivacy(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		result = camera->getPrivacy();
+	}
+	RETURN(result, jint);
+}
+
 //**********************************************************************
 //
 //**********************************************************************
@@ -1975,6 +2107,10 @@ static JNINativeMethod methods[] = {
 	{ "nativeSetContrast",				"(JI)I", (void *) nativeSetContrast },
 	{ "nativeGetContrast",				"(J)I", (void *) nativeGetContrast },
 
+	{ "nativeUpdateAutoContrastLimit",	"(J)I", (void *) nativeUpdateAutoContrastLimit },
+	{ "nativeSetAutoContrast",			"(JZ)I", (void *) nativeSetAutoContrast },
+	{ "nativeGetAutoContrast",			"(J)I", (void *) nativeGetAutoContrast },
+
 	{ "nativeUpdateSharpnessLimit",		"(J)I", (void *) nativeUpdateSharpnessLimit },
 	{ "nativeSetSharpness",				"(JI)I", (void *) nativeSetSharpness },
 	{ "nativeGetSharpness",				"(J)I", (void *) nativeGetSharpness },
@@ -1995,6 +2131,10 @@ static JNINativeMethod methods[] = {
 	{ "nativeSetHue",					"(JI)I", (void *) nativeSetHue },
 	{ "nativeGetHue",					"(J)I", (void *) nativeGetHue },
 
+	{ "nativeUpdateAutoHueLimit",		"(J)I", (void *) nativeUpdateAutoHueLimit },
+	{ "nativeSetAutoHue",				"(JI)I", (void *) nativeSetAutoHue },
+	{ "nativeGetAutoHue",				"(J)I", (void *) nativeGetAutoHue },
+			
 	{ "nativeUpdatePowerlineFrequencyLimit","(J)I", (void *) nativeUpdatePowerlineFrequencyLimit },
 	{ "nativeSetPowerlineFrequency",	"(JI)I", (void *) nativeSetPowerlineFrequency },
 	{ "nativeGetPowerlineFrequency",	"(J)I", (void *) nativeGetPowerlineFrequency },
@@ -2023,6 +2163,9 @@ static JNINativeMethod methods[] = {
 	{ "nativeSetAnalogVideoLoackState",	"(JI)I", (void *) nativeSetAnalogVideoLockState },
 	{ "nativeGetAnalogVideoLoackState",	"(J)I", (void *) nativeGetAnalogVideoLockState },
 	
+	{ "nativeUpdatePrivacyLimit",		"(J)I", (void *) nativeUpdatePrivacyLimit },
+	{ "nativeSetPrivacy",				"(JZ)I", (void *) nativeSetPrivacy },
+	{ "nativeGetPrivacy",				"(J)I", (void *) nativeGetPrivacy },
 };
 
 int register_uvccamera(JNIEnv *env) {
