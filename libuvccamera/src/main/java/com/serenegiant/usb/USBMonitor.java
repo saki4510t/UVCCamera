@@ -279,7 +279,7 @@ public final class USBMonitor {
 	 * @return
 	 */
 	public boolean hasPermission(final UsbDevice device) {
-		return mUsbManager.hasPermission(device);
+		return device != null && mUsbManager.hasPermission(device);
 	}
 
 	/**
