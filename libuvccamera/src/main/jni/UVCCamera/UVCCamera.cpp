@@ -812,7 +812,7 @@ int UVCCamera::getScanningMode() {
 	ENTER();
 	int r = UVC_ERROR_ACCESS;
 	if LIKELY((mDeviceHandle) && (mCtrlSupports & CTRL_SCANNING)) {
-		int mode;
+		uint8_t mode;
 		r = uvc_get_scanning_mode(mDeviceHandle, &mode, UVC_GET_CUR);
 //		LOGI("ae:%d", mode);
 		if (LIKELY(!r)) {
@@ -850,7 +850,7 @@ int UVCCamera::getExposureMode() {
 	ENTER();
 	int r = UVC_ERROR_ACCESS;
 	if LIKELY((mDeviceHandle) && (mCtrlSupports & CTRL_AE)) {
-		int mode;
+		uint8_t mode;
 		r = uvc_get_ae_mode(mDeviceHandle, &mode, UVC_GET_CUR);
 //		LOGI("ae:%d", mode);
 		if (LIKELY(!r)) {

@@ -2132,7 +2132,7 @@ static JNINativeMethod methods[] = {
 	{ "nativeGetHue",					"(J)I", (void *) nativeGetHue },
 
 	{ "nativeUpdateAutoHueLimit",		"(J)I", (void *) nativeUpdateAutoHueLimit },
-	{ "nativeSetAutoHue",				"(JI)I", (void *) nativeSetAutoHue },
+	{ "nativeSetAutoHue",				"(JZ)I", (void *) nativeSetAutoHue },
 	{ "nativeGetAutoHue",				"(J)I", (void *) nativeGetAutoHue },
 			
 	{ "nativeUpdatePowerlineFrequencyLimit","(J)I", (void *) nativeUpdatePowerlineFrequencyLimit },

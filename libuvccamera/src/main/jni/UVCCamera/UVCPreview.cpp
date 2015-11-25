@@ -25,6 +25,18 @@
 #include <stdlib.h>
 #include <linux/time.h>
 #include <unistd.h>
+
+#if 1	// set 1 if you don't need debug log
+	#ifndef LOG_NDEBUG
+		#define	LOG_NDEBUG		// w/o LOGV/LOGD/MARK
+	#endif
+	#undef USE_LOGALL
+#else
+	#define USE_LOGALL
+	#undef LOG_NDEBUG
+//	#undef NDEBUG
+#endif
+
 #include "utilbase.h"
 #include "UVCPreview.h"
 #include "libuvc_internal.h"
