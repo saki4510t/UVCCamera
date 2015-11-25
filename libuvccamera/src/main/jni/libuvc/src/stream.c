@@ -1461,6 +1461,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 		 * packet sizes are increasing. */
 		const int num_alt = interface->num_altsetting - 1;
 		for (alt_idx = 0; alt_idx <= num_alt ; alt_idx++) {
+			alt_idx = 4;	// FIXME just for test
 			altsetting = interface->altsetting + alt_idx;
 			endpoint_bytes_per_packet = 0;
 
@@ -1484,8 +1485,8 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 			}
 			// XXX config_bytes_per_packet should not be zero otherwise zero divided exception occur
 			if (LIKELY(endpoint_bytes_per_packet)) {
-				if ( (endpoint_bytes_per_packet >= config_bytes_per_packet)
-					|| (alt_idx == num_alt) ) {	// XXX always match to last altsetting for buggy device
+//				if ( (endpoint_bytes_per_packet >= config_bytes_per_packet)	// FIXME just for test
+//					|| (alt_idx == num_alt) ) {	// XXX always match to last altsetting for buggy device	// FIXME just for test
 					/* Transfers will be at most one frame long: Divide the maximum frame size
 					 * by the size of the endpoint and round up */
 					packets_per_transfer = (dwMaxVideoFrameSize
@@ -1498,7 +1499,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 
 					total_transfer_size = packets_per_transfer * endpoint_bytes_per_packet;
 					break;
-				}
+//				}
 			}
 		}
 		if (UNLIKELY(!endpoint_bytes_per_packet)) {
@@ -1520,7 +1521,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 		} */
 
 		/* Select the altsetting */
-		MARK("Select the altsetting");
+		MARK("Select altsetting:%d", altsetting->bAlternateSetting);
 		ret = libusb_set_interface_alt_setting(strmh->devh->usb_devh,
 				altsetting->bInterfaceNumber, altsetting->bAlternateSetting);
 		if (UNLIKELY(ret != UVC_SUCCESS)) {
