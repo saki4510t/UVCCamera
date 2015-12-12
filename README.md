@@ -36,6 +36,23 @@ Or if you want to install and try all sample projects on your device, run `gradl
 
 Note: Just make sure that `local.properties` contains the paths for `sdk.dir` and `ndk.dir`. Or you can set them as enviroment variables of you shell. On some system, you may need add `JAVA_HOME` envairoment valiable that points to JDK directory.  
 
+If you want to use Android Studio(unfortunately NDK supporting on Android Studio is very poor though),
+1. make directory on your favorite place (this directory is parent directory of `UVCCamera` project).
+2. change directory into the directory.
+3. clone this repository with `git  clone https://github.com/saki4510t/UVCCamera.git`
+4. start Android Studio and open the cloned repository using `Open an existing Android Studio project`
+5. Android Studio raise some errors but just ignore now. Android Studio generate `local.properties` file. Please open `local.properties` and add `ndk.dir` key to the end of the file. The contents of the file looks like this.
+```
+sdk.dir={path to Android SDK on your storage}
+ndk.dir={path to Android SDK on your storage}
+```
+Please replace actual path to SDK and NDK on your storage.  
+Of course you can make `local.properties` by manually instead of using automatically generated ones by Android Studio.
+6. Synchronize project
+7. execute `Make project` from `Build` menu.
+
+If you want to use build-in VCS on Android Studio, use `Check out project from Version Control` from `https://github.com/saki4510t/UVCCamera.git`. After cloning, Android Studio ask you open the project but don't open now. Instead open the project using `Open an existing Android Studio project`. Other procedures are same as above.
+
 If you still need to use Eclipse or if you don't want to use Gradle with some reason, you can build suing `ndk-build` command.
 
 1. make directory on your favorite place.
