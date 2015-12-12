@@ -131,6 +131,7 @@ public final class USBMonitor {
 				mPermissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), 0);
 				final IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
 				filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
+				filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
 				context.registerReceiver(mUsbReceiver, filter);
 			}
 			mDeviceCounts = 0;
