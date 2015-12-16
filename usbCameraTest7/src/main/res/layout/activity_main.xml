@@ -69,6 +69,16 @@
                 android:layout_alignRight="@+id/camera_view_L"
                 android:layout_alignTop="@+id/camera_view_L"
                 android:src="@drawable/border" />
+			<ImageButton
+				android:id="@+id/capture_button_L"
+				android:layout_width="@dimen/button_size"
+				android:layout_height="@dimen/button_size"
+				android:layout_alignBottom="@id/camera_view_L"
+				android:layout_centerHorizontal="true"
+				android:layout_marginBottom="6dp"
+				android:background="@null"
+				android:scaleType="centerCrop"
+				android:src="@android:drawable/ic_menu_camera" />
         </RelativeLayout>
 
         <RelativeLayout
@@ -93,6 +103,16 @@
                 android:layout_alignRight="@+id/camera_view_R"
                 android:layout_alignTop="@+id/camera_view_R"
                 android:src="@drawable/border" />
+			<ImageButton
+				android:id="@+id/capture_button_R"
+				android:layout_width="@dimen/button_size"
+				android:layout_height="@dimen/button_size"
+				android:layout_alignBottom="@id/camera_view_R"
+				android:layout_centerHorizontal="true"
+				android:layout_marginBottom="6dp"
+				android:background="@null"
+				android:scaleType="centerCrop"
+				android:src="@android:drawable/ic_menu_camera" />
         </RelativeLayout>
     </LinearLayout>
 

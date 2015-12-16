@@ -6,10 +6,10 @@ android {
 	
     defaultConfig {
         applicationId "com.serenegiant.usbcameratest7"
-        minSdkVersion 14
+        minSdkVersion 18
         targetSdkVersion 22
-		versionCode 7
-		versionName "2.20"
+		versionCode 8
+		versionName "2.30"
     }
 
     buildTypes {
