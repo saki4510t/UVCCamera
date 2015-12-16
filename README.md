@@ -140,3 +140,9 @@ Add new sample project `USBCameraTest7` to demonstrate how to use two camera at 
 
 ###2015/09/20
 Fixed the issue that building native libraries fail on Windows.
+
+###2015/10/30
+Merge pull request(add status and button callback). Thanks Alexey Pelykh.
+
+###2015/12/16
+Add feature so that user can request fps range from Java code when negotiating with camera. Actual resulted fps depends on each UVC camera. Currently there is no way to get resulted fps(will add on future).

@@ -34,7 +34,8 @@
 
 #define DEFAULT_PREVIEW_WIDTH 640
 #define DEFAULT_PREVIEW_HEIGHT 480
-#define DEFAULT_PREVIEW_FPS 30
+#define DEFAULT_PREVIEW_FPS_MIN 1
+#define DEFAULT_PREVIEW_FPS_MAX 30
 #define DEFAULT_PREVIEW_MODE 0
 #define DEFAULT_BANDWIDTH 1.0f
 
@@ -57,7 +58,8 @@ private:
 	uvc_device_handle_t *mDeviceHandle;
 	ANativeWindow *mPreviewWindow;
 	volatile bool mIsRunning;
-	int requestWidth, requestHeight, requestMode, requestFps;
+	int requestWidth, requestHeight, requestMode;
+	int requestMinFps, requestMaxFps;
 	float requestBandwidth;
 	int frameWidth, frameHeight;
 	int frameMode;
@@ -112,7 +114,7 @@ public:
 	~UVCPreview();
 
 	inline const bool isRunning() const;
-	int setPreviewSize(int width, int height, int mode, float bandwidth = 1.0f);
+	int setPreviewSize(int width, int height, int min_fps, int max_fps, int mode, float bandwidth = 1.0f);
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
 	int startPreview();

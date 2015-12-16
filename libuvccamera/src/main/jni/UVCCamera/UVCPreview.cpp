@@ -52,7 +52,8 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	mDeviceHandle(devh),
 	requestWidth(DEFAULT_PREVIEW_WIDTH),
 	requestHeight(DEFAULT_PREVIEW_HEIGHT),
-	requestFps(DEFAULT_PREVIEW_FPS),
+	requestMinFps(DEFAULT_PREVIEW_FPS_MIN),
+	requestMaxFps(DEFAULT_PREVIEW_FPS_MAX),
 	requestMode(DEFAULT_PREVIEW_MODE),
 	requestBandwidth(DEFAULT_BANDWIDTH),
 	frameWidth(DEFAULT_PREVIEW_WIDTH),
@@ -166,20 +167,22 @@ void UVCPreview::clear_pool() {
 
 inline const bool UVCPreview::isRunning() const {return mIsRunning; }
 
-int UVCPreview::setPreviewSize(int width, int height, int mode, float bandwidth) {
+int UVCPreview::setPreviewSize(int width, int height, int min_fps, int max_fps, int mode, float bandwidth) {
 	ENTER();
 	
 	int result = 0;
 	if ((requestWidth != width) || (requestHeight != height) || (requestMode != mode)) {
 		requestWidth = width;
 		requestHeight = height;
+		requestMinFps = min_fps;
+		requestMaxFps = max_fps;
 		requestMode = mode;
 		requestBandwidth = bandwidth;
 
 		uvc_stream_ctrl_t ctrl;
 		result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
 			!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
-			requestWidth, requestHeight, 1, requestFps);
+			requestWidth, requestHeight, requestMinFps, requestMaxFps);
 	}
 	
 	RETURN(result, int);
@@ -475,7 +478,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 	ENTER();
 	result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, ctrl,
 		!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
-		requestWidth, requestHeight, 1, requestFps
+		requestWidth, requestHeight, requestMinFps, requestMaxFps
 	);
 	if (LIKELY(!result)) {
 #if LOCAL_DEBUG

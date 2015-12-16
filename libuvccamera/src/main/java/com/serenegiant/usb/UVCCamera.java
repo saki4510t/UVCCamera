@@ -47,6 +47,8 @@ public class UVCCamera {
 	public static final int DEFAULT_PREVIEW_WIDTH = 640;
 	public static final int DEFAULT_PREVIEW_HEIGHT = 480;
 	public static final int DEFAULT_PREVIEW_MODE = 0;
+	public static final int DEFAULT_PREVIEW_MIN_FPS = 1;
+	public static final int DEFAULT_PREVIEW_MAX_FPS = 30;
 	public static final float DEFAULT_BANDWIDTH = 1.0f;
 
 	public static final int FRAME_FORMAT_YUYV = 0;
@@ -190,7 +192,8 @@ public class UVCCamera {
     	if (mNativePtr != 0 && TextUtils.isEmpty(mSupportedSize)) {
     		mSupportedSize = nativeGetSupportedSize(mNativePtr);
     	}
-		nativeSetPreviewSize(mNativePtr, DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT, DEFAULT_PREVIEW_MODE, DEFAULT_BANDWIDTH);
+		nativeSetPreviewSize(mNativePtr, DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT,
+			DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, DEFAULT_PREVIEW_MODE, DEFAULT_BANDWIDTH);
     }
 
 	/**
@@ -259,10 +262,9 @@ public class UVCCamera {
 	 * Set preview size and preview mode
 	 * @param width
 	   @param height
-	   @param mode 0:yuyv, other:MJPEG
 	 */
 	public void setPreviewSize(final int width, final int height) {
-		setPreviewSize(width, height, mCurrentPreviewMode, 0);
+		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, mCurrentPreviewMode, 0);
 	}
 
 	/**
@@ -272,7 +274,7 @@ public class UVCCamera {
 	   @param mode 0:yuyv, other:MJPEG
 	 */
 	public void setPreviewSize(final int width, final int height, final int mode) {
-		setPreviewSize(width, height, mode, 0);
+		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, mode, 0);
 	}
 	
 	/**
@@ -283,10 +285,23 @@ public class UVCCamera {
 	   @param bandwidth [0.0f,1.0f]
 	 */
 	public void setPreviewSize(final int width, final int height, final int mode, final float bandwidth) {
+		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, mode, bandwidth);
+	}
+
+	/**
+	 * Set preview size and preview mode
+	 * @param width
+	 * @param height
+	 * @param min_fps
+	 * @param max_fps
+	 * @param mode
+	 * @param bandwidth
+	 */
+	public void setPreviewSize(final int width, final int height, final int min_fps, final int max_fps, final int mode, final float bandwidth) {
 		if ((width == 0) || (height == 0))
 			throw new IllegalArgumentException("invalid preview size");
 		if (mNativePtr != 0) {
-			final int result = nativeSetPreviewSize(mNativePtr, width, height, mode, bandwidth);
+			final int result = nativeSetPreviewSize(mNativePtr, width, height, min_fps, max_fps, mode, bandwidth);
 			if (result != 0)
 				throw new IllegalArgumentException("Failed to set preview size");
 			mCurrentPreviewMode = mode;
@@ -353,7 +368,7 @@ public class UVCCamera {
 
     /**
      * set preview surface with Surface
-     * @param Surface
+     * @param surface
      */
     public void setPreviewDisplay(final Surface surface) {
     	nativeSetPreviewDisplay(mNativePtr, surface);
@@ -426,7 +441,7 @@ public class UVCCamera {
     }
 //================================================================================
     /**
-     * @param focus[%]
+     * @param focus [%]
      */
 	public synchronized void setFocus(final int focus) {
     	if (mNativePtr != 0) {
@@ -438,7 +453,7 @@ public class UVCCamera {
 
     /**
      * @param focus_abs
-     * @return forcus[%]
+     * @return focus[%]
      */
 	public synchronized int getFocus(final int focus_abs) {
 	   int result = 0;
@@ -482,7 +497,7 @@ public class UVCCamera {
 
 //================================================================================
     /**
-     * @param whiteBlance[%]
+     * @param whiteBlance [%]
      */
 	public synchronized void setWhiteBlance(final int whiteBlance) {
     	if (mNativePtr != 0) {
@@ -522,7 +537,7 @@ public class UVCCamera {
     }
 //================================================================================
     /**
-     * @param brightness[%]
+     * @param brightness [%]
      */
 	public synchronized void setBrightness(final int brightness) {
     	if (mNativePtr != 0) {
@@ -563,7 +578,7 @@ public class UVCCamera {
 
 //================================================================================
     /**
-     * @param contrast[%]
+     * @param contrast [%]
      */
 	public synchronized void setContrast(final int contrast) {
     	if (mNativePtr != 0) {
@@ -604,7 +619,7 @@ public class UVCCamera {
 
 //================================================================================
     /**
-     * @param sharpness[%]
+     * @param sharpness [%]
      */
 	public synchronized void setSharpness(final int sharpness) {
     	if (mNativePtr != 0) {
@@ -644,7 +659,7 @@ public class UVCCamera {
     }
 //================================================================================
     /**
-     * @param gain[%]
+     * @param gain [%]
      */
 	public synchronized void setGain(final int gain) {
     	if (mNativePtr != 0) {
@@ -685,7 +700,7 @@ public class UVCCamera {
 
 //================================================================================
     /**
-     * @param gamma[%]
+     * @param gamma [%]
      */
 	public synchronized void setGamma(final int gamma) {
     	if (mNativePtr != 0) {
@@ -726,7 +741,7 @@ public class UVCCamera {
 
 //================================================================================
     /**
-     * @param saturation[%]
+     * @param saturation [%]
      */
 	public synchronized void setSaturation(final int saturation) {
     	if (mNativePtr != 0) {
@@ -766,7 +781,7 @@ public class UVCCamera {
     }
 //================================================================================
     /**
-     * @param hue[%]
+     * @param hue [%]
      */
 	public synchronized void setHue(final int hue) {
     	if (mNativePtr != 0) {
@@ -818,7 +833,7 @@ public class UVCCamera {
 //================================================================================
     /**
      * this may not work well with some combination of camera and device
-     * @param zoom[%]
+     * @param zoom [%]
      */
 	public synchronized void setZoom(final int zoom) {
     	if (mNativePtr != 0) {
@@ -997,7 +1012,7 @@ public class UVCCamera {
 	private static final native int nativeSetStatusCallback(final long mNativePtr, final IStatusCallback callback);
 	private static final native int nativeSetButtonCallback(final long mNativePtr, final IButtonCallback callback);
 
-    private static final native int nativeSetPreviewSize(final long id_camera, final int width, final int height, final int mode, final float bandwidth);
+    private static final native int nativeSetPreviewSize(final long id_camera, final int width, final int height, final int min_fps, final int max_fps, final int mode, final float bandwidth);
     private static final native String nativeGetSupportedSize(final long id_camera);
     private static final native int nativeStartPreview(final long id_camera);
     private static final native int nativeStopPreview(final long id_camera);

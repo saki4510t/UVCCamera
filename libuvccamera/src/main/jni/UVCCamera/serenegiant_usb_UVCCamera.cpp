@@ -111,7 +111,7 @@ static ID_TYPE nativeCreate(JNIEnv *env, jobject thiz) {
 	ENTER();
 	UVCCamera *camera = new UVCCamera();
 	setField_long(env, thiz, "mNativePtr", reinterpret_cast<ID_TYPE>(camera));
-	RETURN(reinterpret_cast<ID_TYPE>(camera), ID_TYPE)
+	RETURN(reinterpret_cast<ID_TYPE>(camera), ID_TYPE);
 }
 
 static void nativeDestroy(JNIEnv *env, jobject thiz,
@@ -196,12 +196,12 @@ static jobject nativeGetSupportedSize(JNIEnv *env, jobject thiz,
 }
 
 static jint nativeSetPreviewSize(JNIEnv *env, jobject thiz,
-	ID_TYPE id_camera, jint width, jint height, jint mode, jfloat bandwidth) {
+	ID_TYPE id_camera, jint width, jint height, jint min_fps, jint max_fps, jint mode, jfloat bandwidth) {
 
 	ENTER();
 	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
 	if (LIKELY(camera)) {
-		return camera->setPreviewSize(width, height, mode, bandwidth);
+		return camera->setPreviewSize(width, height, min_fps, max_fps, mode, bandwidth);
 	}
 	RETURN(JNI_ERR, jint);
 }
@@ -2000,7 +2000,7 @@ static JNINativeMethod methods[] = {
 	{ "nativeSetButtonCallback",		"(JLcom/serenegiant/usb/IButtonCallback;)I", (void *) nativeSetButtonCallback },
 
 	{ "nativeGetSupportedSize",			"(J)Ljava/lang/String;", (void *) nativeGetSupportedSize },
-	{ "nativeSetPreviewSize",			"(JIIIF)I", (void *) nativeSetPreviewSize },
+	{ "nativeSetPreviewSize",			"(JIIIIIF)I", (void *) nativeSetPreviewSize },
 	{ "nativeStartPreview",				"(J)I", (void *) nativeStartPreview },
 	{ "nativeStopPreview",				"(J)I", (void *) nativeStopPreview },
 	{ "nativeSetPreviewDisplay",		"(JLandroid/view/Surface;)I", (void *) nativeSetPreviewDisplay },
