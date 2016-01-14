@@ -1,6 +1,6 @@
 include ':libuvccamera'
-include ':usbCameraTest'
 include ':usbCameraTest0'
+include ':usbCameraTest1'
 include ':usbCameraTest2'
 include ':usbCameraTest3'
 include ':usbCameraTest4'
