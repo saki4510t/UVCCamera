@@ -23,14 +23,6 @@ package com.serenegiant.usb;
  * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -43,6 +35,14 @@ import android.hardware.usb.UsbManager;
 import android.os.Handler;
 import android.util.Log;
 import android.util.SparseArray;
+
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class USBMonitor {
 
@@ -96,7 +96,7 @@ public final class USBMonitor {
 		if (DEBUG) Log.v(TAG, "USBMonitor:Constructor");
 /*		if (listener == null)
 			throw new IllegalArgumentException("OnDeviceConnectListener should not null."); */
-		mWeakContext = new WeakReference<Context>(context);
+		mWeakContext = new WeakReference<>(context);
 		mUsbManager = (UsbManager)context.getSystemService(Context.USB_SERVICE);
 		mOnDeviceConnectListener = listener;
 		if (DEBUG) Log.v(TAG, "USBMonitor:mUsbManager=" + mUsbManager);
@@ -313,7 +313,7 @@ public final class USBMonitor {
 			final String action = intent.getAction();
 			if (ACTION_USB_PERMISSION.equals(action)) {
 				synchronized (USBMonitor.this) {
-					final UsbDevice device = (UsbDevice)intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+					final UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 					if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
 						if (device != null) {
 							processConnect(device);

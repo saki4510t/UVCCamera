@@ -1,7 +1,7 @@
 # IntelliJ
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/libraries/
+.idea
+.idea
+.idea
 *.class
 
 # Mobile Tools for Java (J2ME)
