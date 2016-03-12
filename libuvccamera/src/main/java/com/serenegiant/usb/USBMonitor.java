@@ -96,7 +96,7 @@ public final class USBMonitor {
 		if (DEBUG) Log.v(TAG, "USBMonitor:Constructor");
 /*		if (listener == null)
 			throw new IllegalArgumentException("OnDeviceConnectListener should not null."); */
-		mWeakContext = new WeakReference<>(context);
+		mWeakContext = new WeakReference<Context>(context);
 		mUsbManager = (UsbManager)context.getSystemService(Context.USB_SERVICE);
 		mOnDeviceConnectListener = listener;
 		if (DEBUG) Log.v(TAG, "USBMonitor:mUsbManager=" + mUsbManager);
@@ -313,7 +313,7 @@ public final class USBMonitor {
 			final String action = intent.getAction();
 			if (ACTION_USB_PERMISSION.equals(action)) {
 				synchronized (USBMonitor.this) {
-					final UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+					final UsbDevice device = (UsbDevice)intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 					if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
 						if (device != null) {
 							processConnect(device);
