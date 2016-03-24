@@ -1059,7 +1059,7 @@ uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	return UVC_SUCCESS;
 }
 
-int uvc_yuyv2yuv420P(uvc_frame_t *in, uvc_frame_t *out) {
+int uvc_yuyv2i420(uvc_frame_t *in, uvc_frame_t *out) {
 
 	ENTER();
 	
@@ -1079,8 +1079,8 @@ int uvc_yuyv2yuv420P(uvc_frame_t *in, uvc_frame_t *out) {
 	const int32_t dest_height = out->height = in->height;
 	const uint32_t hh = src_height < dest_height ? src_height : dest_height;
 	uint8_t *y = dest;
-	uint8_t *v = dest + dest_width * dest_height;
-	uint8_t *u = dest + dest_width * dest_height * 5 / 4;
+	uint8_t *u = dest + dest_width * dest_height;
+	uint8_t *v = dest + dest_width * dest_height * 5 / 4;
 	int h, w;
 	for (h = 0; h < hh; h++) {
 		const uint8_t *yuv = src + src_width * h;
@@ -1102,7 +1102,7 @@ int uvc_yuyv2yuv420P(uvc_frame_t *in, uvc_frame_t *out) {
 	RETURN(0, int);
 }
 
-int uvc_yuyv2yv21(uvc_frame_t *in, uvc_frame_t *out) {
+int uvc_yuyv2yv12(uvc_frame_t *in, uvc_frame_t *out) {
 
 	ENTER();
 
@@ -1122,8 +1122,8 @@ int uvc_yuyv2yv21(uvc_frame_t *in, uvc_frame_t *out) {
 	const int32_t dest_height = out->height = in->height;
 	const uint32_t hh = src_height < dest_height ? src_height : dest_height;
 	uint8_t *y = dest;
-	uint8_t *u = dest + dest_width * dest_height;
-	uint8_t *v = dest + dest_width * dest_height * 5 / 4;
+	uint8_t *v = dest + dest_width * dest_height;
+	uint8_t *u = dest + dest_width * dest_height * 5 / 4;
 	int h, w;
 	for (h = 0; h < hh; h++) {
 		const uint8_t *yuv = src + src_width * h;

@@ -47,8 +47,8 @@ typedef uvc_error_t (*convFunc_t)(uvc_frame_t *in, uvc_frame_t *out);
 #define PIXEL_FORMAT_RGBX 3
 #define PIXEL_FORMAT_YUV20SP 4
 #define PIXEL_FORMAT_NV21 5		// YVU420SemiPlanar
-#define PIXEL_FORMAT_I420 6
-#define PIXEL_FORMAT_YV12 7
+#define PIXEL_FORMAT_YV12 6
+#define PIXEL_FORMAT_I420 7
 
 
 
