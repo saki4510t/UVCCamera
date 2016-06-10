@@ -201,13 +201,18 @@ public final class USBMonitor {
 		final HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
 		final List<UsbDevice> result = new ArrayList<UsbDevice>();
 		if (deviceList != null) {
-			for (final DeviceFilter filter: filters) {
+			if (filters == null|| filters.isEmpty()) {
+				result.addAll(deviceList.values());
+			} else {
 				final Iterator<UsbDevice> iterator = deviceList.values().iterator();
 				UsbDevice device;
 				while (iterator.hasNext()) {
 					device = iterator.next();
-					if ((filter == null) || (filter.matches(device))) {
-						result.add(device);
+					for (final DeviceFilter filter : filters) {
+						if ((filter == null) || (filter.matches(device))) {
+							result.add(device);
+							break;
+						}
 					}
 				}
 			}
