@@ -57,18 +57,6 @@ LOCAL_ARM_MODE := arm
 LOCAL_ASMFLAGS += -DELF
 
 # コンパイル・リンクするソースファイル
-#LOCAL_SRC_FILES := \
-#	jcapimin.c jcapistd.c jccoefct.c \
-#	jccolor.c jcdctmgr.c jchuff.c jcinit.c jcmainct.c jcmarker.c \
-#	jcmaster.c jcomapi.c jcparam.c jcphuff.c jcprepct.c jcsample.c \
-#	jctrans.c jdapimin.c jdapistd.c jdatadst.c jdatasrc.c \
-#	jdcoefct.c jdcolor.c jddctmgr.c jdhuff.c jdinput.c jdmainct.c \
-#	jdmarker.c jdmaster.c jdmerge.c jdphuff.c jdpostct.c \
-#	jdsample.c jdtrans.c jerror.c jfdctflt.c jfdctfst.c jfdctint.c \
-#	jidctflt.c jidctfst.c jidctint.c jidctred.c jquant1.c \
-#	jquant2.c jutils.c jmemmgr.c jmemnobs.c \
-#	jaricom.c jdarith.c jcarith.c \
-#	turbojpeg.c transupp.c jdatadst-tj.c jdatasrc-tj.c \
 
 LOCAL_SRC_FILES += \
 	jcapimin.c \
@@ -151,7 +139,7 @@ else ifeq ($(TARGET_ARCH_ABI),arm64-v8a)
 LOCAL_SRC_FILES += simd/jsimd_arm64.c simd/jsimd_arm64_neon.S
 
 LOCAL_CFLAGS += \
-	-DSIZEOF_SIZE_T=4 \
+	-DSIZEOF_SIZE_T=8 \
 
 else ifeq ($(TARGET_ARCH_ABI),x86_64)
 LOCAL_SRC_FILES += \
@@ -179,21 +167,6 @@ LOCAL_CFLAGS += \
 LOCAL_ASMFLAGS += -D__x86_64__
 
 else ifeq ($(TARGET_ARCH_ABI),x86)
-#LOCAL_SRC_FILES += simd/jsimd_i386.c \
-#	simd/jdmerge-mmx.asm simd/jidctint-sse2.asm simd/jdmerge-sse2.asm \
-#	simd/jidctred-mmx.asm simd/jccolext-mmx.asm simd/jdmrgext-mmx.asm \
-#	simd/jidctred-sse2.asm simd/jccolext-sse2.asm simd/jdmrgext-sse2.asm \
-#	simd/jquant-3dn.asm simd/jccolor-mmx.asm simd/jdsample-mmx.asm \
-#	simd/jquant-mmx.asm simd/jquant-sse.asm simd/jccolor-sse2.asm \
-#	simd/jdsample-sse2.asm simd/jcgray-mmx.asm simd/jfdctflt-3dn.asm \
-#	simd/jquantf-sse2.asm simd/jcgray-sse2.asm simd/jfdctflt-sse.asm \
-#	simd/jquanti-sse2.asm simd/jcgryext-mmx.asm simd/jfdctfst-mmx.asm \
-#	simd/jcgryext-sse2.asm simd/jfdctfst-sse2.asm simd/jfdctint-mmx.asm \
-#	simd/jcsample-mmx.asm simd/jfdctint-sse2.asm simd/jcsample-sse2.asm \
-#	simd/jidctflt-3dn.asm simd/jdcolext-mmx.asm simd/jidctflt-sse.asm \
-#	simd/jdcolext-sse2.asm simd/jidctflt-sse2.asm simd/jdcolor-mmx.asm \
-#	simd/jidctfst-mmx.asm simd/jsimdcpu.asm simd/jdcolor-sse2.asm \
-#	simd/jidctfst-sse2.asm simd/jidctint-mmx.asm \
 
 LOCAL_SRC_FILES += \
 	simd/jsimd_i386.c \
@@ -235,8 +208,18 @@ LOCAL_SRC_FILES += \
 LOCAL_CFLAGS += \
 	-DSIZEOF_SIZE_T=4 \
 
+else ifeq ($(TARGET_ARCH_ABI),mips)
+
+LOCAL_SRC_FILES += \
+	simd/jsimd_mips.c \
+	simd/jsimd_mips_dspr2.S \
+
+LOCAL_CFLAGS += \
+	-DSIZEOF_SIZE_T=4 \
+
 else
 LOCAL_SRC_FILES += jsimd_none.c
+
 endif
 
 # simd/jsimd.h simd/jcolsamp.inc simd/jsimdcfg.inc.h simd/jsimdext.inc simd/jdct.inc
