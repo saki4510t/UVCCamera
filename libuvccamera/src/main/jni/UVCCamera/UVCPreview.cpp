@@ -262,9 +262,10 @@ int UVCPreview::setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pi
 int UVCPreview::setRawFrameCallback(JNIEnv *env, jobject frame_callback_obj) {
 
 	ENTER();
-	pthread_mutex_lock(&capture_mutex);
+	pthread_mutex_lock(&raw_capture_mutex);
 	{
-		if (isRunning() && isCapturing()) {
+		if (isRunning() && isRawCapturing()) {
+		    mIsRawCapturing = false;
 			if (mRawFrameCallbackObj) {
 				pthread_cond_signal(&raw_capture_sync);
 				pthread_cond_wait(&raw_capture_sync, &raw_capture_mutex);	// wait finishing capturing
@@ -294,7 +295,7 @@ int UVCPreview::setRawFrameCallback(JNIEnv *env, jobject frame_callback_obj) {
 			}
 		}
 	}
-	pthread_mutex_unlock(&capture_mutex);
+	pthread_mutex_unlock(&raw_capture_mutex);
 	RETURN(0, int);
 }
 
@@ -826,7 +827,7 @@ uvc_frame_t *UVCPreview::waitRawCaptureFrame() {
 			raw_captureQueu = NULL;
 		}
 	}
-	pthread_mutex_unlock(&capture_mutex);
+	pthread_mutex_unlock(&raw_capture_mutex);
 	return frame;
 }
 
