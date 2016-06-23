@@ -64,8 +64,11 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	previewFormat(WINDOW_FORMAT_RGBA_8888),
 	mIsRunning(false),
 	mIsCapturing(false),
+	mIsRawCapturing(false),
 	captureQueu(NULL),
+	raw_captureQueu(NULL),
 	mFrameCallbackObj(NULL),
+	mRawFrameCallbackObj(NULL),
 	mFrameCallbackFunc(NULL),
 	callbackPixelBytes(2) {
 
@@ -75,7 +78,11 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 //
 	pthread_cond_init(&capture_sync, NULL);
 	pthread_mutex_init(&capture_mutex, NULL);
-//	
+
+	pthread_cond_init(&raw_capture_sync, NULL);
+	pthread_mutex_init(&raw_capture_mutex, NULL);
+
+//
 	pthread_mutex_init(&pool_mutex, NULL);
 	EXIT();
 }
@@ -91,6 +98,7 @@ UVCPreview::~UVCPreview() {
 	mCaptureWindow = NULL;
 	clearPreviewFrame();
 	clearCaptureFrame();
+	clearRawCaptureFrame();
 	clear_pool();
 	pthread_mutex_destroy(&preview_mutex);
 	pthread_cond_destroy(&preview_sync);
@@ -250,6 +258,46 @@ int UVCPreview::setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pi
 	RETURN(0, int);
 }
 
+
+int UVCPreview::setRawFrameCallback(JNIEnv *env, jobject frame_callback_obj) {
+
+	ENTER();
+	pthread_mutex_lock(&capture_mutex);
+	{
+		if (isRunning() && isCapturing()) {
+			if (mRawFrameCallbackObj) {
+				pthread_cond_signal(&raw_capture_sync);
+				pthread_cond_wait(&raw_capture_sync, &raw_capture_mutex);	// wait finishing capturing
+			}
+		}
+		if (!env->IsSameObject(mRawFrameCallbackObj, frame_callback_obj))	{
+			iframecallback_fields.onRawFrame = NULL;
+			if (mFrameCallbackObj) {
+				env->DeleteGlobalRef(mRawFrameCallbackObj);
+			}
+			mRawFrameCallbackObj = frame_callback_obj;
+			if (frame_callback_obj) {
+				// get method IDs of Java object for callback
+				jclass clazz = env->GetObjectClass(frame_callback_obj);
+				if (LIKELY(clazz)) {
+					iframecallback_fields.onRawFrame = env->GetMethodID(clazz,
+						"onFrame",	"(Ljava/nio/ByteBuffer;)V");
+				} else {
+					LOGW("failed to get object class");
+				}
+				env->ExceptionClear();
+				if (!iframecallback_fields.onRawFrame) {
+					LOGE("Can't find IFrameCallback#onFrame");
+					env->DeleteGlobalRef(frame_callback_obj);
+					mRawFrameCallbackObj = frame_callback_obj = NULL;
+				}
+			}
+		}
+	}
+	pthread_mutex_unlock(&capture_mutex);
+	RETURN(0, int);
+}
+
 void UVCPreview::callbackPixelFormatChanged() {
 	mFrameCallbackFunc = NULL;
 	const size_t sz = requestWidth * requestHeight;
@@ -371,6 +419,9 @@ int UVCPreview::stopPreview() {
 		if (pthread_join(capture_thread, NULL) != EXIT_SUCCESS) {
 			LOGW("UVCPreview::terminate capture thread: pthread_join failed");
 		}
+		if (pthread_join(raw_capture_thread, NULL) != EXIT_SUCCESS) {
+			LOGW("UVCPreview::terminate raw capture thread: pthread_join failed");
+		}
 		if (pthread_join(preview_thread, NULL) != EXIT_SUCCESS) {
 			LOGW("UVCPreview::terminate preview thread: pthread_join failed");
 		}
@@ -378,6 +429,7 @@ int UVCPreview::stopPreview() {
 	}
 	clearPreviewFrame();
 	clearCaptureFrame();
+	clearRawCaptureFrame();
 	pthread_mutex_lock(&preview_mutex);
 	if (mPreviewWindow) {
 		ANativeWindow_release(mPreviewWindow);
@@ -530,6 +582,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 	if (LIKELY(!result)) {
 		clearPreviewFrame();
 		pthread_create(&capture_thread, NULL, capture_thread_func, (void *)this);
+		pthread_create(&raw_capture_thread, NULL, raw_capture_thread_func, (void *)this);
 
 #if LOCAL_DEBUG
 		LOGI("Streaming...");
@@ -539,6 +592,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 			for ( ; LIKELY(isRunning()) ; ) {
 				frame_mjpeg = waitPreviewFrame();
 				if (LIKELY(frame_mjpeg)) {
+				    addRawCaptureFrame(frame_mjpeg);
 					frame = get_frame(frame_mjpeg->width * frame_mjpeg->height * 2);
 					result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
 					recycle_frame(frame_mjpeg);
@@ -556,6 +610,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				frame = waitPreviewFrame();
 				if (LIKELY(frame)) {
 					frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+     				addRawCaptureFrame(frame);
 					addCaptureFrame(frame);
 				}
 			}
@@ -671,6 +726,7 @@ uvc_frame_t *UVCPreview::draw_preview_one(uvc_frame_t *frame, ANativeWindow **wi
 //
 //======================================================================
 inline const bool UVCPreview::isCapturing() const { return mIsCapturing; }
+inline const bool UVCPreview::isRawCapturing() const { return mIsRawCapturing; }
 
 int UVCPreview::setCaptureDisplay(ANativeWindow *capture_window) {
 	ENTER();
@@ -721,6 +777,21 @@ void UVCPreview::addCaptureFrame(uvc_frame_t *frame) {
 	pthread_mutex_unlock(&capture_mutex);
 }
 
+
+void UVCPreview::addRawCaptureFrame(uvc_frame_t *frame) {
+	pthread_mutex_lock(&raw_capture_mutex);
+	if (LIKELY(isRunning())) {
+		// keep only latest one
+		if (raw_captureQueu) {
+			recycle_frame(raw_captureQueu);
+		}
+		raw_captureQueu = frame;
+		pthread_cond_broadcast(&raw_capture_sync);
+	}
+	pthread_mutex_unlock(&raw_capture_mutex);
+}
+
+
 /**
  * get frame data for capturing, if not exist, block and wait
  */
@@ -741,6 +812,25 @@ uvc_frame_t *UVCPreview::waitCaptureFrame() {
 }
 
 /**
+ * get frame data for capturing, if not exist, block and wait
+ */
+uvc_frame_t *UVCPreview::waitRawCaptureFrame() {
+	uvc_frame_t *frame = NULL;
+	pthread_mutex_lock(&raw_capture_mutex);
+	{
+		if (!raw_captureQueu) {
+			pthread_cond_wait(&raw_capture_sync, &raw_capture_mutex);
+		}
+		if (LIKELY(isRunning() && raw_captureQueu)) {
+			frame = raw_captureQueu;
+			raw_captureQueu = NULL;
+		}
+	}
+	pthread_mutex_unlock(&capture_mutex);
+	return frame;
+}
+
+/**
  * clear drame data for capturing
  */
 void UVCPreview::clearCaptureFrame() {
@@ -751,6 +841,19 @@ void UVCPreview::clearCaptureFrame() {
 		captureQueu = NULL;
 	}
 	pthread_mutex_unlock(&capture_mutex);
+}
+
+/**
+ * clear drame data for capturing
+ */
+void UVCPreview::clearRawCaptureFrame() {
+	pthread_mutex_lock(&raw_capture_mutex);
+	{
+		if (raw_captureQueu)
+			recycle_frame(raw_captureQueu);
+		raw_captureQueu = NULL;
+	}
+	pthread_mutex_unlock(&raw_capture_mutex);
 }
 
 //======================================================================
@@ -770,6 +873,26 @@ void *UVCPreview::capture_thread_func(void *vptr_args) {
 		// attach to JavaVM
 		vm->AttachCurrentThread(&env, NULL);
 		preview->do_capture(env);	// never return until finish previewing
+		// detach from JavaVM
+		vm->DetachCurrentThread();
+		MARK("DetachCurrentThread");
+	}
+	PRE_EXIT();
+	pthread_exit(NULL);
+}
+
+// static
+void *UVCPreview::raw_capture_thread_func(void *vptr_args) {
+	int result;
+
+	ENTER();
+	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
+	if (LIKELY(preview)) {
+		JavaVM *vm = getVM();
+		JNIEnv *env;
+		// attach to JavaVM
+		vm->AttachCurrentThread(&env, NULL);
+		preview->do_raw_capture(env);	// never return until finish previewing
 		// detach from JavaVM
 		vm->DetachCurrentThread();
 		MARK("DetachCurrentThread");
@@ -799,6 +922,23 @@ void UVCPreview::do_capture(JNIEnv *env) {
 	EXIT();
 }
 
+
+/**
+ * the actual function for capturing
+ */
+void UVCPreview::do_raw_capture(JNIEnv *env) {
+
+	ENTER();
+
+	clearRawCaptureFrame();
+	for (; isRunning() ;) {
+   		mIsRawCapturing = true;
+        do_raw_capture_idle_loop(env);
+		pthread_cond_broadcast(&raw_capture_sync);
+	}	// end of for (; isRunning() ;)
+	EXIT();
+}
+
 void UVCPreview::do_capture_idle_loop(JNIEnv *env) {
 	ENTER();
 	
@@ -806,6 +946,16 @@ void UVCPreview::do_capture_idle_loop(JNIEnv *env) {
 		do_capture_callback(env, waitCaptureFrame());
 	}
 	
+	EXIT();
+}
+
+void UVCPreview::do_raw_capture_idle_loop(JNIEnv *env) {
+	ENTER();
+
+	for (; isRunning() && isRawCapturing() ;) {
+		do_raw_capture_callback(env, waitRawCaptureFrame());
+	}
+
 	EXIT();
 }
 
@@ -876,6 +1026,23 @@ void UVCPreview::do_capture_callback(JNIEnv *env, uvc_frame_t *frame) {
 			}
 			jobject buf = env->NewDirectByteBuffer(callback_frame->data, callbackPixelBytes);
 			env->CallVoidMethod(mFrameCallbackObj, iframecallback_fields.onFrame, buf);
+			env->ExceptionClear();
+			env->DeleteLocalRef(buf);
+		}
+ SKIP:
+		recycle_frame(callback_frame);
+	}
+	EXIT();
+}
+
+void UVCPreview::do_raw_capture_callback(JNIEnv *env, uvc_frame_t *frame) {
+	ENTER();
+
+	if (LIKELY(frame)) {
+		uvc_frame_t *callback_frame = frame;
+		if (mRawFrameCallbackObj) {
+			jobject buf = env->NewDirectByteBuffer(callback_frame->data, callbackPixelBytes);
+			env->CallVoidMethod(mRawFrameCallbackObj, iframecallback_fields.onRawFrame, buf);
 			env->ExceptionClear();
 			env->DeleteLocalRef(buf);
 		}

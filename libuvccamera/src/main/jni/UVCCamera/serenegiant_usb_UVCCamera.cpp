@@ -255,6 +255,19 @@ static jint nativeSetFrameCallback(JNIEnv *env, jobject thiz,
 	RETURN(result, jint);
 }
 
+static jint nativeSetRawFrameCallback(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jobject jIFrameCallback) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		jobject frame_callback_obj = env->NewGlobalRef(jIFrameCallback);
+		result = camera->setRawFrameCallback(env, frame_callback_obj);
+	}
+	RETURN(result, jint);
+}
+
 static jint nativeSetCaptureDisplay(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera, jobject jSurface) {
 
@@ -2005,6 +2018,7 @@ static JNINativeMethod methods[] = {
 	{ "nativeStopPreview",				"(J)I", (void *) nativeStopPreview },
 	{ "nativeSetPreviewDisplay",		"(JLandroid/view/Surface;)I", (void *) nativeSetPreviewDisplay },
 	{ "nativeSetFrameCallback",			"(JLcom/serenegiant/usb/IFrameCallback;I)I", (void *) nativeSetFrameCallback },
+	{ "nativeSetRawFrameCallback",		"(JLcom/serenegiant/usb/IFrameCallback;)I", (void *) nativeSetRawFrameCallback },
 
 	{ "nativeSetCaptureDisplay",		"(JLandroid/view/Surface;)I", (void *) nativeSetCaptureDisplay },
 
