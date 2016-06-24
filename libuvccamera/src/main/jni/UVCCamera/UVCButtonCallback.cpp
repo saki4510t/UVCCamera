@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <linux/time.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include "utilbase.h"
 #include "UVCButtonCallback.h"

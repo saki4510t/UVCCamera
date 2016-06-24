@@ -26,7 +26,7 @@
 //
 //**********************************************************************
 #include <stdlib.h>
-#include <linux/time.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <string.h>
 #include "UVCCamera.h"
