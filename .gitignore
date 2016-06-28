@@ -1,8 +1,7 @@
 # IntelliJ
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/libraries/
+/.idea
 *.class
+*.iml
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
@@ -16,19 +15,18 @@
 hs_err_pid*
 
 bin/
-obj
-obj/local
-bin/classes
-bin/res
-bin/AndroidManifest.xml
-bin/dexedLibs
-bin/jarlist.cache
+gen/
+obj/
+*.so
+*.o
+*.a
+*.d
 
 # Gradle
 .gradle/
+!/gradle/wrapper/gradle-wrapper.jar
 build/
 local.properties
 
 # gedit
 *~
-libuvccamera/src/main/libs
