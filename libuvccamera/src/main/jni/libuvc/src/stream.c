@@ -1141,7 +1141,7 @@ static void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					strmh->got_bytes += odd_bytes;
 				}
 #ifdef USE_EOF
-				if ((pktbuf[1] & STREAM_HEADER_BFH_EOF) && strmh->got_bytes != 0) {
+				if ((pktbuf[1] & UVC_STREAM_EOF) && strmh->got_bytes != 0) {
 					/* The EOF bit is set, so publish the complete frame */
 					_uvc_swap_buffers(strmh);
 				}
