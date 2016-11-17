@@ -23,10 +23,6 @@ package com.serenegiant.usbcameratest7;
  * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
@@ -49,14 +45,6 @@ import com.serenegiant.widget.UVCCameraTextureView;
 public final class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = false;	// FIXME set false when production
 	private static final String TAG = "MainActivity";
-
-    // for thread pool
-    private static final int CORE_POOL_SIZE = 1;		// initial/minimum threads
-    private static final int MAX_POOL_SIZE = 4;			// maximum threads
-    private static final int KEEP_ALIVE_TIME = 10;		// time periods while keep the idle thread
-    protected static final ThreadPoolExecutor EXECUTER
-		= new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE, KEEP_ALIVE_TIME,
-			TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 
     // for accessing USB and USB camera
     private USBMonitor mUSBMonitor;

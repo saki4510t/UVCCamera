@@ -29,9 +29,6 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.GregorianCalendar;
 import java.util.Locale;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
@@ -64,14 +61,6 @@ import com.serenegiant.widget.SimpleUVCCameraTextureView;
 public final class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = true;	// set false when releasing
 	private static final String TAG = "MainActivity";
-
-    // for thread pool
-    private static final int CORE_POOL_SIZE = 1;		// initial/minimum threads
-    private static final int MAX_POOL_SIZE = 4;			// maximum threads
-    private static final int KEEP_ALIVE_TIME = 10;		// time periods while keep the idle thread
-    protected static final ThreadPoolExecutor EXECUTER
-		= new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE, KEEP_ALIVE_TIME,
-			TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 
     private static final int CAPTURE_STOP = 0;
     private static final int CAPTURE_PREPARE = 1;
@@ -180,7 +169,7 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 			if (mUVCCamera != null)
 				mUVCCamera.destroy();
 			mUVCCamera = new UVCCamera();
-			EXECUTER.execute(new Runnable() {
+			queueEvent(new Runnable() {
 				@Override
 				public void run() {
 					mUVCCamera.open(ctrlBlock);
@@ -208,7 +197,7 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 						mUVCCamera.startPreview();
 					}
 				}
-			});
+			}, 0);
 		}
 
 		@Override
@@ -278,7 +267,7 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 		if (DEBUG) Log.v(TAG, "startCapture:");
 		if (mEncoder == null && (mCaptureState == CAPTURE_STOP)) {
 			mCaptureState = CAPTURE_PREPARE;
-			EXECUTER.execute(new Runnable() {
+			queueEvent(new Runnable() {
 				@Override
 				public void run() {
 					final String path = getCaptureFile(Environment.DIRECTORY_MOVIES, ".mp4");
@@ -294,7 +283,7 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 					} else
 						throw new RuntimeException("Failed to start capture.");
 				}
-			});
+			}, 0);
 			updateItems();
 		}
 	}

@@ -23,7 +23,6 @@ package com.serenegiant.usbcameratest;
  * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
-import android.app.Activity;
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
@@ -33,6 +32,7 @@ import android.view.View.OnClickListener;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
+import com.serenegiant.common.BaseActivity;
 import com.serenegiant.usb.CameraDialog;
 import com.serenegiant.usb.IButtonCallback;
 import com.serenegiant.usb.IStatusCallback;
@@ -43,19 +43,8 @@ import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.widget.SimpleUVCCameraTextureView;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
-public final class MainActivity extends Activity implements CameraDialog.CameraDialogParent {
-
-    // for thread pool
-    private static final int CORE_POOL_SIZE = 1;		// initial/minimum threads
-    private static final int MAX_POOL_SIZE = 4;			// maximum threads
-    private static final int KEEP_ALIVE_TIME = 10;		// time periods while keep the idle thread
-    protected static final ThreadPoolExecutor EXECUTER
-		= new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE, KEEP_ALIVE_TIME,
-			TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+public final class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
 
     // for accessing USB and USB camera
     private USBMonitor mUSBMonitor;
@@ -133,7 +122,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 			if (mUVCCamera != null)
 				mUVCCamera.destroy();
 			mUVCCamera = new UVCCamera();
-			EXECUTER.execute(new Runnable() {
+			queueEvent(new Runnable() {
 				@Override
 				public void run() {
 					mUVCCamera.open(ctrlBlock);
@@ -192,7 +181,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 						mUVCCamera.startPreview();
 					}
 				}
-			});
+			}, 0);
 		}
 
 		@Override
