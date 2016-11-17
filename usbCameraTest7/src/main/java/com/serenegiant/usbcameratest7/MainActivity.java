@@ -46,6 +46,8 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 	private static final boolean DEBUG = false;	// FIXME set false when production
 	private static final String TAG = "MainActivity";
 
+	private static final float[] BANDWIDTH_FACTORS = { 0.67f, 0.67f };
+
     // for accessing USB and USB camera
     private USBMonitor mUSBMonitor;
 
@@ -72,7 +74,7 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 		mCaptureButtonL = (ImageButton)findViewById(R.id.capture_button_L);
 		mCaptureButtonL.setOnClickListener(mOnClickListener);
 		mCaptureButtonL.setVisibility(View.INVISIBLE);
-		mHandlerL = CameraHandler.createHandler(this, mUVCCameraViewL);
+		mHandlerL = CameraHandler.createHandler(this, mUVCCameraViewL, BANDWIDTH_FACTORS[0]);
 
 		mUVCCameraViewR = (CameraViewInterface)findViewById(R.id.camera_view_R);
 		mUVCCameraViewR.setAspectRatio(UVCCamera.DEFAULT_PREVIEW_WIDTH / (float)UVCCamera.DEFAULT_PREVIEW_HEIGHT);
@@ -80,7 +82,7 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 		mCaptureButtonR = (ImageButton)findViewById(R.id.capture_button_R);
 		mCaptureButtonR.setOnClickListener(mOnClickListener);
 		mCaptureButtonR.setVisibility(View.INVISIBLE);
-		mHandlerR = CameraHandler.createHandler(this, mUVCCameraViewR);
+		mHandlerR = CameraHandler.createHandler(this, mUVCCameraViewR, BANDWIDTH_FACTORS[1]);
 
 		mUSBMonitor = new USBMonitor(this, mOnDeviceConnectListener);
 	}
@@ -178,7 +180,6 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 		}
 	};
 
-	private static final float[] BANDWIDTH_FACTORS = { 0.67f, 0.67f };
 	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
 		@Override
 		public void onAttach(final UsbDevice device) {

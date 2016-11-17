@@ -78,8 +78,8 @@ public class CameraHandler extends Handler {
 
 	private final WeakReference<CameraThread> mWeakThread;
 
-	public static final CameraHandler createHandler(final MainActivity parent, final CameraViewInterface cameraView) {
-		final CameraThread thread = new CameraThread(parent, cameraView);
+	public static final CameraHandler createHandler(final MainActivity parent, final CameraViewInterface cameraView, final float bandwidthFactor) {
+		final CameraThread thread = new CameraThread(parent, cameraView, bandwidthFactor);
 		thread.start();
 		return thread.getHandler();
 	}
@@ -195,6 +195,7 @@ public class CameraHandler extends Handler {
 		private final Object mSync = new Object();
 		private final WeakReference<MainActivity> mWeakParent;
 		private final WeakReference<CameraViewInterface> mWeakCameraView;
+		private final float bandwidthFactor;
 		private boolean mIsRecording;
 		/**
 		 * shutter sound
@@ -211,10 +212,11 @@ public class CameraHandler extends Handler {
 		 */
 		private MediaMuxerWrapper mMuxer;
 
-		private CameraThread(final MainActivity parent, final CameraViewInterface cameraView) {
+		private CameraThread(final MainActivity parent, final CameraViewInterface cameraView, final float bandwidthFactor) {
 			super("CameraThread");
 			mWeakParent = new WeakReference<MainActivity>(parent);
 			mWeakCameraView = new WeakReference<CameraViewInterface>(cameraView);
+			this.bandwidthFactor = bandwidthFactor;
 			loadShutterSound(parent);
 		}
 
@@ -270,7 +272,7 @@ public class CameraHandler extends Handler {
 			if (DEBUG) Log.v(TAG_THREAD, "handleStartPreview:");
 			if (mUVCCamera == null) return;
 			try {
-				mUVCCamera.setPreviewSize(PREVIEW_WIDTH, PREVIEW_HEIGHT, PREVIEW_MODE);
+				mUVCCamera.setPreviewSize(PREVIEW_WIDTH, PREVIEW_HEIGHT, PREVIEW_MODE, bandwidthFactor);
 			} catch (final IllegalArgumentException e) {
 				try {
 					// fallback to YUV mode
