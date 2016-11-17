@@ -1,5 +1,5 @@
 # modified saki@serenegiant <t_saki@serenegiant.com>
-# Copyright (C)2014-2015
+# Copyright (C)2014-2016
 #
 # Android build config for libusb
 # Copyright © 2012-2013 RealVNC Ltd. <toby.gray@realvnc.com>

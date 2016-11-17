@@ -1,7 +1,7 @@
 #/*********************************************************************
 #* Software License Agreement (BSD License)
 #*
-#* Copyright (C)2014-2015 saki@serenegiant <t_saki@serenegiant.com>
+#* Copyright (C)2014-2016 saki@serenegiant <t_saki@serenegiant.com>
 #*  All rights reserved.
 #*
 #*  Redistribution and use in source and binary forms, with or without

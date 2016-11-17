@@ -3,7 +3,7 @@ package com.serenegiant.usbcameratest6;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
  * File name: MainActivity.java
  *
