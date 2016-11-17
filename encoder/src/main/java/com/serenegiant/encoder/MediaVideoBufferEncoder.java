@@ -3,7 +3,7 @@ package com.serenegiant.encoder;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2015 saki t_saki@serenegiant.com
  *
  * File name: MediaVideoEncoder.java
  *
@@ -24,18 +24,15 @@ package com.serenegiant.encoder;
 */
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
-import android.opengl.EGLContext;
 import android.util.Log;
-import android.view.Surface;
 
-import com.serenegiant.glutils.RenderHandler;
-
-public class MediaVideoEncoder extends MediaEncoder {
+public class MediaVideoBufferEncoder extends MediaEncoder {
 	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "MediaVideoEncoder";
 
@@ -47,29 +44,20 @@ public class MediaVideoEncoder extends MediaEncoder {
     private static final int FRAME_RATE = 15;
     private static final float BPP = 0.50f;
 
-    private RenderHandler mRenderHandler;
-    private Surface mSurface;
+    protected int mColorFormat;
 
-	public MediaVideoEncoder(final MediaMuxerWrapper muxer, final MediaEncoderListener listener) {
+	public MediaVideoBufferEncoder(final MediaMuxerWrapper muxer, final MediaEncoderListener listener) {
 		super(muxer, listener);
 		if (DEBUG) Log.i(TAG, "MediaVideoEncoder: ");
-		mRenderHandler = RenderHandler.createHandler(TAG);
 	}
 
-	public boolean frameAvailableSoon(final float[] tex_matrix) {
-		boolean result;
-		if (result = super.frameAvailableSoon())
-			mRenderHandler.draw(tex_matrix);
-		return result;
-	}
-
-	@Override
-	public boolean frameAvailableSoon() {
-		boolean result;
-		if (result = super.frameAvailableSoon())
-			mRenderHandler.draw(null);
-		return result;
-	}
+	public void encode(final ByteBuffer buffer) {
+//    	if (DEBUG) Log.v(TAG, "encode:buffer=" + buffer);
+		synchronized (mSync) {
+			if (!mIsCapturing || mRequestStop) return;
+		}
+		encode(buffer, getPTSUs());
+    }
 
 	@Override
 	protected void prepare() throws IOException {
@@ -85,7 +73,7 @@ public class MediaVideoEncoder extends MediaEncoder {
 		if (DEBUG) Log.i(TAG, "selected codec: " + videoCodecInfo.getName());
 
         final MediaFormat format = MediaFormat.createVideoFormat(MIME_TYPE, VIDEO_WIDTH, VIDEO_HEIGHT);
-        format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);	// API >= 18
+        format.setInteger(MediaFormat.KEY_COLOR_FORMAT, mColorFormat);
         format.setInteger(MediaFormat.KEY_BIT_RATE, calcBitRate());
         format.setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RATE);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 10);
@@ -93,9 +81,6 @@ public class MediaVideoEncoder extends MediaEncoder {
 
         mMediaCodec = MediaCodec.createEncoderByType(MIME_TYPE);
         mMediaCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-        // get Surface for encoder input
-        // this method only can call between #configure and #start
-        mSurface = mMediaCodec.createInputSurface();	// API >= 18
         mMediaCodec.start();
         if (DEBUG) Log.i(TAG, "prepare finishing");
         if (mListener != null) {
@@ -105,24 +90,6 @@ public class MediaVideoEncoder extends MediaEncoder {
         		Log.e(TAG, "prepare:", e);
         	}
         }
-	}
-
-	public void setEglContext(final EGLContext shared_context, final int tex_id) {
-		mRenderHandler.setEglContext(shared_context, tex_id, mSurface, true);
-	}
-
-	@Override
-    protected void release() {
-		if (DEBUG) Log.i(TAG, "release:");
-		if (mSurface != null) {
-			mSurface.release();
-			mSurface = null;
-		}
-		if (mRenderHandler != null) {
-			mRenderHandler.release();
-			mRenderHandler = null;
-		}
-		super.release();
 	}
 
 	private int calcBitRate() {
@@ -137,11 +104,11 @@ public class MediaVideoEncoder extends MediaEncoder {
      * @return null if no codec matched
      */
     @SuppressWarnings("deprecation")
-    protected static final MediaCodecInfo selectVideoCodec(final String mimeType) {
+	protected final MediaCodecInfo selectVideoCodec(final String mimeType) {
     	if (DEBUG) Log.v(TAG, "selectVideoCodec:");
 
     	// get the list of available codecs
-		final int numCodecs = MediaCodecList.getCodecCount();
+        final int numCodecs = MediaCodecList.getCodecCount();
         for (int i = 0; i < numCodecs; i++) {
         	final MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
 
@@ -155,6 +122,7 @@ public class MediaVideoEncoder extends MediaEncoder {
                 	if (DEBUG) Log.i(TAG, "codec:" + codecInfo.getName() + ",MIME=" + types[j]);
             		final int format = selectColorFormat(codecInfo, mimeType);
                 	if (format > 0) {
+                		mColorFormat = format;
                 		return codecInfo;
                 	}
                 }
@@ -198,9 +166,9 @@ public class MediaVideoEncoder extends MediaEncoder {
 	static {
 		recognizedFormats = new int[] {
 //        	MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar,
-//        	MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar,
-//        	MediaCodecInfo.CodecCapabilities.COLOR_QCOM_FormatYUV420SemiPlanar,
-        	MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface,
+        	MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar,
+        	MediaCodecInfo.CodecCapabilities.COLOR_QCOM_FormatYUV420SemiPlanar,
+//        	MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface,
 		};
 	}
 

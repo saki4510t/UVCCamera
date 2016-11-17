@@ -45,6 +45,7 @@ import com.serenegiant.encoder.MediaAudioEncoder;
 import com.serenegiant.encoder.MediaEncoder;
 import com.serenegiant.encoder.MediaMuxerWrapper;
 import com.serenegiant.encoder.MediaSurfaceEncoder;
+import com.serenegiant.glutils.RenderHolderCallback;
 import com.serenegiant.glutils.RendererHolder;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usb.Size;
@@ -82,7 +83,7 @@ public final class CameraServer extends Handler {
 		if (DEBUG) Log.d(TAG, "Constructor:");
 		mWeakThread = new WeakReference<CameraThread>(thread);
 		mRegisteredCallbackCount = 0;
-		mRendererHolder = new RendererHolder(mFrameWidth, mFrameHeight, null);
+		mRendererHolder = new RendererHolder(mFrameWidth, mFrameHeight, mRenderHolderCallback);
 	}
 
 	@Override
@@ -180,7 +181,7 @@ public final class CameraServer extends Handler {
 	public void addSurface(final int id, final Surface surface, final boolean isRecordable, final IUVCServiceOnFrameAvailable onFrameAvailableListener) {
 		if (DEBUG) Log.d(TAG, "addSurface:id=" + id +",surface=" + surface);
 		if (mRendererHolder != null)
-			mRendererHolder.addSurface(id, surface, isRecordable, onFrameAvailableListener);
+			mRendererHolder.addSurface(id, surface, isRecordable);
 	}
 
 	public void removeSurface(final int id) {
@@ -288,6 +289,29 @@ public final class CameraServer extends Handler {
 			throw new RuntimeException("unsupported message:what=" + msg.what);
 		}
 	}
+
+	private final RenderHolderCallback mRenderHolderCallback
+		= new RenderHolderCallback() {
+		@Override
+		public void onCreate(final Surface surface) {
+		}
+
+		@Override
+		public void onFrameAvailable() {
+			final CameraThread thread = mWeakThread.get();
+			if ((thread != null) && (thread.mVideoEncoder != null)) {
+				try {
+					thread.mVideoEncoder.frameAvailableSoon();
+				} catch (final Exception e) {
+					//
+				}
+			}
+		}
+
+		@Override
+		public void onDestroy() {
+		}
+	};
 
 	private static final class CameraThread extends Thread {
 		private static final String TAG_THREAD = "CameraThread";
@@ -447,7 +471,8 @@ public final class CameraServer extends Handler {
 			try {
 				if ((mUVCCamera == null) || (mMuxer != null)) return;
 				mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
-				new MediaSurfaceEncoder(mFrameWidth, mFrameHeight, mMuxer, mMediaEncoderListener);
+//				new MediaSurfaceEncoder(mFrameWidth, mFrameHeight, mMuxer, mMediaEncoderListener);
+				new MediaSurfaceEncoder(mMuxer, mMediaEncoderListener);
 				if (true) {
 					// for audio capturing
 					new MediaAudioEncoder(mMuxer, mMediaEncoderListener);
@@ -528,7 +553,7 @@ public final class CameraServer extends Handler {
 					mVideoEncoder = (MediaSurfaceEncoder)encoder;
 					final Surface encoderSurface = mVideoEncoder.getInputSurface();
 					mEncoderSurfaceId = encoderSurface.hashCode();
-					mHandler.mRendererHolder.addSurface(mEncoderSurfaceId, encoderSurface, true, mOnFrameAvailable);
+					mHandler.mRendererHolder.addSurface(mEncoderSurfaceId, encoderSurface, true);
 				} catch (final Exception e) {
 					Log.e(TAG, "onPrepared:", e);
 				}

@@ -27,6 +27,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.util.AttributeSet;
+import android.view.Surface;
 import android.view.TextureView;
 
 import com.serenegiant.encoder.MediaEncoder;
@@ -131,6 +132,16 @@ public class UVCCameraTextureView2 extends TextureView	// API >= 14
 	public void onSurfaceTextureUpdated(final SurfaceTexture surface) {
 		if (mEncoder != null)
 			mEncoder.frameAvailableSoon();
+	}
+
+	@Override
+	public void setCallback(final Callback callback) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Surface getSurface() {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override

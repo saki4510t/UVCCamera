@@ -31,6 +31,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.Surface;
 import android.view.TextureView;
 
 import com.serenegiant.encoder.MediaEncoder;
@@ -57,6 +58,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
     private final Object mCaptureSync = new Object();
     private Bitmap mTempBitmap;
     private boolean mReqesutCaptureStillImage;
+	private Callback mCallback;
 
 	public UVCCameraTextureView(final Context context) {
 		this(context, null, 0);
@@ -141,11 +143,17 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 		if (DEBUG) Log.v(TAG, "onSurfaceTextureAvailable:" + surface);
 		mRenderHandler = RenderHandler.createHandler(surface);
 		mHasSurface = true;
+		if (mCallback != null) {
+			mCallback.onSurfaceCreated(getSurface());
+		}
 	}
 
 	@Override
 	public void onSurfaceTextureSizeChanged(final SurfaceTexture surface, final int width, final int height) {
 		if (DEBUG) Log.v(TAG, "onSurfaceTextureSizeChanged:" + surface);
+		if (mCallback != null) {
+			mCallback.onSurfaceChanged(getSurface(), width, height);
+		}
 	}
 
 	@Override
@@ -156,6 +164,13 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 			mRenderHandler = null;
 		}
 		mHasSurface = false;
+		if (mCallback != null) {
+			mCallback.onSurfaceDestroy(getSurface());
+		}
+		if (mPreviewSurface != null) {
+			mPreviewSurface.release();
+			mPreviewSurface = null;
+		}
 		return true;
 	}
 
@@ -204,10 +219,27 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 		return mRenderHandler != null ? mRenderHandler.getPreviewTexture() : super.getSurfaceTexture();
 	}
 
+	private Surface mPreviewSurface;
+	@Override
+	public Surface getSurface() {
+		if (DEBUG) Log.v(TAG, "getSurface:hasSurface=" + mHasSurface);
+		if (mPreviewSurface == null) {
+			final SurfaceTexture st = getSurfaceTexture();
+			if (st != null)
+				mPreviewSurface = new Surface(st);
+		}
+		return mPreviewSurface;
+	}
+
 	@Override
 	public void setVideoEncoder(final MediaEncoder encoder) {
 		if (mRenderHandler != null)
 			mRenderHandler.setVideoEncoder(encoder);
+	}
+
+	@Override
+	public void setCallback(final Callback callback) {
+		mCallback = callback;
 	}
 
 	/**

@@ -59,6 +59,7 @@ import android.widget.ToggleButton;
 import com.serenegiant.encoder.MediaAudioEncoder;
 import com.serenegiant.encoder.MediaEncoder;
 import com.serenegiant.encoder.MediaMuxerWrapper;
+import com.serenegiant.encoder.MediaVideoBufferEncoder;
 import com.serenegiant.encoder.MediaVideoEncoder;
 
 import com.serenegiant.usb.CameraDialog;
@@ -420,7 +421,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 			/**
 			 * for video recording
 			 */
-			private MediaVideoEncoder mVideoEncoder;
+			private MediaVideoBufferEncoder mVideoEncoder;
 
 			private CameraThread(final MainActivity parent, final CameraViewInterface cameraView) {
 				super("CameraThread");
@@ -535,7 +536,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 					if ((mUVCCamera == null) || (mMuxer != null)) return;
 					mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
 					// for video capturing using MediaVideoEncoder
-					mVideoEncoder = new MediaVideoEncoder(mMuxer, mMediaEncoderListener);
+					mVideoEncoder = new MediaVideoBufferEncoder(mMuxer, mMediaEncoderListener);
 					if (true) {
 						// for audio capturing
 						new MediaAudioEncoder(mMuxer, mMediaEncoderListener);

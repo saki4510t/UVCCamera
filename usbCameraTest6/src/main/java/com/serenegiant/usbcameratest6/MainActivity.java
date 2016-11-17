@@ -260,7 +260,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 			@Override
 			public void onSurfaceTextureAvailable(final SurfaceTexture surface, final int width, final int height) {
 				final Surface _surface = new Surface(surface);
-				mHandler.addSurface(surface.hashCode(), _surface, false, null);
+				mHandler.addSurface(surface.hashCode(), _surface, false);
 			}
 
 			@Override

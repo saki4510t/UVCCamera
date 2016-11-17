@@ -93,6 +93,7 @@
     <orderEntry type="jdk" jdkName="Android API 25 Platform" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="libuvccamera" exported="" />
+    <orderEntry type="module" module-name="encoder" exported="" />
     <orderEntry type="library" exported="" name="common-1.1.9" level="project" />
   </component>
 </module>

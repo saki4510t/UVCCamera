@@ -42,8 +42,9 @@ import com.serenegiant.encoder.MediaAudioEncoder;
 import com.serenegiant.encoder.MediaEncoder;
 import com.serenegiant.encoder.MediaMuxerWrapper;
 import com.serenegiant.encoder.MediaSurfaceEncoder;
+import com.serenegiant.glutils.RenderHolderCallback;
 import com.serenegiant.glutils.RendererHolder;
-import com.serenegiant.glutils.RendererHolder.OnFrameAvailableCallback;
+import com.serenegiant.glutils.RendererOnFrameAvailableListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usbcameratest6.R;
 
@@ -64,7 +65,7 @@ public final class UVCCameraHandler extends Handler {
 	private UVCCameraHandler(final CameraThread thread) {
 		if (DEBUG) Log.d(TAG, "Constructor:");
 		mWeakThread = new WeakReference<CameraThread>(thread);
-		mRendererHolder = new RendererHolder(null);
+		mRendererHolder = new RendererHolder(640, 480, mRenderHolderCallback);
 	}
 
 	@Override
@@ -131,9 +132,9 @@ public final class UVCCameraHandler extends Handler {
 		return (thread != null) && thread.isRecording();
 	}
 
-	public void addSurface(final int id, final Surface surface, final boolean isRecordable, final OnFrameAvailableCallback onFrameAvailableListener) {
+	public void addSurface(final int id, final Surface surface, final boolean isRecordable) {
 		if (DEBUG) Log.d(TAG, "addSurface:id=" + id +",surface=" + surface);
-		mRendererHolder.addSurface(id, surface, isRecordable, onFrameAvailableListener);
+		mRendererHolder.addSurface(id, surface, isRecordable);
 	}
 
 	public void removeSurface(final int id) {
@@ -203,6 +204,29 @@ public final class UVCCameraHandler extends Handler {
 			throw new RuntimeException("unsupported message:what=" + msg.what);
 		}
 	}
+
+	private final RenderHolderCallback mRenderHolderCallback
+		= new RenderHolderCallback() {
+		@Override
+		public void onCreate(final Surface surface) {
+		}
+
+		@Override
+		public void onFrameAvailable() {
+			final CameraThread thread = mWeakThread.get();
+			if ((thread != null) && (thread.mVideoEncoder != null)) {
+				try {
+					thread.mVideoEncoder.frameAvailableSoon();
+				} catch (final Exception e) {
+					//
+				}
+			}
+		}
+
+		@Override
+		public void onDestroy() {
+		}
+	};
 
 	private static final class CameraThread extends Thread {
 		private static final String TAG_THREAD = "CameraThread";
@@ -387,13 +411,14 @@ public final class UVCCameraHandler extends Handler {
 			}
 		}; */
 
-		private final OnFrameAvailableCallback mOnFrameAvailable = new OnFrameAvailableCallback() {
+		private final RendererOnFrameAvailableListener mOnFrameAvailable = new RendererOnFrameAvailableListener() {
 			@Override
-			public void onFrameAvailable() {
+			public void onFrameAvailable(final long l) {
 //				if (DEBUG) Log.d(TAG_THREAD, "onFrameAvailable:");
 				if (mVideoEncoder != null)
 					mVideoEncoder.frameAvailableSoon();
 			}
+
 		};
 
 		private final MediaEncoder.MediaEncoderListener mMediaEncoderListener = new MediaEncoder.MediaEncoderListener() {
@@ -406,7 +431,7 @@ public final class UVCCameraHandler extends Handler {
 					mVideoEncoder = (MediaSurfaceEncoder)encoder;
 					final Surface encoderSurface = mVideoEncoder.getInputSurface();
 					mEncoderSurfaceId = encoderSurface.hashCode();
-					mHandler.mRendererHolder.addSurface(mEncoderSurfaceId, encoderSurface, true, mOnFrameAvailable);
+					mHandler.mRendererHolder.addSurface(mEncoderSurfaceId, encoderSurface, true);
 				} catch (final Exception e) {
 					Log.e(TAG, "onPrepared:", e);
 				}

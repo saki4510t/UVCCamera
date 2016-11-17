@@ -25,11 +25,19 @@ package com.serenegiant.widget;
 
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
+import android.view.Surface;
 
 import com.serenegiant.encoder.MediaEncoder;
 
 public interface CameraViewInterface extends AspectRatioViewInterface {
+	public interface Callback {
+		public void onSurfaceCreated(Surface surface);
+		public void onSurfaceChanged(Surface surface, int width, int height);
+		public void onSurfaceDestroy(Surface surface);
+	}
+	public void setCallback(Callback callback);
 	public SurfaceTexture getSurfaceTexture();
+	public Surface getSurface();
 	public boolean hasSurface();
 	public void setVideoEncoder(final MediaEncoder encoder);
 	public Bitmap captureStillImage();

@@ -32,7 +32,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.Surface;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -112,7 +111,6 @@ public class CameraFragment extends Fragment {
 		mStillCaptureButton.setEnabled(false);
 		mCameraView = (CameraViewInterface)rootView.findViewById(R.id.camera_view);
 		mCameraView.setAspectRatio(DEFAULT_WIDTH / (float)DEFAULT_HEIGHT);
-		mCameraView.setCallback(mCallback);
 		mCameraViewSub = (SurfaceView)rootView.findViewById(R.id.camera_view_sub);
 		mCameraViewSub.setOnClickListener(mOnClickListener);
 		return rootView;
@@ -229,20 +227,6 @@ public class CameraFragment extends Fragment {
 			mCameraClient.connect();
 		}
 	}
-
-	private final CameraViewInterface.Callback mCallback = new CameraViewInterface.Callback() {
-		@Override
-		public void onSurfaceCreated(final Surface surface) {
-//			tryOpenUVCCamera(true);
-		}
-		@Override
-		public void onSurfaceChanged(final Surface surface, final int width, final int height) {
-		}
-		@Override
-		public void onSurfaceDestroy(final Surface surface) {
-
-		}
-	};
 
 	private final ICameraClientCallback mCameraListener = new ICameraClientCallback() {
 		@Override

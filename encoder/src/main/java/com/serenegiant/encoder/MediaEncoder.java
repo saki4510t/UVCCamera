@@ -254,7 +254,9 @@ public abstract class MediaEncoder implements Runnable {
      * @param length　length of byte array, zero means EOS.
      * @param presentationTimeUs
      */
-    protected void encode(final byte[] buffer, final int length, final long presentationTimeUs) {
+    @SuppressWarnings("deprecation")
+	protected void encode(final byte[] buffer, final int length, final long presentationTimeUs) {
+//    	if (DEBUG) Log.v(TAG, "encode:buffer=" + buffer);
     	if (!mIsCapturing) return;
     	int ix = 0, sz;
         final ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
@@ -290,9 +292,53 @@ public abstract class MediaEncoder implements Runnable {
     }
 
     /**
+     * Method to set ByteBuffer to the MediaCodec encoder
+     * @param buffer null means EOS
+     * @param presentationTimeUs
+     */
+    @SuppressWarnings("deprecation")
+	protected void encode(final ByteBuffer buffer, final long presentationTimeUs) {
+//    	if (DEBUG) Log.v(TAG, "encode:buffer=" + buffer);
+    	if (!mIsCapturing) return;
+    	int ix = 0, sz;
+        final ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
+        final int length = buffer != null ? buffer.limit() : 0;
+        while (mIsCapturing && ix < length) {
+	        final int inputBufferIndex = mMediaCodec.dequeueInputBuffer(TIMEOUT_USEC);
+	        if (inputBufferIndex >= 0) {
+	            final ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
+	            inputBuffer.clear();
+	            sz = inputBuffer.remaining();
+	            sz = (ix + sz < length) ? sz : length - ix;
+	            if (sz > 0 && (buffer != null)) {
+	            	inputBuffer.put(buffer);
+	            }
+	            ix += sz;
+//	            if (DEBUG) Log.v(TAG, "encode:queueInputBuffer");
+	            if (length <= 0) {
+	            	// send EOS
+	            	mIsEOS = true;
+	            	if (DEBUG) Log.i(TAG, "send BUFFER_FLAG_END_OF_STREAM");
+	            	mMediaCodec.queueInputBuffer(inputBufferIndex, 0, 0,
+	            		presentationTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+		            break;
+	            } else {
+	            	mMediaCodec.queueInputBuffer(inputBufferIndex, 0, sz,
+	            		presentationTimeUs, 0);
+	            }
+	        } else if (inputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+	        	// wait for MediaCodec encoder is ready to encode
+	        	// nothing to do here because MediaCodec#dequeueInputBuffer(TIMEOUT_USEC)
+	        	// will wait for maximum TIMEOUT_USEC(10msec) on each call
+	        }
+        }
+    }
+
+    /**
      * drain encoded data and write them to muxer
      */
-    protected void drain() {
+    @SuppressWarnings("deprecation")
+	protected void drain() {
     	if (mMediaCodec == null) return;
         ByteBuffer[] encoderOutputBuffers = mMediaCodec.getOutputBuffers();
         int encoderStatus, count = 0;

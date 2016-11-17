@@ -15,6 +15,10 @@ allprojects {
     }
 }
 
+task clean(type: Delete) {
+	delete rootProject.buildDir
+}
+
 ext {
 	supportLibVersion = '25.0.0'  // variable that can be referenced to keep support libs consistent
 	commonLibVersion= '1.1.9'
