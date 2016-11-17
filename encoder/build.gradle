@@ -1,0 +1,32 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion versionCompiler
+   	buildToolsVersion versionBuildTool
+
+   	compileOptions {
+   		sourceCompatibility javaSourceCompatibility
+   		targetCompatibility javaTargetCompatibility
+   	}
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion versionTarget
+        versionCode 1
+        versionName "1.0"
+
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile("com.serenegiant:common:${commonLibVersion}") {
+   		exclude module: 'support-v4'
+   	}
+}

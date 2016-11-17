@@ -135,7 +135,7 @@ public class UVCService extends Service {
 		}
 
 		@Override
-		public void onCancel() {
+		public void onCancel(final UsbDevice device) {
 			if (DEBUG) Log.d(TAG, "OnDeviceConnectListener#onCancel:");
 			synchronized (sServiceSync) {
 				sServiceSync.notifyAll();

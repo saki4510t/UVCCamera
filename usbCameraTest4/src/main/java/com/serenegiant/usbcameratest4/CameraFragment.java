@@ -196,7 +196,7 @@ public class CameraFragment extends Fragment {
 		}
 
 		@Override
-		public void onCancel() {
+		public void onCancel(final UsbDevice device) {
 			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onCancel:");
 			enableButtons(false);
 		}

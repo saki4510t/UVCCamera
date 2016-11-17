@@ -1,13 +1,18 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 22
-    buildToolsVersion "22.0.1"
+	compileSdkVersion versionCompiler
+	buildToolsVersion versionBuildTool
+
+	compileOptions {
+		sourceCompatibility javaSourceCompatibility
+		targetCompatibility javaTargetCompatibility
+	}
 
     defaultConfig {
         applicationId "com.serenegiant.usbcameratest4"
         minSdkVersion 18
-        targetSdkVersion 22
+		targetSdkVersion versionTarget
 		versionCode 8
 		versionName "2.30"
     }
@@ -22,4 +27,5 @@ android {
 
 dependencies {
     compile project(':libuvccamera')
+    compile project(':encoder')
 }

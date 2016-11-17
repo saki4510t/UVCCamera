@@ -32,7 +32,7 @@
     tools:context="com.serenegiant.usbcameratest.MainActivity"
     tools:ignore="MergeRootFrame" >
 
-    <com.serenegiant.widget.UVCCameraTextureView
+    <com.serenegiant.widget.SimpleUVCCameraTextureView
         android:id="@+id/UVCCameraTextureView1"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

@@ -241,7 +241,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 		}
 
 		@Override
-		public void onCancel() {
+		public void onCancel(final UsbDevice device) {
 		}
 	};
 

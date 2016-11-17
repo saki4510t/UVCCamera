@@ -5,7 +5,7 @@ package com.serenegiant.usb;
  *
  * Fixed the issue when reading filter definition from xml file
  * that undefined null filter(that match all device) is generateed.
- * Copyright (C) 2014-2015 saki (t_saki@serenegiant.com)
+ * Copyright (C) 2014-2016 saki (t_saki@serenegiant.com)
  *
  * This class originally came from
  * com.android.server.usb.UsbSettingsManager.DeviceFilter
@@ -61,9 +61,16 @@ public final class DeviceFilter {
 	public final String mProductName;
 	// USB device serial number string (or null for unspecified)
 	public final String mSerialNumber;
+	// set true if specific device(s) should exclude
+	public final boolean isExclude;
 
 	public DeviceFilter(final int vid, final int pid, final int clasz, final int subclass,
-			final int protocol, final String manufacturer, final String product, final String serialnum) {
+			final int protocol, final String manufacturer, final String product, final String serialNum) {
+		this(vid, pid, clasz, subclass, protocol, manufacturer, product, serialNum, false);
+	}
+
+	public DeviceFilter(final int vid, final int pid, final int clasz, final int subclass,
+			final int protocol, final String manufacturer, final String product, final String serialNum, final boolean isExclude) {
 		mVendorId = vid;
 		mProductId = pid;
 		mClass = clasz;
@@ -71,12 +78,17 @@ public final class DeviceFilter {
 		mProtocol = protocol;
 		mManufacturerName = manufacturer;
 		mProductName = product;
-		mSerialNumber = serialnum;
+		mSerialNumber = serialNum;
+		this.isExclude = isExclude;
 /*		Log.i(TAG, String.format("vendorId=0x%04x,productId=0x%04x,class=0x%02x,subclass=0x%02x,protocol=0x%02x",
 			mVendorId, mProductId, mClass, mSubclass, mProtocol)); */
 	}
 
 	public DeviceFilter(final UsbDevice device) {
+		this(device, false);
+	}
+
+	public DeviceFilter(final UsbDevice device, final boolean isExclude) {
 		mVendorId = device.getVendorId();
 		mProductId = device.getProductId();
 		mClass = device.getDeviceClass();
@@ -85,6 +97,7 @@ public final class DeviceFilter {
 		mManufacturerName = null;	// device.getManufacturerName();
 		mProductName = null;		// device.getProductName();
 		mSerialNumber = null;		// device.getSerialNumber();
+		this.isExclude = isExclude;
 /*		Log.i(TAG, String.format("vendorId=0x%04x,productId=0x%04x,class=0x%02x,subclass=0x%02x,protocol=0x%02x",
 			mVendorId, mProductId, mClass, mSubclass, mProtocol)); */
 	}
@@ -102,7 +115,7 @@ public final class DeviceFilter {
 			int eventType = parser.getEventType();
 			while (eventType != XmlPullParser.END_DOCUMENT) {
 	            if (eventType == XmlPullParser.START_TAG) {
-					final DeviceFilter deviceFilter = read(context, parser);
+					final DeviceFilter deviceFilter = readEntryOne(context, parser);
 					if (deviceFilter != null) {
 						deviceFilters.add(deviceFilter);
 					}
@@ -158,6 +171,52 @@ public final class DeviceFilter {
 	}
 
 	/**
+	 * read as boolean values with default value from xml(w/o exception throws)
+	 * resource boolean id is also resolved into boolean
+	 * if the value is zero, return false, if the value is non-zero integer, return true
+	 * @param context
+	 * @param parser
+	 * @param namespace
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	private static final boolean getAttributeBoolean(final Context context, final XmlPullParser parser, final String namespace, final String name, final boolean defaultValue) {
+		boolean result = defaultValue;
+		try {
+			String v = parser.getAttributeValue(namespace, name);
+			if ("TRUE".equalsIgnoreCase(v)) {
+				result = true;
+			} else if ("FALSE".equalsIgnoreCase(v)) {
+				result = false;
+			} else if (!TextUtils.isEmpty(v) && v.startsWith("@")) {
+				final String r = v.substring(1);
+				final int resId = context.getResources().getIdentifier(r, null, context.getPackageName());
+				if (resId > 0) {
+					result = context.getResources().getBoolean(resId);
+				}
+			} else {
+                int radix = 10;
+                if (v != null && v.length() > 2 && v.charAt(0) == '0' &&
+                    (v.charAt(1) == 'x' || v.charAt(1) == 'X')) {
+                    // allow hex values starting with 0x or 0X
+                    radix = 16;
+                    v = v.substring(2);
+                }
+				final int val = Integer.parseInt(v, radix);
+				result = val != 0;
+			}
+		} catch (final NotFoundException e) {
+			result = defaultValue;
+		} catch (final NumberFormatException e) {
+			result = defaultValue;
+		} catch (final NullPointerException e) {
+			result = defaultValue;
+		}
+		return result;
+	}
+
+	/**
 	 * read as String attribute with default value from xml(w/o exception throws)
 	 * resource string id is also resolved into string
 	 * @param parser
@@ -188,13 +247,14 @@ public final class DeviceFilter {
 		return result;
 	}
 
-	public static DeviceFilter read(final Context context, final XmlPullParser parser)
+	public static DeviceFilter readEntryOne(final Context context, final XmlPullParser parser)
 			throws XmlPullParserException, IOException {
 		int vendorId = -1;
 		int productId = -1;
 		int deviceClass = -1;
 		int deviceSubclass = -1;
 		int deviceProtocol = -1;
+		boolean exclude = false;
 		String manufacturerName = null;
 		String productName = null;
 		String serialNumber = null;
@@ -228,11 +288,12 @@ public final class DeviceFilter {
         			serialNumber = getAttributeString(context, parser, null, "serial-number", null);
         			if (TextUtils.isEmpty(serialNumber))
             			serialNumber = getAttributeString(context, parser, null, "serial", null);
+					exclude = getAttributeBoolean(context, parser, null, "exclude", false);
         		} else if (eventType == XmlPullParser.END_TAG) {
         			if (hasValue) {
 	        			return new DeviceFilter(vendorId, productId, deviceClass,
 	        					deviceSubclass, deviceProtocol, manufacturerName, productName,
-	        					serialNumber);
+	        					serialNumber, exclude);
         			}
         		}
         	}
@@ -269,19 +330,36 @@ public final class DeviceFilter {
 		if (mSerialNumber != null) {
 			serializer.attribute(null, "serial-number", mSerialNumber);
 		}
+		serializer.attribute(null, "serial-number", Boolean.toString(isExclude));
 		serializer.endTag(null, "usb-device");
 	} */
 
+	/**
+	 * 指定したクラス・サブクラス・プロトコルがこのDeviceFilterとマッチするかどうかを返す
+	 * mExcludeフラグは別途#isExcludeか自前でチェックすること
+	 * @param clasz
+	 * @param subclass
+	 * @param protocol
+	 * @return
+	 */
 	private boolean matches(final int clasz, final int subclass, final int protocol) {
 		return ((mClass == -1 || clasz == mClass)
 				&& (mSubclass == -1 || subclass == mSubclass) && (mProtocol == -1 || protocol == mProtocol));
 	}
 
+	/**
+	 * 指定したUsbDeviceがこのDeviceFilterにマッチするかどうかを返す
+	 * mExcludeフラグは別途#isExcludeか自前でチェックすること
+	 * @param device
+	 * @return
+	 */
 	public boolean matches(final UsbDevice device) {
-		if (mVendorId != -1 && device.getVendorId() != mVendorId)
+		if (mVendorId != -1 && device.getVendorId() != mVendorId) {
 			return false;
-		if (mProductId != -1 && device.getProductId() != mProductId)
+		}
+		if (mProductId != -1 && device.getProductId() != mProductId) {
 			return false;
+		}
 /*		if (mManufacturerName != null && device.getManufacturerName() == null)
 			return false;
 		if (mProductName != null && device.getProductName() == null)
@@ -299,42 +377,67 @@ public final class DeviceFilter {
 			return false; */
 
 		// check device class/subclass/protocol
-		if (matches(device.getDeviceClass(), device.getDeviceSubclass(),
-				device.getDeviceProtocol()))
+		if (matches(device.getDeviceClass(), device.getDeviceSubclass(), device.getDeviceProtocol())) {
 			return true;
+		}
 
 		// if device doesn't match, check the interfaces
 		final int count = device.getInterfaceCount();
 		for (int i = 0; i < count; i++) {
 			final UsbInterface intf = device.getInterface(i);
-			if (matches(intf.getInterfaceClass(), intf.getInterfaceSubclass(),
-					intf.getInterfaceProtocol()))
+			if (matches(intf.getInterfaceClass(), intf.getInterfaceSubclass(), intf.getInterfaceProtocol())) {
 				return true;
+			}
 		}
 
 		return false;
 	}
 
+	/**
+	 * このDeviceFilterに一致してかつmExcludeがtrueならtrueを返す
+	 * @param device
+	 * @return
+	 */
+	public boolean isExclude(final UsbDevice device) {
+		return isExclude && matches(device);
+	}
+
+	/**
+	 * これって要らんかも, equalsでできる気が
+	 * @param f
+	 * @return
+	 */
 	public boolean matches(final DeviceFilter f) {
-		if (mVendorId != -1 && f.mVendorId != mVendorId)
+		if (isExclude != f.isExclude) {
 			return false;
-		if (mProductId != -1 && f.mProductId != mProductId)
+		}
+		if (mVendorId != -1 && f.mVendorId != mVendorId) {
 			return false;
-		if (f.mManufacturerName != null && mManufacturerName == null)
+		}
+		if (mProductId != -1 && f.mProductId != mProductId) {
 			return false;
-		if (f.mProductName != null && mProductName == null)
+		}
+		if (f.mManufacturerName != null && mManufacturerName == null) {
 			return false;
-		if (f.mSerialNumber != null && mSerialNumber == null)
+		}
+		if (f.mProductName != null && mProductName == null) {
 			return false;
+		}
+		if (f.mSerialNumber != null && mSerialNumber == null) {
+			return false;
+		}
 		if (mManufacturerName != null && f.mManufacturerName != null
-				&& !mManufacturerName.equals(f.mManufacturerName))
+				&& !mManufacturerName.equals(f.mManufacturerName)) {
 			return false;
+		}
 		if (mProductName != null && f.mProductName != null
-				&& !mProductName.equals(f.mProductName))
+				&& !mProductName.equals(f.mProductName)) {
 			return false;
+		}
 		if (mSerialNumber != null && f.mSerialNumber != null
-				&& !mSerialNumber.equals(f.mSerialNumber))
+				&& !mSerialNumber.equals(f.mSerialNumber)) {
 			return false;
+		}
 
 		// check device class/subclass/protocol
 		return matches(f.mClass, f.mSubclass, f.mProtocol);
@@ -354,7 +457,7 @@ public final class DeviceFilter {
 					|| filter.mProductId != mProductId
 					|| filter.mClass != mClass || filter.mSubclass != mSubclass
 					|| filter.mProtocol != mProtocol) {
-				return (false);
+				return false;
 			}
 			if ((filter.mManufacturerName != null && mManufacturerName == null)
 					|| (filter.mManufacturerName == null && mManufacturerName != null)
@@ -362,7 +465,7 @@ public final class DeviceFilter {
 					|| (filter.mProductName == null && mProductName != null)
 					|| (filter.mSerialNumber != null && mSerialNumber == null)
 					|| (filter.mSerialNumber == null && mSerialNumber != null)) {
-				return (false);
+				return false;
 			}
 			if ((filter.mManufacturerName != null && mManufacturerName != null && !mManufacturerName
 					.equals(filter.mManufacturerName))
@@ -370,18 +473,19 @@ public final class DeviceFilter {
 							.equals(filter.mProductName))
 					|| (filter.mSerialNumber != null && mSerialNumber != null && !mSerialNumber
 							.equals(filter.mSerialNumber))) {
-				return (false);
+				return false;
 			}
-			return (true);
+			return (filter.isExclude != isExclude);
 		}
 		if (obj instanceof UsbDevice) {
 			final UsbDevice device = (UsbDevice) obj;
-			if (device.getVendorId() != mVendorId
-					|| device.getProductId() != mProductId
-					|| device.getDeviceClass() != mClass
-					|| device.getDeviceSubclass() != mSubclass
-					|| device.getDeviceProtocol() != mProtocol) {
-				return (false);
+			if (isExclude
+					|| (device.getVendorId() != mVendorId)
+					|| (device.getProductId() != mProductId)
+					|| (device.getDeviceClass() != mClass)
+					|| (device.getDeviceSubclass() != mSubclass)
+					|| (device.getDeviceProtocol() != mProtocol) ) {
+				return false;
 			}
 /*			if ((mManufacturerName != null && device.getManufacturerName() == null)
 					|| (mManufacturerName == null && device
@@ -419,6 +523,7 @@ public final class DeviceFilter {
 			+ ",mManufacturerName=" + mManufacturerName
 			+ ",mProductName=" + mProductName
 			+ ",mSerialNumber=" + mSerialNumber
+			+ ",isExclude=" + isExclude
 			+ "]";
 	}
 

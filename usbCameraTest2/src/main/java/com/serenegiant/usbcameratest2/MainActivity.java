@@ -59,7 +59,7 @@ import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.video.Encoder;
 import com.serenegiant.video.Encoder.EncodeListener;
 import com.serenegiant.video.SurfaceEncoder;
-import com.serenegiant.widget.UVCCameraTextureView;
+import com.serenegiant.widget.SimpleUVCCameraTextureView;
 
 public final class MainActivity extends Activity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = true;	// set false when releasing
@@ -80,7 +80,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
     // for accessing USB and USB camera
     private USBMonitor mUSBMonitor;
 	private UVCCamera mUVCCamera;
-	private UVCCameraTextureView mUVCCameraView;
+	private SimpleUVCCameraTextureView mUVCCameraView;
 	// for open&start / stop&close camera preview
 	private ToggleButton mCameraButton;
 	// for start & stop movie capture
@@ -101,7 +101,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 		mCaptureButton = (ImageButton)findViewById(R.id.capture_button);
 		mCaptureButton.setOnClickListener(mOnClickListener);
 
-		mUVCCameraView = (UVCCameraTextureView)findViewById(R.id.UVCCameraTextureView1);
+		mUVCCameraView = (SimpleUVCCameraTextureView)findViewById(R.id.UVCCameraTextureView1);
 		mUVCCameraView.setAspectRatio(UVCCamera.DEFAULT_PREVIEW_WIDTH / (float)UVCCamera.DEFAULT_PREVIEW_HEIGHT);
 		mUVCCameraView.setSurfaceTextureListener(mSurfaceTextureListener);
 
@@ -227,7 +227,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 		}
 
 		@Override
-		public void onCancel() {
+		public void onCancel(final UsbDevice device) {
 		}
 	};
 
