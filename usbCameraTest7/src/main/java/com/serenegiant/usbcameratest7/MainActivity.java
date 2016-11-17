@@ -27,7 +27,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import android.app.Activity;
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
@@ -38,6 +37,7 @@ import android.view.View.OnClickListener;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
+import com.serenegiant.common.BaseActivity;
 import com.serenegiant.usb.CameraDialog;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
@@ -46,7 +46,7 @@ import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.widget.CameraViewInterface;
 import com.serenegiant.widget.UVCCameraTextureView;
 
-public final class MainActivity extends Activity implements CameraDialog.CameraDialogParent {
+public final class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = false;	// FIXME set false when production
 	private static final String TAG = "MainActivity";
 
@@ -154,12 +154,14 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 				break;
 			case R.id.capture_button_L:
 				if (mHandlerL.isCameraOpened()) {
-					if (!mHandlerL.isRecording()) {
-						mCaptureButtonL.setColorFilter(0xffff0000);	// turn red
-						mHandlerL.startRecording();
-					} else {
-						mCaptureButtonL.setColorFilter(0);	// return to default color
-						mHandlerL.stopRecording();
+					if (checkPermissionWriteExternalStorage() && checkPermissionAudio()) {
+						if (!mHandlerL.isRecording()) {
+							mCaptureButtonL.setColorFilter(0xffff0000);	// turn red
+							mHandlerL.startRecording();
+						} else {
+							mCaptureButtonL.setColorFilter(0);	// return to default color
+							mHandlerL.stopRecording();
+						}
 					}
 				}
 				break;
@@ -173,12 +175,14 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 				break;
 			case R.id.capture_button_R:
 				if (mHandlerR.isCameraOpened()) {
-					if (!mHandlerR.isRecording()) {
-						mCaptureButtonR.setColorFilter(0xffff0000);	// turn red
-						mHandlerR.startRecording();
-					} else {
-						mCaptureButtonR.setColorFilter(0);	// return to default color
-						mHandlerR.stopRecording();
+					if (checkPermissionWriteExternalStorage() && checkPermissionAudio()) {
+						if (!mHandlerR.isRecording()) {
+							mCaptureButtonR.setColorFilter(0xffff0000);	// turn red
+							mHandlerR.startRecording();
+						} else {
+							mCaptureButtonR.setColorFilter(0);	// return to default color
+							mHandlerR.stopRecording();
+						}
 					}
 				}
 				break;

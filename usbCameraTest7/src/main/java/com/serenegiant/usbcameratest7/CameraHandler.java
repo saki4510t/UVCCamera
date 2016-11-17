@@ -153,36 +153,40 @@ public class CameraHandler extends Handler {
 	public void handleMessage(final Message msg) {
 		final CameraThread thread = mWeakThread.get();
 		if (thread == null) return;
-		switch (msg.what) {
-		case MSG_OPEN:
-			thread.handleOpen((USBMonitor.UsbControlBlock)msg.obj);
-			break;
-		case MSG_CLOSE:
-			thread.handleClose();
-			break;
-		case MSG_PREVIEW_START:
-			thread.handleStartPreview((Surface)msg.obj);
-			break;
-		case MSG_PREVIEW_STOP:
-			thread.handleStopPreview();
-			break;
-		case MSG_CAPTURE_STILL:
-			thread.handleCaptureStill();
-			break;
-		case MSG_CAPTURE_START:
-			thread.handleStartRecording();
-			break;
-		case MSG_CAPTURE_STOP:
-			thread.handleStopRecording();
-			break;
-		case MSG_MEDIA_UPDATE:
-			thread.handleUpdateMedia((String)msg.obj);
-			break;
-		case MSG_RELEASE:
-			thread.handleRelease();
-			break;
-		default:
-			throw new RuntimeException("unsupported message:what=" + msg.what);
+		try {
+			switch (msg.what) {
+			case MSG_OPEN:
+				thread.handleOpen((USBMonitor.UsbControlBlock)msg.obj);
+				break;
+			case MSG_CLOSE:
+				thread.handleClose();
+				break;
+			case MSG_PREVIEW_START:
+				thread.handleStartPreview((Surface)msg.obj);
+				break;
+			case MSG_PREVIEW_STOP:
+				thread.handleStopPreview();
+				break;
+			case MSG_CAPTURE_STILL:
+				thread.handleCaptureStill();
+				break;
+			case MSG_CAPTURE_START:
+				thread.handleStartRecording();
+				break;
+			case MSG_CAPTURE_STOP:
+				thread.handleStopRecording();
+				break;
+			case MSG_MEDIA_UPDATE:
+				thread.handleUpdateMedia((String)msg.obj);
+				break;
+			case MSG_RELEASE:
+				thread.handleRelease();
+				break;
+			default:
+				throw new RuntimeException("unsupported message:what=" + msg.what);
+			}
+		} catch (final Exception e) {
+			Log.w(TAG, e);
 		}
 	}
 

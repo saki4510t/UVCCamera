@@ -33,7 +33,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import android.app.Activity;
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
@@ -51,6 +50,7 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import com.serenegiant.common.BaseActivity;
 import com.serenegiant.usb.CameraDialog;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
@@ -61,7 +61,7 @@ import com.serenegiant.video.Encoder.EncodeListener;
 import com.serenegiant.video.SurfaceEncoder;
 import com.serenegiant.widget.SimpleUVCCameraTextureView;
 
-public final class MainActivity extends Activity implements CameraDialog.CameraDialogParent {
+public final class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = true;	// set false when releasing
 	private static final String TAG = "MainActivity";
 
@@ -159,10 +159,12 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 	private final OnClickListener mOnClickListener = new OnClickListener() {
 		@Override
 		public void onClick(final View v) {
-			if (mCaptureState == CAPTURE_STOP) {
-				startCapture();
-			} else {
-				stopCapture();
+			if (checkPermissionWriteExternalStorage() && checkPermissionAudio()) {
+				if (mCaptureState == CAPTURE_STOP) {
+					startCapture();
+				} else {
+					stopCapture();
+				}
 			}
 		}
 	};

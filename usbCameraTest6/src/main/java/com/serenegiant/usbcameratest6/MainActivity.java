@@ -25,7 +25,6 @@ package com.serenegiant.usbcameratest6;
 
 import java.io.File;
 
-import android.app.Activity;
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
 import android.media.MediaScannerConnection;
@@ -41,6 +40,7 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import com.serenegiant.common.BaseActivity;
 import com.serenegiant.encoder.MediaMuxerWrapper;
 
 import com.serenegiant.usb.CameraDialog;
@@ -51,7 +51,7 @@ import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.usb.UVCCameraHandler;
 import com.serenegiant.widget.UVCCameraTextureView;
 
-public final class MainActivity extends Activity implements CameraDialog.CameraDialogParent {
+public final class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "MainActivity";
 
@@ -156,12 +156,14 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 				break;
 			case R.id.capture_button:
 				if (mHandler.isOpened()) {
-					if (!mHandler.isRecording()) {
-						mCaptureButton.setColorFilter(0xffff0000);	// turn red
-						mHandler.startRecording();
-					} else {
-						mCaptureButton.setColorFilter(0);	// return to default color
-						mHandler.stopRecording();
+					if (checkPermissionWriteExternalStorage() && checkPermissionAudio()) {
+						if (!mHandler.isRecording()) {
+							mCaptureButton.setColorFilter(0xffff0000);	// turn red
+							mHandler.startRecording();
+						} else {
+							mCaptureButton.setColorFilter(0);	// return to default color
+							mHandler.stopRecording();
+						}
 					}
 				}
 				break;

@@ -23,14 +23,15 @@ package com.serenegiant.usbcameratest4;
  * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
-import android.app.Activity;
 import android.app.Fragment;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Window;
 
-public class MainActivity extends Activity {
+import com.serenegiant.common.BaseActivity;
+
+public class MainActivity extends BaseActivity {
 	private static final boolean DEBUG = false;
 	private static final String TAG = "MainActivity";
 
