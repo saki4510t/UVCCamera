@@ -1,8 +1,8 @@
 /*********************************************************************
  *********************************************************************/
 /*********************************************************************
- * modified some function to avoid crash
- * Copyright (C) 2014-2015 saki@serenegiant All rights reserved.
+ * modified some function to avoid crash, support Android
+ * Copyright (C) 2014-2016 saki@serenegiant All rights reserved.
  *********************************************************************/
 /*********************************************************************
  * Software License Agreement (BSD License)
@@ -41,6 +41,21 @@
  * @defgroup streaming Streaming control functions
  * @brief Tools for creating, managing and consuming video streams
  */
+
+#define LOCAL_DEBUG 0
+
+#define LOG_TAG "libuvc/stream"
+#if 1	// デバッグ情報を出さない時1
+	#ifndef LOG_NDEBUG
+		#define	LOG_NDEBUG		// LOGV/LOGD/MARKを出力しない時
+		#endif
+	#undef USE_LOGALL			// 指定したLOGxだけを出力
+#else
+	#define USE_LOGALL
+	#undef LOG_NDEBUG
+	#undef NDEBUG
+	#define GET_RAW_DESCRIPTOR
+#endif
 
 #include <assert.h>		// XXX add assert for debugging
 
@@ -449,6 +464,7 @@ static uvc_error_t _uvc_get_stream_ctrl_format(uvc_device_handle_t *devh,
 
 		if (frame->intervals) {
 			for (interval = frame->intervals; *interval; ++interval) {
+				if (UNLIKELY(!(*interval))) continue;
 				uint32_t it = 10000000 / *interval;
 				LOGV("it:%d", it);
 				if ((it >= (uint32_t) min_fps) && (it <= (uint32_t) max_fps)) {
@@ -463,6 +479,7 @@ static uvc_error_t _uvc_get_stream_ctrl_format(uvc_device_handle_t *devh,
 		} else {
 			int32_t fps;
 			for (fps = max_fps; fps >= min_fps; fps--) {
+				if (UNLIKELY(!fps)) continue;
 				uint32_t interval_100ns = 10000000 / fps;
 				uint32_t interval_offset = interval_100ns - frame->dwMinFrameInterval;
 				LOGV("fps:%d", fps);
@@ -666,7 +683,7 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 	};
 
 	// ignore empty payload transfers
-	if UNLIKELY(!payload || !payload_len || !strmh->outbuf)
+	if (UNLIKELY(!payload || !payload_len || !strmh->outbuf))
 		return;
 
 	/* Certain iSight cameras have strange behavior: They send header
@@ -677,28 +694,28 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 	 * 0xdeadbeefdeadface(8), ??(16)
 	*/
 
-	if UNLIKELY(strmh->devh->is_isight &&
+	if (UNLIKELY(strmh->devh->is_isight &&
 		((payload_len < 14) || memcmp(isight_tag, payload + 2, sizeof(isight_tag)) ) &&
-		((payload_len < 15) || memcmp(isight_tag, payload + 3, sizeof(isight_tag)) ) ) {
+		((payload_len < 15) || memcmp(isight_tag, payload + 3, sizeof(isight_tag)) ) )) {
 		// The payload transfer doesn't have any iSight magic, so it's all image data
 		header_len = 0;
 		data_len = payload_len;
 	} else {
 		header_len = payload[0];
 
-		if UNLIKELY(header_len > payload_len) {
+		if (UNLIKELY(header_len > payload_len)) {
 			strmh->bfh_err |= UVC_STREAM_ERR;
 			UVC_DEBUG("bogus packet: actual_len=%zd, header_len=%zd\n", payload_len, header_len);
 			return;
 		}
 
-		if UNLIKELY(strmh->devh->is_isight)
+		if (UNLIKELY(strmh->devh->is_isight))
 			data_len = 0;
 		else
 			data_len = payload_len - header_len;
 	}
 
-	if UNLIKELY(header_len < 2) {
+	if (UNLIKELY(header_len < 2)) {
 		header_info = 0;
 	} else {
 		//  @todo we should be checking the end-of-header bit
@@ -706,7 +723,7 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 
 		header_info = payload[1];
 
-		if UNLIKELY(header_info & UVC_STREAM_ERR) {
+		if (UNLIKELY(header_info & UVC_STREAM_ERR)) {
 //			strmh->bfh_err |= UVC_STREAM_ERR;
 			UVC_DEBUG("bad packet: error bit set");
 			libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
@@ -748,8 +765,8 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 		}
 	}
 
-	if LIKELY(data_len > 0) {
-		if LIKELY(strmh->got_bytes + data_len < strmh->size_buf) {
+	if (LIKELY(data_len > 0)) {
+		if (LIKELY(strmh->got_bytes + data_len < strmh->size_buf)) {
 			memcpy(strmh->outbuf + strmh->got_bytes, payload + header_len, data_len);
 			strmh->got_bytes += data_len;
 		} else {
@@ -1141,7 +1158,7 @@ static void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					strmh->got_bytes += odd_bytes;
 				}
 #ifdef USE_EOF
-				if ((pktbuf[1] & UVC_STREAM_EOF) && strmh->got_bytes != 0) {
+				if ((pktbuf[1] & STREAM_HEADER_BFH_EOF) && strmh->got_bytes != 0) {
 					/* The EOF bit is set, so publish the complete frame */
 					_uvc_swap_buffers(strmh);
 				}
@@ -1417,7 +1434,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 	isochronous = interface->num_altsetting > 1;
 
 	if (isochronous) {
-		MARK("isochronous transfer mode");
+		MARK("isochronous transfer mode:num_altsetting=%d", interface->num_altsetting);
 		/* For isochronous streaming, we choose an appropriate altsetting for the endpoint
 		 * and set up several transfers */
 		const struct libusb_interface_descriptor *altsetting;

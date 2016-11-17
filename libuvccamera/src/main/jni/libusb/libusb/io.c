@@ -1157,7 +1157,7 @@ int usbi_io_init(struct libusb_context *ctx) {
 	}
 #endif
 
-	return 0;
+	return LIBUSB_SUCCESS;
 
 err_close_hp_pipe:
 	usbi_close(ctx->hotplug_pipe[0]);
@@ -1205,7 +1205,7 @@ static int calculate_timeout(struct usbi_transfer *transfer) {
 		USBI_TRANSFER_TO_LIBUSB_TRANSFER(transfer)->timeout;
 
 	if (!timeout)
-		return 0;
+		return LIBUSB_SUCCESS;
 
 	r = usbi_backend->clock_gettime(USBI_CLOCK_MONOTONIC, &current_time);
 	if (UNLIKELY(r < 0)) {
@@ -1223,7 +1223,7 @@ static int calculate_timeout(struct usbi_transfer *transfer) {
 	}
 
 	TIMESPEC_TO_TIMEVAL(&transfer->timeout, &current_time);
-	return 0;
+	return LIBUSB_SUCCESS;
 }
 
 /* add a transfer to the (timeout-sorted) active transfers list.
@@ -1376,7 +1376,7 @@ static int disarm_timerfd(struct libusb_context *ctx) {
 	if (UNLIKELY(r < 0))
 		return LIBUSB_ERROR_OTHER;
 	else
-		return 0;
+		return LIBUSB_SUCCESS;
 }
 
 /* iterates through the flying transfers, and rearms the timerfd based on the
@@ -1417,7 +1417,7 @@ disarm:
 static int arm_timerfd_for_next_timeout(struct libusb_context *ctx) {
 
 	(void)ctx;
-	return 0;
+	return LIBUSB_SUCCESS;
 }
 #endif
 
@@ -1611,7 +1611,7 @@ int usbi_handle_transfer_completion(struct usbi_transfer *itransfer,
 	}
 	usbi_mutex_unlock(&ctx->event_waiters_lock);
 	libusb_unref_device(handle->dev);
-	return 0;
+	return LIBUSB_SUCCESS;
 }
 
 /* Similar to usbi_handle_transfer_completion() but exclusively for transfers
@@ -1674,7 +1674,7 @@ int API_EXPORTED libusb_try_lock_events(libusb_context *ctx) {
 		return 1;
 
 	ctx->event_handler_active = 1;
-	return 0;
+	return LIBUSB_SUCCESS;
 }
 
 /** \ingroup poll
@@ -1761,7 +1761,7 @@ int API_EXPORTED libusb_event_handling_ok(libusb_context *ctx) {
 	usbi_mutex_unlock(&ctx->pollfd_modify_lock);
 	if (r) {
 		usbi_dbg("someone else is modifying poll fds");
-		return 0;
+		return LIBUSB_SUCCESS;
 	}
 
 	return 1;

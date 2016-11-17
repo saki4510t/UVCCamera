@@ -44,6 +44,8 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/libusb \
 	$(LOCAL_PATH)/libusb/os \
 	$(LOCAL_PATH)/../ \
+	$(LOCAL_PATH)/../include \
+	$(LOCAL_PATH)/android \
 
 LOCAL_EXPORT_C_INCLUDES := \
 	$(LOCAL_PATH)/ \
@@ -52,7 +54,7 @@ LOCAL_EXPORT_C_INCLUDES := \
 # add some flags
 LOCAL_CFLAGS := $(LOCAL_C_INCLUDES:%=-I%)
 LOCAL_CFLAGS += -DANDROID_NDK
-LOCAL_CFLAGS += -DLOG_NDEBUG
+#LOCAL_CFLAGS += -DLOG_NDEBUG
 LOCAL_CFLAGS += -DACCESS_RAW_DESCRIPTORS
 LOCAL_CFLAGS += -O3 -fstrict-aliasing -fprefetch-loop-arrays
 LOCAL_EXPORT_LDLIBS += -llog
@@ -62,7 +64,7 @@ LOCAL_MODULE := libusb100_static
 include $(BUILD_STATIC_LIBRARY)
 
 ######################################################################
-# libusb.so
+# libusb100.so
 ######################################################################
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional
