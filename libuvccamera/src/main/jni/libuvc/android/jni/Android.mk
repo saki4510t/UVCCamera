@@ -74,7 +74,7 @@ LOCAL_MODULE := libuvc_static
 include $(BUILD_STATIC_LIBRARY)
 
 ######################################################################
-# libuvc.so (shared library with static link to libjpeg-turbo)
+# libuvc.so
 ######################################################################
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional

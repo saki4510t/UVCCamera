@@ -1071,11 +1071,13 @@ out:
 DEFAULT_VISIBILITY
 libusb_device * LIBUSB_CALL libusb_ref_device(libusb_device *dev) {
 
+	int refcnt;
 	usbi_mutex_lock(&dev->lock);
 	{
-		dev->refcnt++;
+		refcnt = ++dev->refcnt;
 	}
 	usbi_mutex_unlock(&dev->lock);
+//	LOGI("refcnt=%d", refcnt);
 	return dev;
 }
 
@@ -1096,6 +1098,7 @@ void API_EXPORTED libusb_unref_device(libusb_device *dev) {
 		refcnt = --dev->refcnt;
 	}
 	usbi_mutex_unlock(&dev->lock);
+//	LOGI("refcnt=%d", dev->refcnt);
 
 	if (refcnt == 0) {
 		usbi_dbg("destroy device %d.%d", dev->bus_number, dev->device_address);
@@ -1249,9 +1252,11 @@ libusb_device * LIBUSB_CALL libusb_get_device_with_fd(libusb_context *ctx,
 	ENTER();
 
 	struct libusb_device *device = NULL;
+	// android_generate_device内でusbi_alloc_deviceが呼ばれた時に参照カウンタは1
 	int ret = android_generate_device(ctx, &device, vid, pid, serial, fd, busnum, devaddr);
-	if (LIKELY(!ret)) {
-		libusb_ref_device(device);	// これいるんかな? usbi_alloc_device内で既に呼ばれとるんやけど
+	if (ret) {
+		LOGD("android_generate_device failed:err=%d", ret);
+		device = NULL;
 	}
 
 	RET(device);

@@ -1300,7 +1300,6 @@ static int android_initialize_device(struct libusb_device *dev,
 	struct android_device_priv *priv = _device_priv(dev);
 	struct libusb_context *ctx = DEVICE_CTX(dev);
 	uint8_t desc[4096]; // max descriptor size is 4096 bytes
-	int descriptors_size = 512; /* Begin with a 1024 byte alloc */
 	int speed;
 	ssize_t r;
 
@@ -1310,6 +1309,7 @@ static int android_initialize_device(struct libusb_device *dev,
 	LOGD("cache descriptors in memory");
 
 	priv->descriptors_len = 0;
+	priv->fd = 0;
 	memset(desc, 0, sizeof(desc));
     if (!lseek(fd, 0, SEEK_SET)) {
         // ディスクリプタを読み込んでローカルキャッシュする
@@ -1317,8 +1317,7 @@ static int android_initialize_device(struct libusb_device *dev,
         LOGD("Device::init read returned %d errno %d\n", length, errno);
 		if (length > 0) {
 			priv->fd = fd;
-			descriptors_size = length;
-			priv->descriptors = usbi_reallocf(priv->descriptors, descriptors_size);
+			priv->descriptors = usbi_reallocf(priv->descriptors, length);
 			if (UNLIKELY(!priv->descriptors)) {
 				RETURN(LIBUSB_ERROR_NO_MEM, int);
 			}
@@ -1389,7 +1388,7 @@ int android_generate_device(struct libusb_context *ctx, struct libusb_device **d
  	 * a session ID. */
 	session_id = busnum << 8 | devaddr;
  	LOGD("allocating new device for %d/%d (session %ld)", busnum, devaddr, session_id);
- 	*dev = usbi_alloc_device(ctx, session_id);
+ 	*dev = usbi_alloc_device(ctx, session_id);	// この時点で参照カウンタ=1
  	if (UNLIKELY(!dev)) {
  		RETURN(LIBUSB_ERROR_NO_MEM, int);
  	}
@@ -1407,7 +1406,8 @@ int android_generate_device(struct libusb_context *ctx, struct libusb_device **d
 
 out:
  	if (UNLIKELY(r < 0)) {
- 		libusb_unref_device(*dev);
+ 		libusb_unref_device(*dev);	// ここで参照カウンタが0になって破棄される
+ 		*dev = NULL;
  	} else {
  		usbi_connect_device(*dev);
  	}

@@ -228,7 +228,7 @@ uvc_error_t uvc_get_device_with_fd(uvc_context_t *ctx, uvc_device_t **device,
 	LOGD("call libusb_get_device_with_fd");
 	struct libusb_device *usb_dev = libusb_get_device_with_fd(ctx->usb_ctx, vid, pid, serial, fd, busnum, devaddr);
 
-	if (usb_dev) {
+	if (LIKELY(usb_dev)) {
 		*device = malloc(sizeof(uvc_device_t/* *device */));
 		(*device)->ctx = ctx;
 		(*device)->ref = 0;
@@ -240,9 +240,9 @@ uvc_error_t uvc_get_device_with_fd(uvc_context_t *ctx, uvc_device_t **device,
 	} else {
 		LOGE("could not find specific device");
 		*device = NULL;
+		RETURN(UVC_ERROR_NO_DEVICE, int);
 	}
 
-	RETURN(UVC_ERROR_NO_DEVICE, int);
 }
 
 /** @brief Get the number of the bus to which the device is attached
@@ -791,7 +791,8 @@ const uvc_extension_unit_t *uvc_get_extension_units(uvc_device_handle_t *devh) {
 void uvc_ref_device(uvc_device_t *dev) {
 	UVC_ENTER();
 
-	dev->ref++;
+	dev->ref++;	// これ排他制御要るんちゃうかなぁ(｡･_･｡)
+//	LOGI("ref=%d", dev->ref);
 	libusb_ref_device(dev->usb_dev);
 
 	UVC_EXIT_VOID();
@@ -808,8 +809,9 @@ void uvc_unref_device(uvc_device_t *dev) {
 	UVC_ENTER();
 
 	libusb_unref_device(dev->usb_dev);
-	dev->ref--;
+	dev->ref--;	// これ排他制御要るんちゃうかなぁ(｡･_･｡)
 
+//	LOGI("ref=%d", dev->ref);
 	if (dev->ref == 0) {
 		free(dev);
 		dev = NULL;
