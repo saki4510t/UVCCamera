@@ -1862,7 +1862,7 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
 void uvc_stream_close(uvc_stream_handle_t *strmh) {
 	UVC_ENTER();
 
-	if (!strmh) UVC_EXIT_VOID();
+	if (!strmh) { UVC_EXIT_VOID() };
 
 	if (strmh->running)
 		uvc_stream_stop(strmh);
