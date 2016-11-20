@@ -34,6 +34,7 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 
+import com.serenegiant.encoder.IVideoEncoder;
 import com.serenegiant.encoder.MediaEncoder;
 import com.serenegiant.encoder.MediaVideoEncoder;
 import com.serenegiant.glutils.EGLBase;
@@ -44,7 +45,7 @@ import com.serenegiant.glutils.es1.GLHelper;
  * change the view size with keeping the specified aspect ratio.
  * if you set this view with in a FrameLayout and set property "android:layout_gravity="center",
  * you can show this view in the center of screen and keep the aspect ratio of content
- * XXX it is better that can set the aspect raton a a xml property
+ * XXX it is better that can set the aspect ratio as xml property
  */
 public class UVCCameraTextureView extends TextureView	// API >= 14
 	implements TextureView.SurfaceTextureListener, CameraViewInterface {
@@ -54,7 +55,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 
     private double mRequestedAspect = -1.0;
     private boolean mHasSurface;
-    private RenderHandler mRenderHandler;
+	private RenderHandler mRenderHandler;
     private final Object mCaptureSync = new Object();
     private Bitmap mTempBitmap;
     private boolean mReqesutCaptureStillImage;
@@ -77,7 +78,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	public void onResume() {
 		if (DEBUG) Log.v(TAG, "onResume:");
 		if (mHasSurface) {
-			mRenderHandler = RenderHandler.createHandler(super.getSurfaceTexture());
+			mRenderHandler = RenderHandler.createHandler(super.getSurfaceTexture(), getWidth(), getHeight());
 		}
 	}
 
@@ -141,18 +142,25 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	@Override
 	public void onSurfaceTextureAvailable(final SurfaceTexture surface, final int width, final int height) {
 		if (DEBUG) Log.v(TAG, "onSurfaceTextureAvailable:" + surface);
-		mRenderHandler = RenderHandler.createHandler(surface);
+		if (mRenderHandler == null) {
+			mRenderHandler = RenderHandler.createHandler(surface, width, height);
+		} else {
+			mRenderHandler.resize(width, height);
+		}
 		mHasSurface = true;
 		if (mCallback != null) {
-			mCallback.onSurfaceCreated(getSurface());
+			mCallback.onSurfaceCreated(this, getSurface());
 		}
 	}
 
 	@Override
 	public void onSurfaceTextureSizeChanged(final SurfaceTexture surface, final int width, final int height) {
 		if (DEBUG) Log.v(TAG, "onSurfaceTextureSizeChanged:" + surface);
+		if (mRenderHandler != null) {
+			mRenderHandler.resize(width, height);
+		}
 		if (mCallback != null) {
-			mCallback.onSurfaceChanged(getSurface(), width, height);
+			mCallback.onSurfaceChanged(this, getSurface(), width, height);
 		}
 	}
 
@@ -165,7 +173,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 		}
 		mHasSurface = false;
 		if (mCallback != null) {
-			mCallback.onSurfaceDestroy(getSurface());
+			mCallback.onSurfaceDestroy(this, getSurface());
 		}
 		if (mPreviewSurface != null) {
 			mPreviewSurface.release();
@@ -216,7 +224,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 
 	@Override
 	public SurfaceTexture getSurfaceTexture() {
-		return mRenderHandler != null ? mRenderHandler.getPreviewTexture() : super.getSurfaceTexture();
+		return mRenderHandler != null ? mRenderHandler.getPreviewTexture() : null;
 	}
 
 	private Surface mPreviewSurface;
@@ -225,14 +233,15 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 		if (DEBUG) Log.v(TAG, "getSurface:hasSurface=" + mHasSurface);
 		if (mPreviewSurface == null) {
 			final SurfaceTexture st = getSurfaceTexture();
-			if (st != null)
+			if (st != null) {
 				mPreviewSurface = new Surface(st);
+			}
 		}
 		return mPreviewSurface;
 	}
 
 	@Override
-	public void setVideoEncoder(final MediaEncoder encoder) {
+	public void setVideoEncoder(final IVideoEncoder encoder) {
 		if (mRenderHandler != null)
 			mRenderHandler.setVideoEncoder(encoder);
 	}
@@ -253,13 +262,14 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 		private static final int MSG_REQUEST_RENDER = 1;
 		private static final int MSG_SET_ENCODER = 2;
 		private static final int MSG_CREATE_SURFACE = 3;
+		private static final int MSG_RESIZE = 4;
 		private static final int MSG_TERMINATE = 9;
 
 		private RenderThread mThread;
 		private boolean mIsActive = true;
 
-		public static final RenderHandler createHandler(final SurfaceTexture surface) {
-			final RenderThread thread = new RenderThread(surface);
+		public static final RenderHandler createHandler(final SurfaceTexture surface, final int width, final int height) {
+			final RenderThread thread = new RenderThread(surface, width, height);
 			thread.start();
 			return thread.getHandler();
 		}
@@ -268,7 +278,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 			mThread = thread;
 		}
 
-		public final void setVideoEncoder(final MediaEncoder encoder) {
+		public final void setVideoEncoder(final IVideoEncoder encoder) {
 			if (DEBUG) Log.v(TAG, "setVideoEncoder:");
 			if (mIsActive)
 				sendMessage(obtainMessage(MSG_SET_ENCODER, encoder));
@@ -276,16 +286,32 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 
 		public final SurfaceTexture getPreviewTexture() {
 			if (DEBUG) Log.v(TAG, "getPreviewTexture:");
-			synchronized (mThread.mSync) {
-				sendEmptyMessage(MSG_CREATE_SURFACE);
-				try {
-					mThread.mSync.wait();
-				} catch (final InterruptedException e) {
+			if (mIsActive) {
+				synchronized (mThread.mSync) {
+					sendEmptyMessage(MSG_CREATE_SURFACE);
+					try {
+						mThread.mSync.wait();
+					} catch (final InterruptedException e) {
+					}
+					return mThread.mPreviewSurface;
 				}
-				return mThread.mPreviewSurface;
+			} else {
+				return null;
 			}
 		}
 
+		public void resize(final int width, final int height) {
+			if (DEBUG) Log.v(TAG, "resize:");
+			if (mIsActive) {
+				synchronized (mThread.mSync) {
+					sendMessage(obtainMessage(MSG_RESIZE, width, height));
+					try {
+						mThread.mSync.wait();
+					} catch (final InterruptedException e) {
+					}
+				}
+			}
+		}
 
 		public final void release() {
 			if (DEBUG) Log.v(TAG, "release:");
@@ -299,8 +325,9 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 
 		@Override
 		public final void onFrameAvailable(final SurfaceTexture surfaceTexture) {
-			if (mIsActive)
+			if (mIsActive) {
 				sendEmptyMessage(MSG_REQUEST_RENDER);
+			}
 		}
 
 		@Override
@@ -316,6 +343,9 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 			case MSG_CREATE_SURFACE:
 				mThread.updatePreviewSurface();
 				break;
+			case MSG_RESIZE:
+				mThread.resize(msg.arg1, msg.arg2);
+				break;
 			case MSG_TERMINATE:
 				Looper.myLooper().quit();
 				mThread = null;
@@ -330,19 +360,24 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	    	private final SurfaceTexture mSurface;
 	    	private RenderHandler mHandler;
 	    	private EGLBase mEgl;
+	    	/** IEglSurface instance related to this TextureView */
 	    	private EGLBase.IEglSurface mEglSurface;
 	    	private GLDrawer2D mDrawer;
 	    	private int mTexId = -1;
+	    	/** SurfaceTexture instance to receive video images */
 	    	private SurfaceTexture mPreviewSurface;
 			private final float[] mStMatrix = new float[16];
 			private MediaEncoder mEncoder;
+			private int mViewWidth, mViewHeight;
 
 			/**
 			 * constructor
 			 * @param surface: drawing surface came from TexureView
 			 */
-	    	public RenderThread(final SurfaceTexture surface) {
+	    	public RenderThread(final SurfaceTexture surface, final int width, final int height) {
 	    		mSurface = surface;
+				mViewWidth = width;
+				mViewHeight = height;
 	    		setName("RenderThread");
 			}
 
@@ -359,11 +394,23 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 	            return mHandler;
 			}
 
+			public void resize(final int width, final int height) {
+				if (((width > 0) && (width != mViewWidth)) || ((height > 0) && (height != mViewHeight))) {
+					mViewWidth = width;
+					mViewHeight = height;
+					updatePreviewSurface();
+				} else {
+					synchronized (mSync) {
+						mSync.notifyAll();
+					}
+				}
+			}
+
 			public final void updatePreviewSurface() {
 	            if (DEBUG) Log.i(TAG, "RenderThread#updatePreviewSurface:");
 	            synchronized (mSync) {
 	            	if (mPreviewSurface != null) {
-	            		if (DEBUG) Log.d(TAG, "release mPreviewSurface");
+	            		if (DEBUG) Log.d(TAG, "updatePreviewSurface:release mPreviewSurface");
 	            		mPreviewSurface.setOnFrameAvailableListener(null);
 	            		mPreviewSurface.release();
 	            		mPreviewSurface = null;
@@ -374,8 +421,9 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 		            }
 		    		// create texture and SurfaceTexture for input from camera
 		            mTexId = mDrawer.initTex();
-		            if (DEBUG) Log.v(TAG, "getPreviewSurface:tex_id=" + mTexId);
+		            if (DEBUG) Log.v(TAG, "updatePreviewSurface:tex_id=" + mTexId);
 		            mPreviewSurface = new SurfaceTexture(mTexId);
+					mPreviewSurface.setDefaultBufferSize(mViewWidth, mViewHeight);
 		            mPreviewSurface.setOnFrameAvailableListener(mHandler);
 		            // notify to caller thread that previewSurface is ready
 					mSync.notifyAll();
@@ -414,6 +462,7 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 				mPreviewSurface.updateTexImage();
 				// get texture matrix
 				mPreviewSurface.getTransformMatrix(mStMatrix);
+				// notify video encoder if it exist
 				if (mEncoder != null) {
 					// notify to capturing thread that the camera frame is available.
 					if (mEncoder instanceof MediaVideoEncoder)

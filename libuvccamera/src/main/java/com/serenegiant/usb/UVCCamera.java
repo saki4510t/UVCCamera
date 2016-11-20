@@ -127,8 +127,9 @@ public class UVCCamera {
 	private UsbControlBlock mCtrlBlock;
     protected long mControlSupports;			// カメラコントロールでサポートしている機能フラグ
     protected long mProcSupports;				// プロセッシングユニットでサポートしている機能フラグ
-    protected int mCurrentPreviewMode = 0;
-	protected int mCurrentPreviewWidth = DEFAULT_PREVIEW_WIDTH, mCurrentPreviewHeight = DEFAULT_PREVIEW_HEIGHT;
+    protected int mCurrentFrameFormat = FRAME_FORMAT_MJPEG;
+	protected int mCurrentWidth = DEFAULT_PREVIEW_WIDTH, mCurrentHeight = DEFAULT_PREVIEW_HEIGHT;
+	protected float mCurrentBandwidthFactor = DEFAULT_BANDWIDTH;
     protected String mSupportedSize;
     protected List<Size> mCurrentSizeList;
 	// these fields from here are accessed from native code and do not change name and remove
@@ -243,7 +244,8 @@ public class UVCCamera {
    			mCtrlBlock = null;
 		}
 		mControlSupports = mProcSupports = 0;
-		mCurrentPreviewMode = -1;
+		mCurrentFrameFormat = -1;
+		mCurrentBandwidthFactor = 0;
 		mSupportedSize = null;
 		mCurrentSizeList = null;
     	if (DEBUG) Log.v(TAG, "close:finished");
@@ -269,8 +271,8 @@ public class UVCCamera {
 		Size result = null;
 		final List<Size> list = getSupportedSizeList();
 		for (final Size sz: list) {
-			if ((sz.width == mCurrentPreviewWidth)
-				|| (sz.height == mCurrentPreviewHeight)) {
+			if ((sz.width == mCurrentWidth)
+				|| (sz.height == mCurrentHeight)) {
 				result =sz;
 				break;
 			}
@@ -284,28 +286,28 @@ public class UVCCamera {
 	   @param height
 	 */
 	public void setPreviewSize(final int width, final int height) {
-		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, mCurrentPreviewMode, 0);
+		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, mCurrentFrameFormat, mCurrentBandwidthFactor);
 	}
 
 	/**
 	 * Set preview size and preview mode
 	 * @param width
-	   @param height
-	   @param mode 0:yuyv, other:MJPEG
+	 * @param height
+	 * @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
 	 */
-	public void setPreviewSize(final int width, final int height, final int mode) {
-		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, mode, 0);
+	public void setPreviewSize(final int width, final int height, final int frameFormat) {
+		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, frameFormat, mCurrentBandwidthFactor);
 	}
 	
 	/**
 	 * Set preview size and preview mode
 	 * @param width
 	   @param height
-	   @param mode 0:yuyv, other:MJPEG
+	   @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
 	   @param bandwidth [0.0f,1.0f]
 	 */
-	public void setPreviewSize(final int width, final int height, final int mode, final float bandwidth) {
-		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, mode, bandwidth);
+	public void setPreviewSize(final int width, final int height, final int frameFormat, final float bandwidth) {
+		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, frameFormat, bandwidth);
 	}
 
 	/**
@@ -314,24 +316,25 @@ public class UVCCamera {
 	 * @param height
 	 * @param min_fps
 	 * @param max_fps
-	 * @param mode
-	 * @param bandwidth
+	 * @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
+	 * @param bandwidthFactor
 	 */
-	public void setPreviewSize(final int width, final int height, final int min_fps, final int max_fps, final int mode, final float bandwidth) {
+	public void setPreviewSize(final int width, final int height, final int min_fps, final int max_fps, final int frameFormat, final float bandwidthFactor) {
 		if ((width == 0) || (height == 0))
 			throw new IllegalArgumentException("invalid preview size");
 		if (mNativePtr != 0) {
-			final int result = nativeSetPreviewSize(mNativePtr, width, height, min_fps, max_fps, mode, bandwidth);
+			final int result = nativeSetPreviewSize(mNativePtr, width, height, min_fps, max_fps, frameFormat, bandwidthFactor);
 			if (result != 0)
 				throw new IllegalArgumentException("Failed to set preview size");
-			mCurrentPreviewMode = mode;
-			mCurrentPreviewWidth = width;
-			mCurrentPreviewHeight = height;
+			mCurrentFrameFormat = frameFormat;
+			mCurrentWidth = width;
+			mCurrentHeight = height;
+			mCurrentBandwidthFactor = bandwidthFactor;
 		}
 	}
 
 	public List<Size> getSupportedSizeList() {
-		final int type = (mCurrentPreviewMode > 0) ? 6 : 4;
+		final int type = (mCurrentFrameFormat > 0) ? 6 : 4;
 		return getSupportedSize(type, mSupportedSize);
 	}
 

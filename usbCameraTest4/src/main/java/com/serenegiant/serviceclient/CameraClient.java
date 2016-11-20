@@ -170,13 +170,19 @@ public class CameraClient implements ICameraClient {
 
 	protected void doUnBindService() {
 		if (DEBUG) Log.v(TAG, "doUnBindService:");
-		if (mService != null) {
-			final Context context = mWeakContext.get();
-			if (context != null) {
-		        context.unbindService(mServiceConnection);
+		synchronized (mServiceSync) {
+			if (mService != null) {
+				final Context context = mWeakContext.get();
+				if (context != null) {
+					try {
+						context.unbindService(mServiceConnection);
+					} catch (final Exception e) {
+						// ignore
+					}
+				}
+				mService = null;
 			}
-	        mService = null;
-	    }
+		}
 	}
 
 	private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -324,7 +330,7 @@ public class CameraClient implements ICameraClient {
 					mSync.notifyAll();
 				}
 				Looper.loop();
-				if (DEBUG) Log.v(TAG_CAMERA, "run:finising");
+				if (DEBUG) Log.v(TAG_CAMERA, "run:finishing");
 				synchronized (mSync) {
 					mHandler = null;
 					mParent = null;

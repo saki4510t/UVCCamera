@@ -119,11 +119,11 @@ public abstract class Encoder implements Runnable {
     */
 	public void stopRecording() {
 		if (DEBUG) Log.v(TAG, "stopRecording");
+		mRequestStop = true;
 		synchronized (mSync) {
-			if (!mIsCapturing || mRequestStop) {
+			if (!mIsCapturing) {
 				return;
 			}
-			mRequestStop = true;	// for rejecting newer frame
 			mSync.notifyAll();
 	        // We can not know when the encoding and writing finish.
 	        // so we return immediately after request to avoid delay of caller thread

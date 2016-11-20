@@ -29,32 +29,37 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
-import android.opengl.EGLContext;
 import android.util.Log;
 import android.view.Surface;
 
 import com.serenegiant.glutils.EGLBase;
 import com.serenegiant.glutils.RenderHandler;
 
-public class MediaVideoEncoder extends MediaEncoder {
+/**
+ * Encode texture images as H.264 video
+ * using MediaCodec.
+ * This class render texture images into recording surface
+ * camera from MediaCodec encoder using Open GL|ES
+ */
+public class MediaVideoEncoder extends MediaEncoder implements IVideoEncoder {
 	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "MediaVideoEncoder";
 
 	private static final String MIME_TYPE = "video/avc";
 	// parameters for recording
-	// VIDEO_WITH and VIDEO_HEIGHT should be same as the camera preview size.
-    private static final int VIDEO_WIDTH = 640;
-    private static final int VIDEO_HEIGHT = 480;
+	private final int mWidth, mHeight;
     private static final int FRAME_RATE = 15;
     private static final float BPP = 0.50f;
 
     private RenderHandler mRenderHandler;
     private Surface mSurface;
 
-	public MediaVideoEncoder(final MediaMuxerWrapper muxer, final MediaEncoderListener listener) {
+	public MediaVideoEncoder(final MediaMuxerWrapper muxer, final int width, final int height, final MediaEncoderListener listener) {
 		super(muxer, listener);
 		if (DEBUG) Log.i(TAG, "MediaVideoEncoder: ");
 		mRenderHandler = RenderHandler.createHandler(TAG);
+		mWidth = width;
+		mHeight = height;
 	}
 
 	public boolean frameAvailableSoon(final float[] tex_matrix) {
@@ -64,6 +69,11 @@ public class MediaVideoEncoder extends MediaEncoder {
 		return result;
 	}
 
+	/**
+	 * This method does not work correctly on this class,
+	 * use #frameAvailableSoon(final float[]) instead
+	 * @return
+	 */
 	@Override
 	public boolean frameAvailableSoon() {
 		boolean result;
@@ -85,7 +95,7 @@ public class MediaVideoEncoder extends MediaEncoder {
         }
 		if (DEBUG) Log.i(TAG, "selected codec: " + videoCodecInfo.getName());
 
-        final MediaFormat format = MediaFormat.createVideoFormat(MIME_TYPE, VIDEO_WIDTH, VIDEO_HEIGHT);
+        final MediaFormat format = MediaFormat.createVideoFormat(MIME_TYPE, mWidth, mHeight);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);	// API >= 18
         format.setInteger(MediaFormat.KEY_BIT_RATE, calcBitRate());
         format.setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RATE);
@@ -127,7 +137,7 @@ public class MediaVideoEncoder extends MediaEncoder {
 	}
 
 	private int calcBitRate() {
-		final int bitrate = (int)(BPP * FRAME_RATE * VIDEO_WIDTH * VIDEO_HEIGHT);
+		final int bitrate = (int)(BPP * FRAME_RATE * mWidth * mHeight);
 		Log.i(TAG, String.format("bitrate=%5.2f[Mbps]", bitrate / 1024f / 1024f));
 		return bitrate;
 	}
@@ -180,7 +190,7 @@ public class MediaVideoEncoder extends MediaEncoder {
         int colorFormat;
         for (int i = 0; i < caps.colorFormats.length; i++) {
         	colorFormat = caps.colorFormats[i];
-            if (isRecognizedViewoFormat(colorFormat)) {
+            if (isRecognizedVideoFormat(colorFormat)) {
             	if (result == 0)
             		result = colorFormat;
                 break;
@@ -204,8 +214,8 @@ public class MediaVideoEncoder extends MediaEncoder {
 		};
 	}
 
-    private static final boolean isRecognizedViewoFormat(final int colorFormat) {
-		if (DEBUG) Log.i(TAG, "isRecognizedViewoFormat:colorFormat=" + colorFormat);
+    private static final boolean isRecognizedVideoFormat(final int colorFormat) {
+		if (DEBUG) Log.i(TAG, "isRecognizedVideoFormat:colorFormat=" + colorFormat);
     	final int n = recognizedFormats != null ? recognizedFormats.length : 0;
     	for (int i = 0; i < n; i++) {
     		if (recognizedFormats[i] == colorFormat) {

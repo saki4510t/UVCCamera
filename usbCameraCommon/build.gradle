@@ -10,10 +10,8 @@ android {
    	}
 
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion 18
         targetSdkVersion versionTarget
-        versionCode 1
-        versionName "1.0"
 
     }
     buildTypes {
@@ -29,4 +27,5 @@ dependencies {
     compile("com.serenegiant:common:${commonLibVersion}") {
    		exclude module: 'support-v4'
    	}
+    compile project(':libuvccamera')
 }

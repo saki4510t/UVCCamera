@@ -245,7 +245,7 @@ public abstract class MediaEncoder implements Runnable {
         // signalEndOfInputStream is only avairable for video encoding with surface
         // and equivalent sending a empty buffer with BUFFER_FLAG_END_OF_STREAM flag.
 //		mMediaCodec.signalEndOfInputStream();	// API >= 18
-        encode(null, 0, getPTSUs());
+        encode((byte[])null, 0, getPTSUs());
 	}
 
     /**
@@ -297,12 +297,11 @@ public abstract class MediaEncoder implements Runnable {
      * @param presentationTimeUs
      */
     @SuppressWarnings("deprecation")
-	protected void encode(final ByteBuffer buffer, final long presentationTimeUs) {
+	protected void encode(final ByteBuffer buffer, final int length, final long presentationTimeUs) {
 //    	if (DEBUG) Log.v(TAG, "encode:buffer=" + buffer);
     	if (!mIsCapturing) return;
     	int ix = 0, sz;
         final ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
-        final int length = buffer != null ? buffer.limit() : 0;
         while (mIsCapturing && ix < length) {
 	        final int inputBufferIndex = mMediaCodec.dequeueInputBuffer(TIMEOUT_USEC);
 	        if (inputBufferIndex >= 0) {
@@ -311,6 +310,8 @@ public abstract class MediaEncoder implements Runnable {
 	            sz = inputBuffer.remaining();
 	            sz = (ix + sz < length) ? sz : length - ix;
 	            if (sz > 0 && (buffer != null)) {
+					buffer.position(ix + sz);
+					buffer.flip();
 	            	inputBuffer.put(buffer);
 	            }
 	            ix += sz;

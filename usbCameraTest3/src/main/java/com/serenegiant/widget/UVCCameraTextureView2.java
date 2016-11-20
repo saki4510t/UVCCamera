@@ -30,6 +30,7 @@ import android.util.AttributeSet;
 import android.view.Surface;
 import android.view.TextureView;
 
+import com.serenegiant.encoder.IVideoEncoder;
 import com.serenegiant.encoder.MediaEncoder;
 
 /**
@@ -46,7 +47,7 @@ public class UVCCameraTextureView2 extends TextureView	// API >= 14
 
 	private double mRequestedAspect = -1.0;
 	private boolean mHasSurface;
-	private MediaEncoder mEncoder;
+	private IVideoEncoder mEncoder;
 
 	public UVCCameraTextureView2(final Context context) {
 		this(context, null, 0);
@@ -150,7 +151,7 @@ public class UVCCameraTextureView2 extends TextureView	// API >= 14
 	}
 
 	@Override
-	public void setVideoEncoder(final MediaEncoder encoder) {
+	public void setVideoEncoder(final IVideoEncoder encoder) {
 		mEncoder = encoder;
 	}
 

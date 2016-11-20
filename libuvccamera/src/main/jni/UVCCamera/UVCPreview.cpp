@@ -274,12 +274,12 @@ void UVCPreview::callbackPixelFormatChanged() {
 		break;
 	  case PIXEL_FORMAT_YUV20SP:
 		LOGI("PIXEL_FORMAT_YUV20SP:");
-		mFrameCallbackFunc = uvc_yuyv2yuv420SP;
+		mFrameCallbackFunc = uvc_yuyv2iyuv420SP;
 		callbackPixelBytes = (sz * 3) / 2;
 		break;
 	  case PIXEL_FORMAT_NV21:
 		LOGI("PIXEL_FORMAT_NV21:");
-		mFrameCallbackFunc = uvc_yuyv2iyuv420SP;
+		mFrameCallbackFunc = uvc_yuyv2yuv420SP;
 		callbackPixelBytes = (sz * 3) / 2;
 		break;
 	}

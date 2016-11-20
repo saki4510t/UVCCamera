@@ -69,32 +69,40 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 	}
 
 	@Override
-	public void onResume() {
-		super.onResume();
-		if (DEBUG) Log.v(TAG, "onResume:");
-		mUSBMonitor.register();
+	protected void onStart() {
+		super.onStart();
+		if (DEBUG) Log.v(TAG, "onStart:");
+		synchronized (mSync) {
+			if (mUSBMonitor != null) {
+				mUSBMonitor.register();
+			}
+		}
 	}
 
 	@Override
-	public void onPause() {
-		if (DEBUG) Log.v(TAG, "onPause:");
-		mUSBMonitor.unregister();
-		super.onPause();
+	protected void onStop() {
+		if (DEBUG) Log.v(TAG, "onStop:");
+		synchronized (mSync) {
+			if (mUSBMonitor != null) {
+				mUSBMonitor.unregister();
+			}
+		}
+		super.onStop();
 	}
 
 	@Override
-	public void onDestroy() {
+	protected void onDestroy() {
 		if (DEBUG) Log.v(TAG, "onDestroy:");
 		synchronized (mSync) {
+			isActive = isPreview = false;
 			if (mUVCCamera != null) {
 				mUVCCamera.destroy();
 				mUVCCamera = null;
 			}
-			isActive = isPreview = false;
-		}
-		if (mUSBMonitor != null) {
-			mUSBMonitor.destroy();
-			mUSBMonitor = null;
+			if (mUSBMonitor != null) {
+				mUSBMonitor.destroy();
+				mUSBMonitor = null;
+			}
 		}
 		mUVCCameraView = null;
 		mCameraButton = null;
@@ -128,33 +136,38 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, final boolean createNew) {
 			if (DEBUG) Log.v(TAG, "onConnect:");
 			synchronized (mSync) {
-				if (mUVCCamera != null)
+				if (mUVCCamera != null) {
 					mUVCCamera.destroy();
+				}
 				isActive = isPreview = false;
 			}
 			queueEvent(new Runnable() {
 				@Override
 				public void run() {
 					synchronized (mSync) {
-						mUVCCamera = new UVCCamera();
-						mUVCCamera.open(ctrlBlock);
-						if (DEBUG) Log.i(TAG, "supportedSize:" + mUVCCamera.getSupportedSize());
+						final UVCCamera camera = new UVCCamera();
+						camera.open(ctrlBlock);
+						if (DEBUG) Log.i(TAG, "supportedSize:" + camera.getSupportedSize());
 						try {
-							mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
+							camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
 						} catch (final IllegalArgumentException e) {
 							try {
 								// fallback to YUV mode
-								mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
+								camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
 							} catch (final IllegalArgumentException e1) {
-								mUVCCamera.destroy();
-								mUVCCamera = null;
+								camera.destroy();
+								return;
 							}
 						}
-						if ((mUVCCamera != null) && (mPreviewSurface != null)) {
+						mPreviewSurface = mUVCCameraView.getHolder().getSurface();
+						if (mPreviewSurface != null) {
 							isActive = true;
-							mUVCCamera.setPreviewDisplay(mPreviewSurface);
-							mUVCCamera.startPreview();
+							camera.setPreviewDisplay(mPreviewSurface);
+							camera.startPreview();
 							isPreview = true;
+						}
+						synchronized (mSync) {
+							mUVCCamera = camera;
 						}
 					}
 				}
@@ -165,16 +178,21 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 		public void onDisconnect(final UsbDevice device, final UsbControlBlock ctrlBlock) {
 			if (DEBUG) Log.v(TAG, "onDisconnect:");
 			// XXX you should check whether the comming device equal to camera device that currently using
-			synchronized (mSync) {
-				if (mUVCCamera != null) {
-					mUVCCamera.close();
-					if (mPreviewSurface != null) {
-						mPreviewSurface.release();
-						mPreviewSurface = null;
+			queueEvent(new Runnable() {
+				@Override
+				public void run() {
+					synchronized (mSync) {
+						if (mUVCCamera != null) {
+							mUVCCamera.close();
+							if (mPreviewSurface != null) {
+								mPreviewSurface.release();
+								mPreviewSurface = null;
+							}
+							isActive = isPreview = false;
+						}
 					}
-					isActive = isPreview = false;
 				}
-			}
+			}, 0);
 		}
 
 		@Override
@@ -197,6 +215,18 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 		return mUSBMonitor;
 	}
 
+	@Override
+	public void onDialogResult(boolean canceled) {
+		if (canceled) {
+			runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					// FIXME
+				}
+			}, 0);
+		}
+	}
+
 	private final SurfaceHolder.Callback mSurfaceViewCallback = new SurfaceHolder.Callback() {
 		@Override
 		public void surfaceCreated(final SurfaceHolder holder) {
@@ -209,7 +239,7 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 			if (DEBUG) Log.v(TAG, "surfaceChanged:");
 			mPreviewSurface = holder.getSurface();
 			synchronized (mSync) {
-				if (isActive && !isPreview) {
+				if (isActive && !isPreview && (mUVCCamera != null)) {
 					mUVCCamera.setPreviewDisplay(mPreviewSurface);
 					mUVCCamera.startPreview();
 					isPreview = true;

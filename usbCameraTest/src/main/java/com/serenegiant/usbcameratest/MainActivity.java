@@ -46,6 +46,7 @@ import java.nio.ByteBuffer;
 
 public final class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
 
+	private final Object mSync = new Object();
     // for accessing USB and USB camera
     private USBMonitor mUSBMonitor;
 	private UVCCamera mUVCCamera;
@@ -69,30 +70,41 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 	}
 
 	@Override
-	public void onResume() {
-		super.onResume();
+	protected void onStart() {
+		super.onStart();
 		mUSBMonitor.register();
-		if (mUVCCamera != null)
-			mUVCCamera.startPreview();
-	}
-
-	@Override
-	public void onPause() {
-		if (mUVCCamera != null)
-			mUVCCamera.stopPreview();
-		mUSBMonitor.unregister();
-		super.onPause();
-	}
-
-	@Override
-	public void onDestroy() {
-		if (mUVCCamera != null) {
-			mUVCCamera.destroy();
-			mUVCCamera = null;
+		synchronized (mSync) {
+			if (mUVCCamera != null) {
+				mUVCCamera.startPreview();
+			}
 		}
-		if (mUSBMonitor != null) {
-			mUSBMonitor.destroy();
-			mUSBMonitor = null;
+	}
+
+	@Override
+	protected void onStop() {
+		synchronized (mSync) {
+			if (mUVCCamera != null) {
+				mUVCCamera.stopPreview();
+			}
+			if (mUSBMonitor != null) {
+				mUSBMonitor.unregister();
+			}
+		}
+		super.onStop();
+	}
+
+	@Override
+	protected void onDestroy() {
+		synchronized (mSync) {
+			releaseCamera();
+			if (mToast != null) {
+				mToast.cancel();
+				mToast = null;
+			}
+			if (mUSBMonitor != null) {
+				mUSBMonitor.destroy();
+				mUSBMonitor = null;
+			}
 		}
 		mUVCCameraView = null;
 		mCameraButton = null;
@@ -102,14 +114,17 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 	private final OnClickListener mOnClickListener = new OnClickListener() {
 		@Override
 		public void onClick(final View view) {
-			if (mUVCCamera == null)
-				CameraDialog.showDialog(MainActivity.this);
-			else {
-				mUVCCamera.destroy();
-				mUVCCamera = null;
+			synchronized (mSync) {
+				if (mUVCCamera == null) {
+					CameraDialog.showDialog(MainActivity.this);
+				} else {
+					releaseCamera();
+				}
 			}
 		}
 	};
+
+	private Toast mToast;
 
 	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
 		@Override
@@ -119,66 +134,80 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 
 		@Override
 		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, final boolean createNew) {
-			if (mUVCCamera != null)
-				mUVCCamera.destroy();
-			mUVCCamera = new UVCCamera();
+			releaseCamera();
 			queueEvent(new Runnable() {
 				@Override
 				public void run() {
-					mUVCCamera.open(ctrlBlock);
-					mUVCCamera.setStatusCallback(new IStatusCallback() {
+					final UVCCamera camera = new UVCCamera();
+					camera.open(ctrlBlock);
+					camera.setStatusCallback(new IStatusCallback() {
 						@Override
 						public void onStatus(final int statusClass, final int event, final int selector,
 											 final int statusAttribute, final ByteBuffer data) {
 							runOnUiThread(new Runnable() {
 								@Override
 								public void run() {
-									Toast.makeText(MainActivity.this, "onStatus(statusClass=" + statusClass
+									final Toast toast = Toast.makeText(MainActivity.this, "onStatus(statusClass=" + statusClass
 											+ "; " +
 											"event=" + event + "; " +
 											"selector=" + selector + "; " +
 											"statusAttribute=" + statusAttribute + "; " +
-											"data=...)", Toast.LENGTH_SHORT).show();
+											"data=...)", Toast.LENGTH_SHORT);
+									synchronized (mSync) {
+										if (mToast != null) {
+											mToast.cancel();
+										}
+										toast.show();
+										mToast = toast;
+									}
 								}
 							});
-
 						}
 					});
-					mUVCCamera.setButtonCallback(new IButtonCallback() {
+					camera.setButtonCallback(new IButtonCallback() {
 						@Override
 						public void onButton(final int button, final int state) {
 							runOnUiThread(new Runnable() {
 								@Override
 								public void run() {
-									Toast.makeText(MainActivity.this, "onButton(button=" + button + "; " +
-											"state=" + state + ")", Toast.LENGTH_SHORT).show();
+									final Toast toast = Toast.makeText(MainActivity.this, "onButton(button=" + button + "; " +
+											"state=" + state + ")", Toast.LENGTH_SHORT);
+									synchronized (mSync) {
+										if (mToast != null) {
+											mToast.cancel();
+										}
+										mToast = toast;
+										toast.show();
+									}
 								}
 							});
 						}
 					});
-//					mUVCCamera.setPreviewTexture(mUVCCameraView.getSurfaceTexture());
+//					camera.setPreviewTexture(camera.getSurfaceTexture());
 					if (mPreviewSurface != null) {
 						mPreviewSurface.release();
 						mPreviewSurface = null;
 					}
 					try {
-						mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
+						camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
 					} catch (final IllegalArgumentException e) {
 						// fallback to YUV mode
 						try {
-							mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
+							camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
 						} catch (final IllegalArgumentException e1) {
-							mUVCCamera.destroy();
-							mUVCCamera = null;
+							camera.destroy();
+							return;
 						}
 					}
-					if (mUVCCamera != null) {
-						final SurfaceTexture st = mUVCCameraView.getSurfaceTexture();
-						if (st != null)
-							mPreviewSurface = new Surface(st);
-						mUVCCamera.setPreviewDisplay(mPreviewSurface);
-//						mUVCCamera.setFrameCallback(mIFrameCallback, UVCCamera.PIXEL_FORMAT_RGB565/*UVCCamera.PIXEL_FORMAT_NV21*/);
-						mUVCCamera.startPreview();
+					final SurfaceTexture st = mUVCCameraView.getSurfaceTexture();
+					if (st != null) {
+						mPreviewSurface = new Surface(st);
+						camera.setPreviewDisplay(mPreviewSurface);
+//						camera.setFrameCallback(mIFrameCallback, UVCCamera.PIXEL_FORMAT_RGB565/*UVCCamera.PIXEL_FORMAT_NV21*/);
+						camera.startPreview();
+					}
+					synchronized (mSync) {
+						mUVCCamera = camera;
 					}
 				}
 			}, 0);
@@ -186,14 +215,8 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 
 		@Override
 		public void onDisconnect(final UsbDevice device, final UsbControlBlock ctrlBlock) {
-			// XXX you should check whether the comming device equal to camera device that currently using
-			if (mUVCCamera != null) {
-				mUVCCamera.close();
-				if (mPreviewSurface != null) {
-					mPreviewSurface.release();
-					mPreviewSurface = null;
-				}
-			}
+			// XXX you should check whether the coming device equal to camera device that currently using
+			releaseCamera();
 		}
 
 		@Override
@@ -206,6 +229,26 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 		}
 	};
 
+	private synchronized void releaseCamera() {
+		synchronized (mSync) {
+			if (mUVCCamera != null) {
+				try {
+					mUVCCamera.setStatusCallback(null);
+					mUVCCamera.setButtonCallback(null);
+					mUVCCamera.close();
+					mUVCCamera.destroy();
+				} catch (final Exception e) {
+					//
+				}
+				mUVCCamera = null;
+			}
+			if (mPreviewSurface != null) {
+				mPreviewSurface.release();
+				mPreviewSurface = null;
+			}
+		}
+	}
+
 	/**
 	 * to access from CameraDialog
 	 * @return
@@ -213,6 +256,18 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 	@Override
 	public USBMonitor getUSBMonitor() {
 		return mUSBMonitor;
+	}
+
+	@Override
+	public void onDialogResult(boolean canceled) {
+		if (canceled) {
+			runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					// FIXME
+				}
+			}, 0);
+		}
 	}
 
 	// if you need frame data as byte array on Java side, you can use this callback method with UVCCamera#setFrameCallback

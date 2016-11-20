@@ -342,7 +342,7 @@ public final class CameraServer extends Handler {
 			if (DEBUG) Log.d(TAG_THREAD, "Constructor:");
 			mWeakContext = new WeakReference<Context>(context);
 			mCtrlBlock = ctrlBlock;
-			loadSutterSound(context);
+			loadShutterSound(context);
 		}
 
 		@Override
@@ -445,7 +445,7 @@ public final class CameraServer extends Handler {
 							try {
 								mUVCCamera.setPreviewSize(sz.width, sz.height);
 							} catch (final IllegalArgumentException e1) {
-								// unexpectly #setPreviewSize failed
+								// unexpectedly #setPreviewSize failed
 								mUVCCamera.destroy();
 								mUVCCamera = null;
 							}
@@ -472,7 +472,7 @@ public final class CameraServer extends Handler {
 				if ((mUVCCamera == null) || (mMuxer != null)) return;
 				mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
 //				new MediaSurfaceEncoder(mFrameWidth, mFrameHeight, mMuxer, mMediaEncoderListener);
-				new MediaSurfaceEncoder(mMuxer, mMediaEncoderListener);
+				new MediaSurfaceEncoder(mMuxer, mFrameWidth, mFrameHeight, mMediaEncoderListener);
 				if (true) {
 					// for audio capturing
 					new MediaAudioEncoder(mMuxer, mMediaEncoderListener);
@@ -487,6 +487,11 @@ public final class CameraServer extends Handler {
 		public void handleStopRecording() {
 			if (DEBUG) Log.d(TAG_THREAD, "handleStopRecording:mMuxer=" + mMuxer);
 			if (mMuxer != null) {
+				synchronized (mSync) {
+					if (mUVCCamera != null) {
+						mUVCCamera.stopCapture();
+					}
+				}
 				mMuxer.stopRecording();
 				mMuxer = null;
 				// you should not wait here
@@ -565,10 +570,19 @@ public final class CameraServer extends Handler {
 				if ((encoder instanceof MediaSurfaceEncoder))
 				try {
 					mIsRecording = false;
-					if (mEncoderSurfaceId > 0)
-						mHandler.mRendererHolder.removeSurface(mEncoderSurfaceId);
+					if (mEncoderSurfaceId > 0) {
+						try {
+							mHandler.mRendererHolder.removeSurface(mEncoderSurfaceId);
+						} catch (final Exception e) {
+							Log.w(TAG, e);
+						}
+					}
 					mEncoderSurfaceId = -1;
-					mUVCCamera.stopCapture();
+					synchronized (mSync) {
+						if (mUVCCamera != null) {
+							mUVCCamera.stopCapture();
+						}
+					}
 					mVideoEncoder = null;
 					final String path = encoder.getOutputPath();
 					if (!TextUtils.isEmpty(path)) {
@@ -584,8 +598,8 @@ public final class CameraServer extends Handler {
 		 * prepare and load shutter sound for still image capturing
 		 */
 		@SuppressWarnings("deprecation")
-		private void loadSutterSound(final Context context) {
-			if (DEBUG) Log.d(TAG_THREAD, "loadSutterSound:");
+		private void loadShutterSound(final Context context) {
+			if (DEBUG) Log.d(TAG_THREAD, "loadShutterSound:");
 	    	// get system stream type using refrection
 	        int streamType;
 	        try {

@@ -113,6 +113,10 @@ public class MediaMuxerWrapper {
 				if (mVideoEncoder != null)
 					throw new IllegalArgumentException("Video encoder already added.");
 				mVideoEncoder = encoder;
+		} else if (encoder instanceof MediaVideoBufferEncoder) {
+			if (mVideoEncoder != null)
+				throw new IllegalArgumentException("Video encoder already added.");
+			mVideoEncoder = encoder;
 		} else if (encoder instanceof MediaAudioEncoder) {
 			if (mAudioEncoder != null)
 				throw new IllegalArgumentException("Video encoder already added.");
@@ -145,7 +149,11 @@ public class MediaMuxerWrapper {
 		if (DEBUG) Log.v(TAG,  "stop:mStatredCount=" + mStatredCount);
 		mStatredCount--;
 		if ((mEncoderCount > 0) && (mStatredCount <= 0)) {
-			mMediaMuxer.stop();
+			try {
+				mMediaMuxer.stop();
+			} catch (final Exception e) {
+				Log.w(TAG, e);
+			}
 			mIsStarted = false;
 			if (DEBUG) Log.v(TAG,  "MediaMuxer stopped:");
 		}

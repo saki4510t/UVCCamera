@@ -13,8 +13,8 @@ android {
         applicationId "com.serenegiant.usbcameratest7"
         minSdkVersion 18
 		targetSdkVersion versionTarget
-		versionCode 8
-		versionName "2.30"
+		versionCode 9
+		versionName "3.00"
     }
 
     buildTypes {
@@ -28,6 +28,5 @@ android {
 }
 
 dependencies {
-    compile project(':libuvccamera')
-    compile project(':encoder')
+    compile project(':usbCameraCommon')
 }

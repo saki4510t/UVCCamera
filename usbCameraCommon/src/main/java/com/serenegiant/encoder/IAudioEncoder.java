@@ -1,11 +1,11 @@
-package com.serenegiant.widget;
+package com.serenegiant.encoder;
 /*
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
  * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
- * File name: CameraViewInterface.java
+ * File name: IAudioEncoder.java
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,22 +23,5 @@ package com.serenegiant.widget;
  * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
-import android.graphics.Bitmap;
-import android.graphics.SurfaceTexture;
-import android.view.Surface;
-
-import com.serenegiant.encoder.MediaEncoder;
-
-public interface CameraViewInterface extends AspectRatioViewInterface {
-	public interface Callback {
-		public void onSurfaceCreated(Surface surface);
-		public void onSurfaceChanged(Surface surface, int width, int height);
-		public void onSurfaceDestroy(Surface surface);
-	}
-	public void setCallback(Callback callback);
-	public SurfaceTexture getSurfaceTexture();
-	public Surface getSurface();
-	public boolean hasSurface();
-	public void setVideoEncoder(final MediaEncoder encoder);
-	public Bitmap captureStillImage();
+public interface IAudioEncoder {
 }

@@ -23,7 +23,9 @@ package com.serenegiant.service;
  * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
-import android.app.Service;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.hardware.usb.UsbDevice;
 import android.os.IBinder;
@@ -32,15 +34,21 @@ import android.util.Log;
 import android.util.SparseArray;
 import android.view.Surface;
 
+import com.serenegiant.common.BaseService;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
+import com.serenegiant.usbcameratest4.MainActivity;
+import com.serenegiant.usbcameratest4.R;
 
-public class UVCService extends Service {
+public class UVCService extends BaseService {
 	private static final boolean DEBUG = true;
 	private static final String TAG = "UVCService";
 
+	private static final int NOTIFICATION = R.string.app_name;
+
 	private USBMonitor mUSBMonitor;
+	private NotificationManager mNotificationManager;
 
 	public UVCService() {
 		if (DEBUG) Log.d(TAG, "Constructor:");
@@ -54,16 +62,21 @@ public class UVCService extends Service {
 			mUSBMonitor = new USBMonitor(getApplicationContext(), mOnDeviceConnectListener);
 			mUSBMonitor.register();
 		}
+		mNotificationManager = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+		showNotification(getString(R.string.app_name));
 	}
 
 	@Override
 	public void onDestroy() {
 		if (DEBUG) Log.d(TAG, "onDestroy:");
-		if (checkReleaseService()) {
-			if (mUSBMonitor != null) {
-				mUSBMonitor.unregister();
-				mUSBMonitor = null;
-			}
+		if (mUSBMonitor != null) {
+			mUSBMonitor.unregister();
+			mUSBMonitor = null;
+		}
+		stopForeground(true/*removeNotification*/);
+		if (mNotificationManager != null) {
+			mNotificationManager.cancel(NOTIFICATION);
+			mNotificationManager = null;
 		}
 		super.onDestroy();
 	}
@@ -71,11 +84,12 @@ public class UVCService extends Service {
 	@Override
 	public IBinder onBind(final Intent intent) {
 		if (DEBUG) Log.d(TAG, "onBind:" + intent);
-		if (IUVCService.class.getName().equals(intent.getAction())) {
+		final String action = intent != null ? intent.getAction() : null;
+		if (IUVCService.class.getName().equals(action)) {
 			Log.i(TAG, "return mBasicBinder");
 			return mBasicBinder;
 		}
-		if (IUVCSlaveService.class.getName().equals(intent.getAction())) {
+		if (IUVCSlaveService.class.getName().equals(action)) {
 			Log.i(TAG, "return mSlaveBinder");
 			return mSlaveBinder;
 		}
@@ -91,13 +105,35 @@ public class UVCService extends Service {
 	public boolean onUnbind(final Intent intent) {
 		if (DEBUG) Log.d(TAG, "onUnbind:" + intent);
 		if (checkReleaseService()) {
-			mUSBMonitor.unregister();
-			mUSBMonitor = null;
+			stopSelf();
 		}
+		if (DEBUG) Log.d(TAG, "onUnbind:finished");
 		return true;
 	}
 
 //********************************************************************************
+	/**
+	 * helper method to show/change message on notification area
+	 * and set this service as foreground service to keep alive as possible as this can.
+	 * @param text
+	 */
+	private void showNotification(final CharSequence text) {
+		if (DEBUG) Log.v(TAG, "showNotification:" + text);
+        // Set the info for the views that show in the notification panel.
+        final Notification notification = new Notification.Builder(this)
+			.setSmallIcon(R.drawable.ic_launcher)  // the status icon
+			.setTicker(text)  // the status text
+			.setWhen(System.currentTimeMillis())  // the time stamp
+			.setContentTitle(getText(R.string.app_name))  // the label of the entry
+			.setContentText(text)  // the contents of the entry
+			.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), 0))  // The intent to send when the entry is clicked
+			.build();
+
+		startForeground(NOTIFICATION, notification);
+        // Send the notification.
+		mNotificationManager.notify(NOTIFICATION, notification);
+    }
+
 	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
 		@Override
 		public void onAttach(final UsbDevice device) {
@@ -108,30 +144,39 @@ public class UVCService extends Service {
 		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, final boolean createNew) {
 			if (DEBUG) Log.d(TAG, "OnDeviceConnectListener#onConnect:");
 
-			final int key = device.hashCode();
-			CameraServer service;
-			synchronized (sServiceSync) {
-				service = sCameraServers.get(key);
-				if (service == null) {
-					service = CameraServer.createServer(UVCService.this, ctrlBlock, device.getVendorId(), device.getProductId());
-					sCameraServers.append(key, service);
-				} else {
-					Log.w(TAG, "service already exist before connection");
+			queueEvent(new Runnable() {
+				@Override
+				public void run() {
+					final int key = device.hashCode();
+					CameraServer service;
+					synchronized (sServiceSync) {
+						service = sCameraServers.get(key);
+						if (service == null) {
+							service = CameraServer.createServer(UVCService.this, ctrlBlock, device.getVendorId(), device.getProductId());
+							sCameraServers.append(key, service);
+						} else {
+							Log.w(TAG, "service already exist before connection");
+						}
+						sServiceSync.notifyAll();
+					}
 				}
-				sServiceSync.notifyAll();
-			}
+			}, 0);
 		}
 
 		@Override
 		public void onDisconnect(final UsbDevice device, final UsbControlBlock ctrlBlock) {
 			if (DEBUG) Log.d(TAG, "OnDeviceConnectListener#onDisconnect:");
-			removeService(device);
+			queueEvent(new Runnable() {
+				@Override
+				public void run() {
+					removeService(device);
+				}
+			}, 0);
 		}
 
 		@Override
 		public void onDettach(final UsbDevice device) {
 			if (DEBUG) Log.d(TAG, "OnDeviceConnectListener#onDettach:");
-			removeService(device);
 		}
 
 		@Override
@@ -153,10 +198,7 @@ public class UVCService extends Service {
 			sServiceSync.notifyAll();
 		}
 		if (checkReleaseService()) {
-			if (mUSBMonitor != null) {
-				mUSBMonitor.unregister();
-				mUSBMonitor = null;
-			}
+			stopSelf();
 		}
 	}
 //********************************************************************************
@@ -180,7 +222,7 @@ public class UVCService extends Service {
 				server = sCameraServers.get(serviceId);
 				if (server == null)
 					try {
-						Log.i(TAG, "waitting for service is ready");
+						Log.i(TAG, "waiting for service is ready");
 						sServiceSync.wait();
 					} catch (final InterruptedException e) {
 					}
@@ -200,7 +242,7 @@ public class UVCService extends Service {
 			if (DEBUG) Log.d(TAG, "checkReleaseService:number of service=" + n);
 			for (int i = 0; i < n; i++) {
 				server = sCameraServers.valueAt(i);
-				Log.i(TAG, "checkReleaseService:server=" + server + ",isConnected=" + (server != null ? server.isConnected() : false));
+				Log.i(TAG, "checkReleaseService:server=" + server + ",isConnected=" + (server != null && server.isConnected()));
 				if (server != null && !server.isConnected()) {
 					sCameraServers.removeAt(i);
 					server.release();
@@ -384,7 +426,7 @@ public class UVCService extends Service {
 		@Override
 		public boolean isConnected(final int serviceID) throws RemoteException {
 			final CameraServer server = getCameraServer(serviceID);
-			return server != null ? server.isConnected() : false;
+			return server != null && server.isConnected();
 		}
 
 		@Override

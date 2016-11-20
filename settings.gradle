@@ -1,5 +1,5 @@
 include ':libuvccamera'
-include ':encoder'
+include ':usbCameraCommon'
 include ':usbCameraTest'
 include ':usbCameraTest0'
 include ':usbCameraTest2'

@@ -13,8 +13,8 @@ android {
         applicationId "com.serenegiant.usbcameratest0"
         minSdkVersion 14
 		targetSdkVersion versionTarget
-		versionCode 7
-		versionName "2.20"
+		versionCode 8
+		versionName "3.00"
     }
 
     buildTypes {

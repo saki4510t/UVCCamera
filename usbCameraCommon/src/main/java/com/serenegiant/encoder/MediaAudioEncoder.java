@@ -24,6 +24,8 @@ package com.serenegiant.encoder;
 */
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -34,13 +36,15 @@ import android.media.MediaFormat;
 import android.media.MediaRecorder;
 import android.util.Log;
 
-public class MediaAudioEncoder extends MediaEncoder {
+public class MediaAudioEncoder extends MediaEncoder implements IAudioEncoder {
 	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "MediaAudioEncoder";
 
 	private static final String MIME_TYPE = "audio/mp4a-latm";
     private static final int SAMPLE_RATE = 44100;	// 44.1[KHz] is only setting guaranteed to be available on all devices.
     private static final int BIT_RATE = 64000;
+	public static final int SAMPLES_PER_FRAME = 1024;	// AAC, bytes/frame/channel
+	public static final int FRAMES_PER_BUFFER = 25; 	// AAC, frame/buffer/sec
 
     private AudioThread mAudioThread = null;
 
@@ -98,6 +102,12 @@ public class MediaAudioEncoder extends MediaEncoder {
 		super.release();
     }
 
+	private static final int[] AUDIO_SOURCES = new int[] {
+		MediaRecorder.AudioSource.DEFAULT,
+		MediaRecorder.AudioSource.MIC,
+		MediaRecorder.AudioSource.CAMCORDER,
+	};
+
 	/**
 	 * Thread to capture audio data from internal mic as uncompressed 16bit PCM data
 	 * and write them to the MediaCodec encoder
@@ -105,39 +115,87 @@ public class MediaAudioEncoder extends MediaEncoder {
     private class AudioThread extends Thread {
     	@Override
     	public void run() {
-//    		android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
-    		try {
-	            final int buf_sz = AudioRecord.getMinBufferSize(
-	            	SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT) * 4;
-	            final AudioRecord audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
-	            	SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, buf_sz);
-	            try {
-	            	if (mIsCapturing) {
-	    				if (DEBUG) Log.v(TAG, "AudioThread:start audio recording");
-		                final byte[] buf = new byte[buf_sz];
-		                int readBytes;
-		                audioRecord.startRecording();
-		                try {
-				    		while (mIsCapturing && !mRequestStop && !mIsEOS) {
-				    			// read audio data from internal mic
-				    			readBytes = audioRecord.read(buf, 0, buf_sz);
-				    			if (readBytes > 0) {
-				    			    // set audio data to encoder
-				    				encode(buf, readBytes, getPTSUs());
-				    				frameAvailableSoon();
-				    			}
-				    		}
-		    				frameAvailableSoon();
-		                } finally {
-		                	audioRecord.stop();
-		                }
-	            	}
-	            } finally {
-	            	audioRecord.release();
-	            }
-    		} catch (final Exception e) {
-    			Log.e(TAG, "AudioThread#run", e);
-    		}
+			android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO); // THREAD_PRIORITY_URGENT_AUDIO
+			int cnt = 0;
+			final int min_buffer_size = AudioRecord.getMinBufferSize(
+				SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+			int buffer_size = SAMPLES_PER_FRAME * FRAMES_PER_BUFFER;
+			if (buffer_size < min_buffer_size)
+				buffer_size = ((min_buffer_size / SAMPLES_PER_FRAME) + 1) * SAMPLES_PER_FRAME * 2;
+			final ByteBuffer buf = ByteBuffer.allocateDirect(SAMPLES_PER_FRAME).order(ByteOrder.nativeOrder());
+			AudioRecord audioRecord = null;
+			for (final int src: AUDIO_SOURCES) {
+				try {
+					audioRecord = new AudioRecord(src,
+						SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, buffer_size);
+					if (audioRecord != null) {
+						if (audioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
+							audioRecord.release();
+							audioRecord = null;
+         				}
+					}
+				} catch (final Exception e) {
+					audioRecord = null;
+				}
+				if (audioRecord != null) {
+					break;
+				}
+			}
+			if (audioRecord != null) {
+				try {
+					if (mIsCapturing) {
+						if (DEBUG) Log.v(TAG, "AudioThread:start audio recording");
+						int readBytes;
+						audioRecord.startRecording();
+						try {
+							for ( ; mIsCapturing && !mRequestStop && !mIsEOS ; ) {
+								// read audio data from internal mic
+								buf.clear();
+								try {
+									readBytes = audioRecord.read(buf, SAMPLES_PER_FRAME);
+								} catch (final Exception e) {
+									break;
+								}
+								if (readBytes > 0) {
+									// set audio data to encoder
+									buf.position(readBytes);
+									buf.flip();
+									encode(buf, readBytes, getPTSUs());
+									frameAvailableSoon();
+									cnt++;
+								}
+							}
+							if (cnt > 0) {
+								frameAvailableSoon();
+							}
+						} finally {
+							audioRecord.stop();
+						}
+					}
+				} catch (final Exception e) {
+					Log.e(TAG, "AudioThread#run", e);
+				} finally {
+					audioRecord.release();
+				}
+			}
+			if (cnt == 0) {
+				for (int i = 0; mIsCapturing && (i < 5); i++) {
+					buf.position(SAMPLES_PER_FRAME);
+					buf.flip();
+					try {
+						encode(buf, SAMPLES_PER_FRAME, getPTSUs());
+						frameAvailableSoon();
+					} catch (final Exception e) {
+						break;
+					}
+					synchronized(this) {
+						try {
+							wait(50);
+						} catch (final InterruptedException e) {
+						}
+					}
+				}
+			}
 			if (DEBUG) Log.v(TAG, "AudioThread:finished");
     	}
     }

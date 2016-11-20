@@ -39,6 +39,7 @@
         android:theme="@style/AppTheme" >
         <activity
             android:name="com.serenegiant.usbcameratest3.MainActivity"
+            android:screenOrientation="sensorLandscape"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

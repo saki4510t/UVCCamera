@@ -5,7 +5,7 @@ package com.serenegiant.common;
  *
  * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
- * File name: BaseActivity.java
+ * File name: BaseFragment.java
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ package com.serenegiant.common;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.Activity;
+import android.app.Fragment;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -41,14 +41,14 @@ import com.serenegiant.utils.HandlerThreadHandler;
 import com.serenegiant.utils.PermissionCheck;
 
 /**
- * Created by saki on 2016/11/18.
+ * Created by saki on 2016/11/19.
  *
  */
-public class BaseActivity extends Activity
+public class BaseFragment extends Fragment
 	implements MessageDialogFragment.MessageDialogListener {
 
 	private static boolean DEBUG = false;	// FIXME 実働時はfalseにセットすること
-	private static final String TAG = BaseActivity.class.getSimpleName();
+	private static final String TAG = BaseFragment.class.getSimpleName();
 
 	/** UI操作のためのHandler */
 	private final Handler mUIHandler = new Handler(Looper.getMainLooper());
@@ -57,8 +57,12 @@ public class BaseActivity extends Activity
 	private Handler mWorkerHandler;
 	private long mWorkerThreadID = -1;
 
+	public BaseFragment() {
+		super();
+	}
+
 	@Override
-	protected void onCreate(final Bundle savedInstanceState) {
+	public void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		// ワーカースレッドを生成
 		if (mWorkerHandler == null) {
@@ -68,13 +72,13 @@ public class BaseActivity extends Activity
 	}
 
 	@Override
-	protected void onPause() {
+	public void onPause() {
 		clearToast();
 		super.onPause();
 	}
 
 	@Override
-	protected synchronized void onDestroy() {
+	public synchronized void onDestroy() {
 		// ワーカースレッドを破棄
 		if (mWorkerHandler != null) {
 			try {
@@ -197,9 +201,9 @@ public class BaseActivity extends Activity
 				}
 				if (args != null) {
 					final String _msg = getString(msg, args);
-					mToast = Toast.makeText(BaseActivity.this, _msg, Toast.LENGTH_SHORT);
+					mToast = Toast.makeText(getActivity(), _msg, Toast.LENGTH_SHORT);
 				} else {
-					mToast = Toast.makeText(BaseActivity.this, msg, Toast.LENGTH_SHORT);
+					mToast = Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT);
 				}
 				mToast.show();
 			} catch (final Exception e) {
@@ -228,7 +232,7 @@ public class BaseActivity extends Activity
 		}
 		// メッセージダイアログでキャンセルされた時とAndroid6でない時は自前でチェックして#checkPermissionResultを呼び出す
 		for (final String permission: permissions) {
-			checkPermissionResult(requestCode, permission, PermissionCheck.hasPermission(this, permission));
+			checkPermissionResult(requestCode, permission, PermissionCheck.hasPermission(getActivity(), permission));
 		}
 	}
 
@@ -258,13 +262,13 @@ public class BaseActivity extends Activity
 		// パーミッションがないときにはメッセージを表示する
 		if (!result && (permission != null)) {
 			if (Manifest.permission.RECORD_AUDIO.equals(permission)) {
-				showToast(R.string.permission_audio);
+				showToast(com.serenegiant.common.R.string.permission_audio);
 			}
 			if (Manifest.permission.WRITE_EXTERNAL_STORAGE.equals(permission)) {
-				showToast(R.string.permission_ext_storage);
+				showToast(com.serenegiant.common.R.string.permission_ext_storage);
 			}
 			if (Manifest.permission.INTERNET.equals(permission)) {
-				showToast(R.string.permission_network);
+				showToast(com.serenegiant.common.R.string.permission_network);
 			}
 		}
 	}
@@ -281,9 +285,9 @@ public class BaseActivity extends Activity
 	 * @return true 外部ストレージへの書き込みパーミッションが有る
 	 */
 	protected boolean checkPermissionWriteExternalStorage() {
-		if (!PermissionCheck.hasWriteExternalStorage(this)) {
+		if (!PermissionCheck.hasWriteExternalStorage(getActivity())) {
 			MessageDialogFragment.showDialog(this, REQUEST_PERMISSION_WRITE_EXTERNAL_STORAGE,
-				R.string.permission_title, R.string.permission_ext_storage_request,
+				com.serenegiant.common.R.string.permission_title, com.serenegiant.common.R.string.permission_ext_storage_request,
 				new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE});
 			return false;
 		}
@@ -296,9 +300,9 @@ public class BaseActivity extends Activity
 	 * @return true 録音のパーミッションが有る
 	 */
 	protected boolean checkPermissionAudio() {
-		if (!PermissionCheck.hasAudio(this)) {
+		if (!PermissionCheck.hasAudio(getActivity())) {
 			MessageDialogFragment.showDialog(this, REQUEST_PERMISSION_AUDIO_RECORDING,
-				R.string.permission_title, R.string.permission_audio_recording_request,
+				com.serenegiant.common.R.string.permission_title, com.serenegiant.common.R.string.permission_audio_recording_request,
 				new String[]{Manifest.permission.RECORD_AUDIO});
 			return false;
 		}
@@ -311,9 +315,9 @@ public class BaseActivity extends Activity
 	 * @return true ネットワークアクセスのパーミッションが有る
 	 */
 	protected boolean checkPermissionNetwork() {
-		if (!PermissionCheck.hasNetwork(this)) {
+		if (!PermissionCheck.hasNetwork(getActivity())) {
 			MessageDialogFragment.showDialog(this, REQUEST_PERMISSION_NETWORK,
-				R.string.permission_title, R.string.permission_network_request,
+				com.serenegiant.common.R.string.permission_title, com.serenegiant.common.R.string.permission_network_request,
 				new String[]{Manifest.permission.INTERNET});
 			return false;
 		}
@@ -326,13 +330,12 @@ public class BaseActivity extends Activity
 	 * @return true カメラアクセスのパーミッションが有る
 	 */
 	protected boolean checkPermissionCamera() {
-		if (!PermissionCheck.hasCamera(this)) {
+		if (!PermissionCheck.hasCamera(getActivity())) {
 			MessageDialogFragment.showDialog(this, REQUEST_PERMISSION_CAMERA,
-				R.string.permission_title, R.string.permission_camera_request,
+				com.serenegiant.common.R.string.permission_title, com.serenegiant.common.R.string.permission_camera_request,
 				new String[]{Manifest.permission.CAMERA});
 			return false;
 		}
 		return true;
 	}
-
 }
