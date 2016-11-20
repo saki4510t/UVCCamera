@@ -1,5 +1,5 @@
 # modified saki@serenegiant <t_saki@serenegiant.com>
-# Copyright (C)2014-2015
+# Copyright (C)2014-2016
 #
 # Android build config for libusb
 # Copyright © 2012-2013 RealVNC Ltd. <toby.gray@realvnc.com>
@@ -44,6 +44,8 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/libusb \
 	$(LOCAL_PATH)/libusb/os \
 	$(LOCAL_PATH)/../ \
+	$(LOCAL_PATH)/../include \
+	$(LOCAL_PATH)/android \
 
 LOCAL_EXPORT_C_INCLUDES := \
 	$(LOCAL_PATH)/ \
@@ -62,7 +64,7 @@ LOCAL_MODULE := libusb100_static
 include $(BUILD_STATIC_LIBRARY)
 
 ######################################################################
-# libusb.so
+# libusb100.so
 ######################################################################
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional

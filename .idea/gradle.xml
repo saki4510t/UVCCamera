@@ -5,12 +5,11 @@
       <GradleProjectSettings>
         <option name="distributionType" value="DEFAULT_WRAPPED" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleHome" value="$APPLICATION_HOME_DIR$/gradle/gradle-2.4" />
-        <option name="gradleJvm" value="1.7" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/libuvccamera" />
+            <option value="$PROJECT_DIR$/usbCameraCommon" />
             <option value="$PROJECT_DIR$/usbCameraTest" />
             <option value="$PROJECT_DIR$/usbCameraTest0" />
             <option value="$PROJECT_DIR$/usbCameraTest2" />

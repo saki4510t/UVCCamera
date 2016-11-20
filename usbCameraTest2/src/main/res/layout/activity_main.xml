@@ -4,7 +4,7 @@
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
  * File name: activity_main.xml
  *
@@ -33,7 +33,7 @@
     tools:context="com.serenegiant.usbcameratest.MainActivity"
     tools:ignore="MergeRootFrame" >
 
-    <com.serenegiant.widget.UVCCameraTextureView
+    <com.serenegiant.widget.SimpleUVCCameraTextureView
         android:id="@+id/UVCCameraTextureView1"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

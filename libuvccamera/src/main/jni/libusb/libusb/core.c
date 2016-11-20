@@ -2,7 +2,7 @@
 /*
  * add some functions for no-rooted Android
  * add optimaization when compiling with gcc
- * Copyright © 2014 saki <t_saki@serenegiant.com>
+ * Copyright © 2014-2016 saki <t_saki@serenegiant.com>
  *
  * Core functions for libusb
  * Copyright © 2012-2013 Nathan Hjelm <hjelmn@cs.unm.edu>
@@ -23,6 +23,21 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#define LOCAL_DEBUG 0
+
+#define LOG_TAG "libusb/core"
+#if 1	// デバッグ情報を出さない時1
+	#ifndef LOG_NDEBUG
+		#define	LOG_NDEBUG		// LOGV/LOGD/MARKを出力しない時
+		#endif
+	#undef USE_LOGALL			// 指定したLOGxだけを出力
+#else
+	#define USE_LOGALL
+	#undef LOG_NDEBUG
+	#undef NDEBUG
+	#define GET_RAW_DESCRIPTOR
+#endif
 
 #include "config.h"
 #include <assert.h>		// XXX add assert for debugging
@@ -77,6 +92,11 @@ static struct timeval timestamp_origin = { 0, 0 };
 
 usbi_mutex_static_t active_contexts_lock = USBI_MUTEX_INITIALIZER;
 struct list_head active_contexts_list;
+
+#ifdef __ANDROID__
+int android_generate_device(struct libusb_context *ctx, struct libusb_device **dev,
+	int vid, int pid, const char *serial, int fd, int busnum, int devaddr);
+#endif
 
 /**
  * \mainpage libusb-1.0 API Reference
@@ -620,7 +640,7 @@ int usbi_sanitize_device(struct libusb_device *dev) {
 		usbi_dbg("zero configurations, maybe an unauthorized device");
 
 	dev->num_configurations = num_configurations;
-	return 0;
+	return LIBUSB_SUCCESS;
 }
 
 /* Examine libusb's internal list of known devices, looking for one with
@@ -668,6 +688,8 @@ struct libusb_device *usbi_get_device_by_session_id(struct libusb_context *ctx,
 ssize_t API_EXPORTED libusb_get_device_list(libusb_context *ctx,
 		libusb_device ***list) {
 
+	ENTER();
+
 	struct discovered_devs *discdevs = discovered_devs_alloc();
 	struct libusb_device **ret;
 	int r = 0;
@@ -679,7 +701,7 @@ ssize_t API_EXPORTED libusb_get_device_list(libusb_context *ctx,
 		return LIBUSB_ERROR_NO_MEM;
 
 	if (libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG)) {
-		/* backend provides hotplug support */
+		LOGD("backend provides hotplug support");
 		struct libusb_device *dev;
 
 		if (usbi_backend->hotplug_poll)
@@ -699,7 +721,7 @@ ssize_t API_EXPORTED libusb_get_device_list(libusb_context *ctx,
 		}
 		usbi_mutex_unlock(&ctx->usb_devs_lock);
 	} else {
-		/* backend does not provide hotplug support */
+		LOGD("backend does not provide hotplug support");
 		r = usbi_backend->get_device_list(ctx, &discdevs);
 	}
 
@@ -712,6 +734,7 @@ ssize_t API_EXPORTED libusb_get_device_list(libusb_context *ctx,
 	len = discdevs->len;
 	ret = calloc(len + 1, sizeof(struct libusb_device *));
 	if (UNLIKELY(!ret)) {
+		LOGE("LIBUSB_ERROR_NO_MEM");
 		len = LIBUSB_ERROR_NO_MEM;
 		goto out;
 	}
@@ -725,7 +748,7 @@ ssize_t API_EXPORTED libusb_get_device_list(libusb_context *ctx,
 
 out:
 	discovered_devs_free(discdevs);
-	return len;
+	RETURN(len, int);
 }
 
 /**
@@ -741,10 +764,13 @@ out:
 libusb_device *libusb_find_device(libusb_context *ctx, const int vid,
 		const int pid, const char* sn, int fd) {
 
+	ENTER();
+
 	libusb_device **devs;
 	// get list of devices
 	int cnt = libusb_get_device_list(ctx, &devs);
 	if (UNLIKELY(cnt < 0)) {
+		LOGI("failed to get device list");
 		usbi_dbg("failed to get device list");
 		return NULL ;
 	}
@@ -752,15 +778,17 @@ libusb_device *libusb_find_device(libusb_context *ctx, const int vid,
 	int r, i;
 	libusb_device *device = NULL;
 	struct libusb_device_descriptor desc;
+	LOGI("try to find specific device:cnt=%d", cnt);
 	for (i = 0; i < cnt; i++) {
 		r = libusb_get_device_descriptor(devs[i], &desc);
 		if (UNLIKELY(r < 0)) {
+			LOGI("failed to get device descriptor");
 			usbi_dbg("failed to get device descriptor");
 			continue;
 		}
 		if ((!vid || (desc.idVendor == vid))
 				&& (!pid || (desc.idProduct == pid))) {
-			// found
+			LOGI("found");
 			device = devs[i];
 			libusb_ref_device(device);
 			break;
@@ -768,7 +796,7 @@ libusb_device *libusb_find_device(libusb_context *ctx, const int vid,
 	}
 
 	libusb_free_device_list(devs, 1);
-	return device;
+	RET(device);
 }
 
 /** \ingroup dev
@@ -1043,11 +1071,13 @@ out:
 DEFAULT_VISIBILITY
 libusb_device * LIBUSB_CALL libusb_ref_device(libusb_device *dev) {
 
+	int refcnt;
 	usbi_mutex_lock(&dev->lock);
 	{
-		dev->refcnt++;
+		refcnt = ++dev->refcnt;
 	}
 	usbi_mutex_unlock(&dev->lock);
+//	LOGI("refcnt=%d", refcnt);
 	return dev;
 }
 
@@ -1068,6 +1098,7 @@ void API_EXPORTED libusb_unref_device(libusb_device *dev) {
 		refcnt = --dev->refcnt;
 	}
 	usbi_mutex_unlock(&dev->lock);
+//	LOGI("refcnt=%d", dev->refcnt);
 
 	if (refcnt == 0) {
 		usbi_dbg("destroy device %d.%d", dev->bus_number, dev->device_address);
@@ -1207,12 +1238,28 @@ int API_EXPORTED libusb_open(libusb_device *dev, libusb_device_handle **handle) 
 	 * so that it picks up the new fd, and then continues. */
 	usbi_fd_notification(ctx);
 
-	return 0;
+	return LIBUSB_SUCCESS;
 }
 
 int API_EXPORTED libusb_set_device_fd(libusb_device *dev, int fd) {
 
 	return usbi_backend->set_device_fd(dev, fd);
+}
+
+libusb_device * LIBUSB_CALL libusb_get_device_with_fd(libusb_context *ctx,
+	int vid, int pid, const char *serial, int fd, int busnum, int devaddr) {
+
+	ENTER();
+
+	struct libusb_device *device = NULL;
+	// android_generate_device内でusbi_alloc_deviceが呼ばれた時に参照カウンタは1
+	int ret = android_generate_device(ctx, &device, vid, pid, serial, fd, busnum, devaddr);
+	if (ret) {
+		LOGD("android_generate_device failed:err=%d", ret);
+		device = NULL;
+	}
+
+	RET(device);
 }
 
 /** \ingroup dev
@@ -1555,27 +1602,43 @@ int API_EXPORTED libusb_set_configuration(libusb_device_handle *dev,
 int API_EXPORTED libusb_claim_interface(libusb_device_handle *dev,
 		int interface_number) {
 
-	int r = 0;
+	ENTER();
+
+	int r = LIBUSB_SUCCESS;
 
 	usbi_dbg("interface %d", interface_number);
-	if (interface_number >= USB_MAXINTERFACES)
-		return LIBUSB_ERROR_INVALID_PARAM;
+	LOGD("interface %d", interface_number);
 
-	if (UNLIKELY(!dev->dev->attached))
-		return LIBUSB_ERROR_NO_DEVICE;
+	if (interface_number >= USB_MAXINTERFACES) {
+		RETURN(LIBUSB_ERROR_INVALID_PARAM, int);
+	}
+
+	if (UNLIKELY(!dev->dev->attached)) {
+		RETURN(LIBUSB_ERROR_NO_DEVICE, int);
+	}
 
 	usbi_mutex_lock(&dev->lock);
-	{
-		if (dev->claimed_interfaces & (1 << interface_number))
-			goto out;
-
+	if (!(dev->claimed_interfaces & (1 << interface_number))) {
 		r = usbi_backend->claim_interface(dev, interface_number);
-		if (r == 0)
+		if (r == LIBUSB_ERROR_BUSY) {
+			// EBUSYが返ってきた時はたぶんカーネルドライバーがアタッチされているから
+			// デタッチ要求してから再度claimしてみる
+			LOGV("request detach kernel driver and retry claim interface");
+			r = usbi_backend->release_interface(dev, interface_number);
+			libusb_detach_kernel_driver(dev, interface_number);
+			if (!r) {
+				r = usbi_backend->claim_interface(dev, interface_number);
+			}
+		}
+		if (!r) {
 			dev->claimed_interfaces |= 1 << interface_number;
+		}
+	} else {
+		LOGV("already claimed");
 	}
-out:
 	usbi_mutex_unlock(&dev->lock);
-	return r;
+
+	RETURN(r, int);
 }
 
 /** \ingroup dev
@@ -1600,26 +1663,31 @@ out:
 int API_EXPORTED libusb_release_interface(libusb_device_handle *dev,
 		int interface_number) {
 
+	ENTER();
+
 	int r;
 
+	LOGD("interface %d", interface_number);
 	usbi_dbg("interface %d", interface_number);
 	if (UNLIKELY(interface_number >= USB_MAXINTERFACES))
-		return LIBUSB_ERROR_INVALID_PARAM;
+		RETURN(LIBUSB_ERROR_INVALID_PARAM, int);
 
 	usbi_mutex_lock(&dev->lock);
 	{
-		if (UNLIKELY(!(dev->claimed_interfaces & (1 << interface_number)))) {
+		if (dev->claimed_interfaces & (1 << interface_number)) {
+			r = usbi_backend->release_interface(dev, interface_number);
+			if (!r) {
+				LOGV("released");
+				dev->claimed_interfaces &= ~(1 << interface_number);
+			}
+		} else {
+			// already released
 			r = LIBUSB_ERROR_NOT_FOUND;
-			goto out;
 		}
-
-		r = usbi_backend->release_interface(dev, interface_number);
-		if (r == 0)
-			dev->claimed_interfaces &= ~(1 << interface_number);
 	}
-out:
 	usbi_mutex_unlock(&dev->lock);
-	return r;
+
+	RETURN(r, int);
 }
 
 /** \ingroup dev
@@ -1773,16 +1841,20 @@ int API_EXPORTED libusb_alloc_streams(libusb_device_handle *dev,
 int API_EXPORTED libusb_free_streams(libusb_device_handle *dev,
 	unsigned char *endpoints, int num_endpoints)
 {
+	ENTER();
+
+	LOGD("eps %d", num_endpoints);
 	usbi_dbg("eps %d", num_endpoints);
 
-	if UNLIKELY(!dev->dev->attached)
-		return LIBUSB_ERROR_NO_DEVICE;
+	if UNLIKELY(!dev->dev->attached) {
+		RETURN(LIBUSB_ERROR_NO_DEVICE, int);
+	}
 
-	if LIKELY(usbi_backend->free_streams)
-		return usbi_backend->free_streams(dev, endpoints,
-						  num_endpoints);
-	else
-		return LIBUSB_ERROR_NOT_SUPPORTED;
+	if LIKELY(usbi_backend->free_streams) {
+		RETURN(usbi_backend->free_streams(dev, endpoints, num_endpoints), int);
+	} else {
+		RETURN(LIBUSB_ERROR_NOT_SUPPORTED, int);
+	}
 }
 
 /** \ingroup dev
@@ -1805,15 +1877,20 @@ int API_EXPORTED libusb_free_streams(libusb_device_handle *dev,
 int API_EXPORTED libusb_kernel_driver_active(libusb_device_handle *dev,
 		int interface_number) {
 
+	ENTER();
+
+	LOGD("interface %d", interface_number);
 	usbi_dbg("interface %d", interface_number);
 
-	if (UNLIKELY(!dev->dev->attached))
-		return LIBUSB_ERROR_NO_DEVICE;
+	if (UNLIKELY(!dev->dev->attached)) {
+		RETURN(LIBUSB_ERROR_NO_DEVICE, int);
+	}
 
-	if LIKELY(usbi_backend->kernel_driver_active)
-		return usbi_backend->kernel_driver_active(dev, interface_number);
-	else
-		return LIBUSB_ERROR_NOT_SUPPORTED;
+	if LIKELY(usbi_backend->kernel_driver_active) {
+		RETURN(usbi_backend->kernel_driver_active(dev, interface_number), int);
+	} else {
+		RETURN(LIBUSB_ERROR_NOT_SUPPORTED, int);
+	}
 }
 
 /** \ingroup dev
@@ -1874,15 +1951,20 @@ int API_EXPORTED libusb_detach_kernel_driver(libusb_device_handle *dev,
 int API_EXPORTED libusb_attach_kernel_driver(libusb_device_handle *dev,
 		int interface_number) {
 
+	ENTER();
+
+	LOGD("interface %d", interface_number);
 	usbi_dbg("interface %d", interface_number);
 
-	if (UNLIKELY(!dev->dev->attached))
-		return LIBUSB_ERROR_NO_DEVICE;
+	if (UNLIKELY(!dev->dev->attached)) {
+		RETURN(LIBUSB_ERROR_NO_DEVICE, int);
+	}
 
-	if (LIKELY(usbi_backend->attach_kernel_driver))
-		return usbi_backend->attach_kernel_driver(dev, interface_number);
-	else
-		return LIBUSB_ERROR_NOT_SUPPORTED;
+	if (LIKELY(usbi_backend->attach_kernel_driver)) {
+		RETURN(usbi_backend->attach_kernel_driver(dev, interface_number), int);
+	} else {
+		RETURN(LIBUSB_ERROR_NOT_SUPPORTED, int);
+	}
 }
 
 /** \ingroup dev
@@ -1910,11 +1992,16 @@ int API_EXPORTED libusb_attach_kernel_driver(libusb_device_handle *dev,
 int API_EXPORTED libusb_set_auto_detach_kernel_driver(libusb_device_handle *dev,
 		int enable) {
 
-	if (!(usbi_backend->caps & USBI_CAP_SUPPORTS_DETACH_KERNEL_DRIVER))
-		return LIBUSB_ERROR_NOT_SUPPORTED;
+	ENTER();
+
+	LOGD("enable=%d", enable);
+	if (!(usbi_backend->caps & USBI_CAP_SUPPORTS_DETACH_KERNEL_DRIVER)) {
+		LOGD("does not support detach kernel driver");
+		RETURN(LIBUSB_ERROR_NOT_SUPPORTED, int);
+	}
 
 	dev->auto_detach_kernel_driver = enable;
-	return LIBUSB_SUCCESS;
+	RETURN(LIBUSB_SUCCESS, int);
 }
 
 /** \ingroup lib
@@ -1950,7 +2037,7 @@ void API_EXPORTED libusb_set_debug(libusb_context *ctx, int level) {
 }
 
 int API_EXPORTED libusb_init2(libusb_context **context, const char *usbfs) {
-
+	ENTER();
 	struct libusb_device *dev, *next;
 	char *dbg = getenv("LIBUSB_DEBUG");
 	struct libusb_context *ctx;
@@ -1965,9 +2052,10 @@ int API_EXPORTED libusb_init2(libusb_context **context, const char *usbfs) {
 
 		if (!context && usbi_default_context) {
 			usbi_dbg("reusing default context");
+			LOGI("reusing default context");
 			default_context_refcnt++;
 			usbi_mutex_static_unlock(&default_context_lock);
-			return 0;
+			return LIBUSB_SUCCESS;
 		}
 
 		ctx = calloc(1, sizeof(*ctx));
@@ -1993,6 +2081,9 @@ int API_EXPORTED libusb_init2(libusb_context **context, const char *usbfs) {
 			usbi_dbg("created default context");
 		}
 
+		LOGI("libusb v%d.%d.%d.%d", libusb_version_internal.major, libusb_version_internal.minor,
+			libusb_version_internal.micro, libusb_version_internal.nano);
+
 		usbi_dbg("libusb v%d.%d.%d.%d", libusb_version_internal.major, libusb_version_internal.minor,
 			libusb_version_internal.micro, libusb_version_internal.nano);
 
@@ -2014,13 +2105,19 @@ int API_EXPORTED libusb_init2(libusb_context **context, const char *usbfs) {
 		usbi_mutex_static_unlock(&active_contexts_lock);
 
 		if (LIKELY(usbfs && strlen(usbfs) > 0)) {
+			LOGD("call usbi_backend->init2");
 			if (usbi_backend->init2) {
 				r = usbi_backend->init2(ctx, usbfs);
-				if (UNLIKELY(r))
+				if (UNLIKELY(r)) {
+					LOGE("failed to call usbi_backend->init2, err=%d", r);
 					goto err_free_ctx;
-			} else
+				}
+			} else {
+				LOGE("has no usbi_backend->init2");
 				goto err_free_ctx;
+			}
 		} else {
+			LOGD("call usbi_backend->init");
 			if (usbi_backend->init) {
 				r = usbi_backend->init(ctx);
 				if (UNLIKELY(r))
@@ -2038,12 +2135,14 @@ int API_EXPORTED libusb_init2(libusb_context **context, const char *usbfs) {
 	if (context)
 		*context = ctx;
 
-	return 0;
+	RETURN(LIBUSB_SUCCESS, int);
 
 err_backend_exit:
+	LOGI("err_backend_exit");
 	if (usbi_backend->exit)
 		usbi_backend->exit();
 err_free_ctx:
+	LOGI("err_free_ctx");
 	if (ctx == usbi_default_context)
 		usbi_default_context = NULL;
 
@@ -2069,8 +2168,9 @@ err_free_ctx:
 
 	free(ctx);
 err_unlock:
+	LOGI("err_unlock");
 	usbi_mutex_static_unlock(&default_context_lock);
-	return r;
+	RETURN(r, int);
 }
 
 /** \ingroup lib
@@ -2106,7 +2206,7 @@ int API_EXPORTED libusb_init(libusb_context **context) {
 			usbi_dbg("reusing default context");
 			default_context_refcnt++;
 			usbi_mutex_static_unlock(&default_context_lock);
-			return 0;
+			return LIBUSB_SUCCESS;
 		}
 
 		ctx = calloc(1, sizeof(*ctx));
@@ -2167,7 +2267,7 @@ int API_EXPORTED libusb_init(libusb_context **context) {
 	if (context)
 		*context = ctx;
 
-	return 0;
+	return LIBUSB_SUCCESS;
 
 err_backend_exit:
 	if (usbi_backend->exit)
@@ -2299,7 +2399,7 @@ int API_EXPORTED libusb_has_capability(uint32_t capability) {
 	case LIBUSB_CAP_SUPPORTS_DETACH_KERNEL_DRIVER:
 		return (usbi_backend->caps & USBI_CAP_SUPPORTS_DETACH_KERNEL_DRIVER);
 	}
-	return 0;
+	return LIBUSB_SUCCESS;
 }
 
 /* this is defined in libusbi.h if needed */
@@ -2350,7 +2450,7 @@ int usbi_gettimeofday(struct timeval *tp, void *tzp)
 	}
 	/* Always return 0 as per Open Group Base Specifications Issue 6.
 	 Do not set errno on error.  */
-	return 0;
+	return LIBUSB_SUCCESS;
 }
 #endif
 

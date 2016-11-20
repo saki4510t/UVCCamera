@@ -2,7 +2,7 @@
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
  * File name: serenegiant_usb_UVCCamera.cpp
  *
@@ -21,6 +21,17 @@
  * All files in the folder are under this Apache License, Version 2.0.
  * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
+
+#if 1	// デバッグ情報を出さない時
+	#ifndef LOG_NDEBUG
+		#define	LOG_NDEBUG		// LOGV/LOGD/MARKを出力しない時
+		#endif
+	#undef USE_LOGALL			// 指定したLOGxだけを出力
+#else
+	#define USE_LOGALL
+	#undef LOG_NDEBUG
+	#undef NDEBUG
+#endif
 
 #include <jni.h>
 #include <android/native_window_jni.h>
@@ -114,6 +125,7 @@ static ID_TYPE nativeCreate(JNIEnv *env, jobject thiz) {
 	RETURN(reinterpret_cast<ID_TYPE>(camera), ID_TYPE);
 }
 
+// native側のカメラオブジェクトを破棄
 static void nativeDestroy(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera) {
 
@@ -126,21 +138,26 @@ static void nativeDestroy(JNIEnv *env, jobject thiz,
 	EXIT();
 }
 
+//======================================================================
+// カメラへ接続
 static jint nativeConnect(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera,
-	jint vid, jint pid, jint fd,  jstring usbfs_str) {
+	jint vid, jint pid, jint fd,
+	jint busNum, jint devAddr, jstring usbfs_str) {
 
 	ENTER();
 	int result = JNI_ERR;
 	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
 	const char *c_usbfs = env->GetStringUTFChars(usbfs_str, JNI_FALSE);
 	if (LIKELY(camera && (fd > 0))) {
-		 result =  camera->connect(vid, pid, fd, c_usbfs);
+//		libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_DEBUG);
+		result =  camera->connect(vid, pid, fd, busNum, devAddr, c_usbfs);
 	}
 	env->ReleaseStringUTFChars(usbfs_str, c_usbfs);
 	RETURN(result, jint);
 }
 
+// カメラとの接続を解除
 static jint nativeRelease(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera) {
 
@@ -153,6 +170,7 @@ static jint nativeRelease(JNIEnv *env, jobject thiz,
 	RETURN(result, jint);
 }
 
+//======================================================================
 static jint nativeSetStatusCallback(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera, jobject jIStatusCallback) {
 
@@ -195,6 +213,8 @@ static jobject nativeGetSupportedSize(JNIEnv *env, jobject thiz,
 	RETURN(result, jobject);
 }
 
+//======================================================================
+// プレビュー画面の大きさをセット
 static jint nativeSetPreviewSize(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera, jint width, jint height, jint min_fps, jint max_fps, jint mode, jfloat bandwidth) {
 
@@ -217,6 +237,7 @@ static jint nativeStartPreview(JNIEnv *env, jobject thiz,
 	RETURN(JNI_ERR, jint);
 }
 
+// プレビューを停止
 static jint nativeStopPreview(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera) {
 
@@ -269,6 +290,7 @@ static jint nativeSetCaptureDisplay(JNIEnv *env, jobject thiz,
 }
 
 //======================================================================
+// カメラコントロールでサポートしている機能を取得する
 static jlong nativeGetCtrlSupports(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera) {
 
@@ -284,6 +306,7 @@ static jlong nativeGetCtrlSupports(JNIEnv *env, jobject thiz,
 	RETURN(result, jlong);
 }
 
+// プロセッシングユニットでサポートしている機能を取得する
 static jlong nativeGetProcSupports(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera) {
 
@@ -1992,8 +2015,8 @@ jint registerNativeMethods(JNIEnv* env, const char *class_name, JNINativeMethod 
 static JNINativeMethod methods[] = {
 	{ "nativeCreate",					"()J", (void *) nativeCreate },
 	{ "nativeDestroy",					"(J)V", (void *) nativeDestroy },
-
-	{ "nativeConnect",					"(JIIILjava/lang/String;)I", (void *) nativeConnect },
+	//
+	{ "nativeConnect",					"(JIIIIILjava/lang/String;)I", (void *) nativeConnect },
 	{ "nativeRelease",					"(J)I", (void *) nativeRelease },
 
 	{ "nativeSetStatusCallback",		"(JLcom/serenegiant/usb/IStatusCallback;)I", (void *) nativeSetStatusCallback },

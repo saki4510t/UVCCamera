@@ -3,7 +3,7 @@ package com.serenegiant.service;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
  * File name: CameraServer.java
  *
@@ -45,6 +45,7 @@ import com.serenegiant.encoder.MediaAudioEncoder;
 import com.serenegiant.encoder.MediaEncoder;
 import com.serenegiant.encoder.MediaMuxerWrapper;
 import com.serenegiant.encoder.MediaSurfaceEncoder;
+import com.serenegiant.glutils.RenderHolderCallback;
 import com.serenegiant.glutils.RendererHolder;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usb.Size;
@@ -82,7 +83,7 @@ public final class CameraServer extends Handler {
 		if (DEBUG) Log.d(TAG, "Constructor:");
 		mWeakThread = new WeakReference<CameraThread>(thread);
 		mRegisteredCallbackCount = 0;
-		mRendererHolder = new RendererHolder(mFrameWidth, mFrameHeight, null);
+		mRendererHolder = new RendererHolder(mFrameWidth, mFrameHeight, mRenderHolderCallback);
 	}
 
 	@Override
@@ -180,7 +181,7 @@ public final class CameraServer extends Handler {
 	public void addSurface(final int id, final Surface surface, final boolean isRecordable, final IUVCServiceOnFrameAvailable onFrameAvailableListener) {
 		if (DEBUG) Log.d(TAG, "addSurface:id=" + id +",surface=" + surface);
 		if (mRendererHolder != null)
-			mRendererHolder.addSurface(id, surface, isRecordable, onFrameAvailableListener);
+			mRendererHolder.addSurface(id, surface, isRecordable);
 	}
 
 	public void removeSurface(final int id) {
@@ -289,6 +290,29 @@ public final class CameraServer extends Handler {
 		}
 	}
 
+	private final RenderHolderCallback mRenderHolderCallback
+		= new RenderHolderCallback() {
+		@Override
+		public void onCreate(final Surface surface) {
+		}
+
+		@Override
+		public void onFrameAvailable() {
+			final CameraThread thread = mWeakThread.get();
+			if ((thread != null) && (thread.mVideoEncoder != null)) {
+				try {
+					thread.mVideoEncoder.frameAvailableSoon();
+				} catch (final Exception e) {
+					//
+				}
+			}
+		}
+
+		@Override
+		public void onDestroy() {
+		}
+	};
+
 	private static final class CameraThread extends Thread {
 		private static final String TAG_THREAD = "CameraThread";
 		private final Object mSync = new Object();
@@ -318,7 +342,7 @@ public final class CameraServer extends Handler {
 			if (DEBUG) Log.d(TAG_THREAD, "Constructor:");
 			mWeakContext = new WeakReference<Context>(context);
 			mCtrlBlock = ctrlBlock;
-			loadSutterSound(context);
+			loadShutterSound(context);
 		}
 
 		@Override
@@ -421,7 +445,7 @@ public final class CameraServer extends Handler {
 							try {
 								mUVCCamera.setPreviewSize(sz.width, sz.height);
 							} catch (final IllegalArgumentException e1) {
-								// unexpectly #setPreviewSize failed
+								// unexpectedly #setPreviewSize failed
 								mUVCCamera.destroy();
 								mUVCCamera = null;
 							}
@@ -447,7 +471,8 @@ public final class CameraServer extends Handler {
 			try {
 				if ((mUVCCamera == null) || (mMuxer != null)) return;
 				mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
-				new MediaSurfaceEncoder(mFrameWidth, mFrameHeight, mMuxer, mMediaEncoderListener);
+//				new MediaSurfaceEncoder(mFrameWidth, mFrameHeight, mMuxer, mMediaEncoderListener);
+				new MediaSurfaceEncoder(mMuxer, mFrameWidth, mFrameHeight, mMediaEncoderListener);
 				if (true) {
 					// for audio capturing
 					new MediaAudioEncoder(mMuxer, mMediaEncoderListener);
@@ -462,6 +487,11 @@ public final class CameraServer extends Handler {
 		public void handleStopRecording() {
 			if (DEBUG) Log.d(TAG_THREAD, "handleStopRecording:mMuxer=" + mMuxer);
 			if (mMuxer != null) {
+				synchronized (mSync) {
+					if (mUVCCamera != null) {
+						mUVCCamera.stopCapture();
+					}
+				}
 				mMuxer.stopRecording();
 				mMuxer = null;
 				// you should not wait here
@@ -528,7 +558,7 @@ public final class CameraServer extends Handler {
 					mVideoEncoder = (MediaSurfaceEncoder)encoder;
 					final Surface encoderSurface = mVideoEncoder.getInputSurface();
 					mEncoderSurfaceId = encoderSurface.hashCode();
-					mHandler.mRendererHolder.addSurface(mEncoderSurfaceId, encoderSurface, true, mOnFrameAvailable);
+					mHandler.mRendererHolder.addSurface(mEncoderSurfaceId, encoderSurface, true);
 				} catch (final Exception e) {
 					Log.e(TAG, "onPrepared:", e);
 				}
@@ -540,10 +570,19 @@ public final class CameraServer extends Handler {
 				if ((encoder instanceof MediaSurfaceEncoder))
 				try {
 					mIsRecording = false;
-					if (mEncoderSurfaceId > 0)
-						mHandler.mRendererHolder.removeSurface(mEncoderSurfaceId);
+					if (mEncoderSurfaceId > 0) {
+						try {
+							mHandler.mRendererHolder.removeSurface(mEncoderSurfaceId);
+						} catch (final Exception e) {
+							Log.w(TAG, e);
+						}
+					}
 					mEncoderSurfaceId = -1;
-					mUVCCamera.stopCapture();
+					synchronized (mSync) {
+						if (mUVCCamera != null) {
+							mUVCCamera.stopCapture();
+						}
+					}
 					mVideoEncoder = null;
 					final String path = encoder.getOutputPath();
 					if (!TextUtils.isEmpty(path)) {
@@ -559,8 +598,8 @@ public final class CameraServer extends Handler {
 		 * prepare and load shutter sound for still image capturing
 		 */
 		@SuppressWarnings("deprecation")
-		private void loadSutterSound(final Context context) {
-			if (DEBUG) Log.d(TAG_THREAD, "loadSutterSound:");
+		private void loadShutterSound(final Context context) {
+			if (DEBUG) Log.d(TAG_THREAD, "loadShutterSound:");
 	    	// get system stream type using refrection
 	        int streamType;
 	        try {

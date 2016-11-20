@@ -123,12 +123,16 @@ uvc_error_t uvc_init2(uvc_context_t **pctx, struct libusb_context *usb_ctx, cons
 	uvc_context_t *ctx = calloc(1, sizeof(*ctx));
 
 	if (usb_ctx == NULL) {
-		if (usbfs && strlen(usbfs) > 0)
+		if (usbfs && strlen(usbfs) > 0) {
+			LOGD("call #libusb_init2");
 			ret = libusb_init2(&ctx->usb_ctx, usbfs);
-		else
+		} else {
+			LOGD("call #libusb_init");
 			ret = libusb_init(&ctx->usb_ctx);
+		}
 		ctx->own_usb_ctx = 1;
 		if (UNLIKELY(ret != UVC_SUCCESS)) {
+			LOGW("failed:err=%d", ret);
 			free(ctx);
 			ctx = NULL;
 		}

@@ -2,12 +2,17 @@ apply plugin: 'com.android.library'
 import org.apache.tools.ant.taskdefs.condition.Os
 
 android {
-    compileSdkVersion 22
-    buildToolsVersion "22.0.1"
+	compileSdkVersion versionCompiler
+	buildToolsVersion versionBuildTool
+
+	compileOptions {
+		sourceCompatibility javaSourceCompatibility
+		targetCompatibility javaTargetCompatibility
+	}
 
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 22
+		targetSdkVersion versionTarget
     }
 
     buildTypes {
@@ -24,10 +29,6 @@ android {
 	}
 }
 
-dependencies {
-    compile fileTree(dir: new File(buildDir, 'libs'), include: '*.jar')
-}
-
 tasks.withType(JavaCompile) {
 	compileTask -> compileTask.dependsOn ndkBuild
 }
@@ -42,4 +43,12 @@ task ndkBuild(type: Exec, description: 'Compile JNI source via NDK') {
 		ndkBuildPath = ndkBuildingDir + '/ndk-build'
 	}
 	commandLine ndkBuildPath, '-j8', '-C', file('src/main').absolutePath
+}
+
+dependencies {
+    compile fileTree(dir: new File(buildDir, 'libs'), include: '*.jar')
+	compile "com.android.support:support-annotations:${supportLibVersion}"
+	compile("com.serenegiant:common:${commonLibVersion}") {
+		exclude module: 'support-v4'
+	}
 }

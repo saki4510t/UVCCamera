@@ -1431,6 +1431,8 @@ int LIBUSB_CALL libusb_get_max_iso_packet_size(libusb_device *dev,
 	unsigned char endpoint);
 
 int LIBUSB_CALL libusb_set_device_fd(libusb_device *dev, int fd);	// XXX add for mainly non-rooted Android
+libusb_device * LIBUSB_CALL libusb_get_device_with_fd(libusb_context *ctx,
+	int vid, int pid, const char *serial, int fd, int busnum, int devaddr);
 int LIBUSB_CALL libusb_open(libusb_device *dev, libusb_device_handle **handle);
 void LIBUSB_CALL libusb_close(libusb_device_handle *dev_handle);
 libusb_device * LIBUSB_CALL libusb_get_device(libusb_device_handle *dev_handle);

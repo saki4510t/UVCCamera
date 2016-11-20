@@ -3,7 +3,7 @@ package com.serenegiant.widget;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
  * File name: UVCCameraTextureView2.java
  *
@@ -27,8 +27,10 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.util.AttributeSet;
+import android.view.Surface;
 import android.view.TextureView;
 
+import com.serenegiant.encoder.IVideoEncoder;
 import com.serenegiant.encoder.MediaEncoder;
 
 /**
@@ -45,7 +47,7 @@ public class UVCCameraTextureView2 extends TextureView	// API >= 14
 
 	private double mRequestedAspect = -1.0;
 	private boolean mHasSurface;
-	private MediaEncoder mEncoder;
+	private IVideoEncoder mEncoder;
 
 	public UVCCameraTextureView2(final Context context) {
 		this(context, null, 0);
@@ -134,12 +136,22 @@ public class UVCCameraTextureView2 extends TextureView	// API >= 14
 	}
 
 	@Override
+	public void setCallback(final Callback callback) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Surface getSurface() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public boolean hasSurface() {
 		return mHasSurface;
 	}
 
 	@Override
-	public void setVideoEncoder(final MediaEncoder encoder) {
+	public void setVideoEncoder(final IVideoEncoder encoder) {
 		mEncoder = encoder;
 	}
 

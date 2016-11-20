@@ -3,7 +3,7 @@ package com.serenegiant.usb;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2015-2016 saki t_saki@serenegiant.com
  *
  * File name: IFrameCallback.java
  *
@@ -35,7 +35,11 @@ public interface IFrameCallback {
 	 * but it is better to use either for better performance.
 	 * You can also pass pixel format type to UVCCamera#setFrameCallback for this method.
 	 * Some frames may drops if this method takes a time.
-	 * @param frame
+	 * When you use some color format like NV21, this library never execute color space conversion,
+	 * just execute pixel format conversion. If you want to get same result as on screen, please try to
+	 * consider to get images via texture(SurfaceTexture) and read pixel buffer from it using OpenGL|ES2/3
+	 * instead of using IFrameCallback(this way is much efficient in most case than using IFrameCallback).
+	 * @param frame this is direct ByteBuffer from JNI layer and you should handle it's byte order and limitation.
 	 */
 	public void onFrame(ByteBuffer frame);
 }

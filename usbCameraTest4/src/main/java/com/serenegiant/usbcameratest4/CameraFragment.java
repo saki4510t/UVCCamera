@@ -3,7 +3,7 @@ package com.serenegiant.usbcameratest4;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
  * File name: CameraFragment.java
  *
@@ -27,12 +27,12 @@ import java.util.List;
 
 import android.app.Activity;
 import android.app.Fragment;
+import android.content.Intent;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.Surface;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -42,7 +42,9 @@ import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ImageButton;
 import android.widget.ToggleButton;
 
+import com.serenegiant.common.BaseFragment;
 import com.serenegiant.encoder.MediaMuxerWrapper;
+import com.serenegiant.service.UVCService;
 import com.serenegiant.serviceclient.CameraClient;
 import com.serenegiant.serviceclient.ICameraClient;
 import com.serenegiant.serviceclient.ICameraClientCallback;
@@ -54,7 +56,8 @@ import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.widget.CameraViewInterface;
 
-public class CameraFragment extends Fragment {
+public class CameraFragment extends BaseFragment {
+
 	private static final boolean DEBUG = true;
 	private static final String TAG = "CameraFragment";
 
@@ -76,6 +79,7 @@ public class CameraFragment extends Fragment {
 //		setRetainInstance(true);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void onAttach(final Activity activity) {
 		super.onAttach(activity);
@@ -112,7 +116,6 @@ public class CameraFragment extends Fragment {
 		mStillCaptureButton.setEnabled(false);
 		mCameraView = (CameraViewInterface)rootView.findViewById(R.id.camera_view);
 		mCameraView.setAspectRatio(DEFAULT_WIDTH / (float)DEFAULT_HEIGHT);
-		mCameraView.setCallback(mCallback);
 		mCameraViewSub = (SurfaceView)rootView.findViewById(R.id.camera_view_sub);
 		mCameraViewSub.setOnClickListener(mOnClickListener);
 		return rootView;
@@ -168,7 +171,7 @@ public class CameraFragment extends Fragment {
 		@Override
 		public void onAttach(final UsbDevice device) {
 			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onAttach:");
-			if (!updateCameraDialog() && (mCameraView.getSurface() != null)) {
+			if (!updateCameraDialog() && (mCameraView.hasSurface())) {
 				tryOpenUVCCamera(true);
 			}
 		}
@@ -186,17 +189,22 @@ public class CameraFragment extends Fragment {
 		@Override
 		public void onDettach(final UsbDevice device) {
 			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onDettach:");
-			if (mCameraClient != null) {
-				mCameraClient.disconnect();
-				mCameraClient.release();
-				mCameraClient = null;
-			}
+			queueEvent(new Runnable() {
+				@Override
+				public void run() {
+					if (mCameraClient != null) {
+						mCameraClient.disconnect();
+						mCameraClient.release();
+						mCameraClient = null;
+					}
+				}
+			}, 0);
 			enableButtons(false);
 			updateCameraDialog();
 		}
 
 		@Override
-		public void onCancel() {
+		public void onCancel(final UsbDevice device) {
 			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onCancel:");
 			enableButtons(false);
 		}
@@ -216,7 +224,7 @@ public class CameraFragment extends Fragment {
 		openUVCCamera(0);
 	}
 
-	public void openUVCCamera(final int index) {
+	private void openUVCCamera(final int index) {
 		if (DEBUG) Log.v(TAG, "openUVCCamera:index=" + index);
 		if (!mUSBMonitor.isRegistered()) return;
 		final List<UsbDevice> list = mUSBMonitor.getDeviceList();
@@ -230,20 +238,6 @@ public class CameraFragment extends Fragment {
 		}
 	}
 
-	private final CameraViewInterface.Callback mCallback = new CameraViewInterface.Callback() {
-		@Override
-		public void onSurfaceCreated(final Surface surface) {
-//			tryOpenUVCCamera(true);
-		}
-		@Override
-		public void onSurfaceChanged(final Surface surface, final int width, final int height) {
-		}
-		@Override
-		public void onSurfaceDestroy(final Surface surface) {
-
-		}
-	};
-
 	private final ICameraClientCallback mCameraListener = new ICameraClientCallback() {
 		@Override
 		public void onConnect() {
@@ -253,6 +247,9 @@ public class CameraFragment extends Fragment {
 			isSubView = true;
 			enableButtons(true);
 			setPreviewButton(true);
+			// start UVCService
+			final Intent intent = new Intent(getActivity(), UVCService.class);
+			getActivity().startService(intent);
 		}
 
 		@Override
@@ -302,18 +299,42 @@ public class CameraFragment extends Fragment {
 				break;
 			case R.id.record_button:
 				if (DEBUG) Log.v(TAG, "onClick:record");
-				if (mCameraClient.isRecording()) {
-					mRecordButton.setColorFilter(0);
-					mCameraClient.stopRecording();
-				} else {
-					mCameraClient.startRecording();
-					mRecordButton.setColorFilter(0x7fff0000);
+				if (checkPermissionWriteExternalStorage() && checkPermissionAudio()) {
+					queueEvent(new Runnable() {
+						@Override
+						public void run() {
+							if (mCameraClient.isRecording()) {
+								mCameraClient.stopRecording();
+								runOnUiThread(new Runnable() {
+									@Override
+									public void run() {
+										mRecordButton.setColorFilter(0);
+									}
+								}, 0);
+							} else {
+								mCameraClient.startRecording();
+								runOnUiThread(new Runnable() {
+									@Override
+									public void run() {
+										mRecordButton.setColorFilter(0x7fff0000);
+									}
+								}, 0);
+							}
+						}
+					}, 0);
 				}
 				break;
 			case R.id.still_button:
 				if (DEBUG) Log.v(TAG, "onClick:still capture");
-				if (mCameraClient != null)
-					mCameraClient.captureStill(MediaMuxerWrapper.getCaptureFile(Environment.DIRECTORY_DCIM, ".png").toString());
+				if (mCameraClient != null && checkPermissionWriteExternalStorage()) {
+					queueEvent(new Runnable() {
+						@Override
+						public void run() {
+							mCameraClient.captureStill(MediaMuxerWrapper.getCaptureFile(Environment.DIRECTORY_DCIM, ".jpg").toString());
+						}
+					}, 0);
+				}
+
 				break;
 			}
 		}

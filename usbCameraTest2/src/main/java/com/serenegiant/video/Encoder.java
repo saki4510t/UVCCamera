@@ -3,7 +3,7 @@ package com.serenegiant.video;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
  * File name: Encoder.java
  *
@@ -119,11 +119,11 @@ public abstract class Encoder implements Runnable {
     */
 	public void stopRecording() {
 		if (DEBUG) Log.v(TAG, "stopRecording");
+		mRequestStop = true;
 		synchronized (mSync) {
-			if (!mIsCapturing || mRequestStop) {
+			if (!mIsCapturing) {
 				return;
 			}
-			mRequestStop = true;	// for rejecting newer frame
 			mSync.notifyAll();
 	        // We can not know when the encoding and writing finish.
 	        // so we return immediately after request to avoid delay of caller thread

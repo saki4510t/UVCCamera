@@ -1,7 +1,7 @@
 #/*********************************************************************
 #* Software License Agreement (BSD License)
 #*
-#* Copyright (C)2014-2015 saki@serenegiant <t_saki@serenegiant.com>
+#* Copyright (C)2014-2016 saki@serenegiant <t_saki@serenegiant.com>
 #*  All rights reserved.
 #*
 #*  Redistribution and use in source and binary forms, with or without
@@ -51,12 +51,14 @@ LOCAL_EXPORT_C_INCLUDES := \
 LOCAL_CFLAGS := $(LOCAL_C_INCLUDES:%=-I%)
 LOCAL_CFLAGS += -DANDROID_NDK
 LOCAL_CFLAGS += -DLOG_NDEBUG
+LOCAL_CFLAGS += -DUVC_DEBUGGING
 
 LOCAL_EXPORT_LDLIBS := -llog
 
 LOCAL_ARM_MODE := arm
 
-LOCAL_STATIC_LIBRARIES += jpeg-turbo1500_static
+#LOCAL_STATIC_LIBRARIES += jpeg-turbo1500_static
+LOCAL_SHARED_LIBRARIES += jpeg-turbo1500
 LOCAL_SHARED_LIBRARIES += usb100
 
 LOCAL_SRC_FILES := \
@@ -72,7 +74,7 @@ LOCAL_MODULE := libuvc_static
 include $(BUILD_STATIC_LIBRARY)
 
 ######################################################################
-# libuvc.so (shared library with static link to libjpeg-turbo)
+# libuvc.so
 ######################################################################
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional

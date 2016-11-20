@@ -3,7 +3,7 @@ package com.serenegiant.usb;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
  * File name: CameraDialog.java
  *
@@ -53,6 +53,7 @@ public class CameraDialog extends DialogFragment {
 
 	public interface CameraDialogParent {
 		public USBMonitor getUSBMonitor();
+		public void onDialogResult(boolean canceled);
 	}
 	
 	/**
@@ -86,6 +87,7 @@ public class CameraDialog extends DialogFragment {
 		// Fragment need default constructor
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void onAttach(final Activity activity) {
 		super.onAttach(activity);
@@ -171,11 +173,21 @@ public class CameraDialog extends DialogFragment {
 				final Object item = mSpinner.getSelectedItem();
 				if (item instanceof UsbDevice) {
 					mUSBMonitor.requestPermission((UsbDevice)item);
+					((CameraDialogParent)getActivity()).onDialogResult(false);
 				}
+				break;
+			case DialogInterface.BUTTON_NEGATIVE:
+				((CameraDialogParent)getActivity()).onDialogResult(true);
 				break;
 			}
 		}
 	};
+
+	@Override
+	public void onCancel(final DialogInterface dialog) {
+		((CameraDialogParent)getActivity()).onDialogResult(true);
+		super.onCancel(dialog);
+	}
 
 	public void updateDevices() {
 //		mUSBMonitor.dumpDevices();

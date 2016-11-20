@@ -167,26 +167,26 @@ struct usbfs_streams {
 #define IOCTL_USBFS_ALLOC_STREAMS		_IOR('U', 28, struct usbfs_streams)
 #define IOCTL_USBFS_FREE_STREAMS		_IOR('U', 29, struct usbfs_streams)
 
-extern usbi_mutex_static_t linux_hotplug_lock;
+extern usbi_mutex_static_t android_hotplug_lock;
 
 #if defined(HAVE_LIBUDEV)
-int linux_udev_start_event_monitor(void);
-int linux_udev_stop_event_monitor(void);
-int linux_udev_scan_devices(struct libusb_context *ctx);
-void linux_udev_hotplug_poll(void);
+int android_udev_start_event_monitor(void);
+int android_udev_stop_event_monitor(void);
+int android_udev_scan_devices(struct libusb_context *ctx);
+void android_udev_hotplug_poll(void);
 #else
-int linux_netlink_start_event_monitor(void);
-int linux_netlink_stop_event_monitor(void);
-void linux_netlink_hotplug_poll(void);
+int android_netlink_start_event_monitor(void);
+int android_netlink_stop_event_monitor(void);
+void android_netlink_hotplug_poll(void);
 #endif
 
-void linux_hotplug_enumerate(uint8_t busnum, uint8_t devaddr, const char *sys_name);
-void linux_device_disconnected(uint8_t busnum, uint8_t devaddr, const char *sys_name);
+void android_hotplug_enumerate(uint8_t busnum, uint8_t devaddr, const char *sys_name);
+void android_device_disconnected(uint8_t busnum, uint8_t devaddr, const char *sys_name);
 
-int linux_get_device_address (struct libusb_context *ctx, int detached,
+int android_get_device_address (struct libusb_context *ctx, int detached,
 	uint8_t *busnum, uint8_t *devaddr, const char *dev_node,
 	const char *sys_name);
-int linux_enumerate_device(struct libusb_context *ctx,
+int android_enumerate_device(struct libusb_context *ctx,
 	uint8_t busnum, uint8_t devaddr, const char *sysfs_dir);
 
 #endif

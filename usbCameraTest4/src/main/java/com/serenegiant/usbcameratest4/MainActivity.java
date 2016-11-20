@@ -3,7 +3,7 @@ package com.serenegiant.usbcameratest4;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
  * File name: MainActivity.java
  *
@@ -23,14 +23,15 @@ package com.serenegiant.usbcameratest4;
  * Files in the jni/libjpeg, jni/libusb, jin/libuvc, jni/rapidjson folder may have a different license, see the respective files.
 */
 
-import android.app.Activity;
 import android.app.Fragment;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Window;
 
-public class MainActivity extends Activity {
+import com.serenegiant.common.BaseActivity;
+
+public class MainActivity extends BaseActivity {
 	private static final boolean DEBUG = false;
 	private static final String TAG = "MainActivity";
 

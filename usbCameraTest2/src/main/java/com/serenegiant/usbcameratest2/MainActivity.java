@@ -3,7 +3,7 @@ package com.serenegiant.usbcameratest2;
  * UVCCamera
  * library and sample to access to UVC web camera on non-rooted Android device
  *
- * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
+ * Copyright (c) 2014-2016 saki t_saki@serenegiant.com
  *
  * File name: MainActivity.java
  *
@@ -29,11 +29,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.GregorianCalendar;
 import java.util.Locale;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
-import android.app.Activity;
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
@@ -51,6 +47,7 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import com.serenegiant.common.BaseActivity;
 import com.serenegiant.usb.CameraDialog;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
@@ -59,28 +56,21 @@ import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.video.Encoder;
 import com.serenegiant.video.Encoder.EncodeListener;
 import com.serenegiant.video.SurfaceEncoder;
-import com.serenegiant.widget.UVCCameraTextureView;
+import com.serenegiant.widget.SimpleUVCCameraTextureView;
 
-public final class MainActivity extends Activity implements CameraDialog.CameraDialogParent {
+public final class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = true;	// set false when releasing
 	private static final String TAG = "MainActivity";
-
-    // for thread pool
-    private static final int CORE_POOL_SIZE = 1;		// initial/minimum threads
-    private static final int MAX_POOL_SIZE = 4;			// maximum threads
-    private static final int KEEP_ALIVE_TIME = 10;		// time periods while keep the idle thread
-    protected static final ThreadPoolExecutor EXECUTER
-		= new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE, KEEP_ALIVE_TIME,
-			TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 
     private static final int CAPTURE_STOP = 0;
     private static final int CAPTURE_PREPARE = 1;
     private static final int CAPTURE_RUNNING = 2;
 
+	private final Object mSync = new Object();
     // for accessing USB and USB camera
     private USBMonitor mUSBMonitor;
 	private UVCCamera mUVCCamera;
-	private UVCCameraTextureView mUVCCameraView;
+	private SimpleUVCCameraTextureView mUVCCameraView;
 	// for open&start / stop&close camera preview
 	private ToggleButton mCameraButton;
 	// for start & stop movie capture
@@ -101,7 +91,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 		mCaptureButton = (ImageButton)findViewById(R.id.capture_button);
 		mCaptureButton.setOnClickListener(mOnClickListener);
 
-		mUVCCameraView = (UVCCameraTextureView)findViewById(R.id.UVCCameraTextureView1);
+		mUVCCameraView = (SimpleUVCCameraTextureView)findViewById(R.id.UVCCameraTextureView1);
 		mUVCCameraView.setAspectRatio(UVCCamera.DEFAULT_PREVIEW_WIDTH / (float)UVCCamera.DEFAULT_PREVIEW_HEIGHT);
 		mUVCCameraView.setSurfaceTextureListener(mSurfaceTextureListener);
 
@@ -109,33 +99,43 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 	}
 
 	@Override
-	public void onResume() {
-		super.onResume();
-		mUSBMonitor.register();
-		if (mUVCCamera != null)
-			mUVCCamera.startPreview();
+	protected void onStart() {
+		super.onStart();
+		synchronized (mSync) {
+			if (mUSBMonitor != null) {
+				mUSBMonitor.register();
+			}
+			if (mUVCCamera != null)
+				mUVCCamera.startPreview();
+		}
+		setCameraButton(false);
 		updateItems();
 	}
 
 	@Override
-	public void onPause() {
-		if (mUVCCamera != null) {
-			stopCapture();
-			mUVCCamera.stopPreview();
+	protected void onStop() {
+		synchronized (mSync) {
+			if (mUVCCamera != null) {
+				stopCapture();
+				mUVCCamera.stopPreview();
+			}
+			mUSBMonitor.unregister();
 		}
-		mUSBMonitor.unregister();
-		super.onPause();
+		setCameraButton(false);
+		super.onStop();
 	}
 
 	@Override
 	public void onDestroy() {
-		if (mUVCCamera != null) {
-			mUVCCamera.destroy();
-			mUVCCamera = null;
-		}
-		if (mUSBMonitor != null) {
-			mUSBMonitor.destroy();
-			mUSBMonitor = null;
+		synchronized (mSync) {
+			if (mUVCCamera != null) {
+				mUVCCamera.destroy();
+				mUVCCamera = null;
+			}
+			if (mUSBMonitor != null) {
+				mUSBMonitor.destroy();
+				mUSBMonitor = null;
+			}
 		}
 		mCameraButton = null;
 		mCaptureButton = null;
@@ -146,11 +146,13 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 	private final OnCheckedChangeListener mOnCheckedChangeListener = new OnCheckedChangeListener() {
 		@Override
 		public void onCheckedChanged(final CompoundButton buttonView, final boolean isChecked) {
-			if (isChecked && mUVCCamera == null) {
-				CameraDialog.showDialog(MainActivity.this);
-			} else if (mUVCCamera != null) {
-				mUVCCamera.destroy();
-				mUVCCamera = null;
+			synchronized (mSync) {
+				if (isChecked && mUVCCamera == null) {
+					CameraDialog.showDialog(MainActivity.this);
+				} else if (mUVCCamera != null) {
+					mUVCCamera.destroy();
+					mUVCCamera = null;
+				}
 			}
 			updateItems();
 		}
@@ -159,10 +161,12 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 	private final OnClickListener mOnClickListener = new OnClickListener() {
 		@Override
 		public void onClick(final View v) {
-			if (mCaptureState == CAPTURE_STOP) {
-				startCapture();
-			} else {
-				stopCapture();
+			if (checkPermissionWriteExternalStorage()) {
+				if (mCaptureState == CAPTURE_STOP) {
+					startCapture();
+				} else {
+					stopCapture();
+				}
 			}
 		}
 	};
@@ -175,50 +179,64 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 
 		@Override
 		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, final boolean createNew) {
-			if (mUVCCamera != null)
-				mUVCCamera.destroy();
-			mUVCCamera = new UVCCamera();
-			EXECUTER.execute(new Runnable() {
+			synchronized (mSync) {
+				if (mUVCCamera != null) {
+					mUVCCamera.destroy();
+					mUVCCamera = null;
+				}
+			}
+			queueEvent(new Runnable() {
 				@Override
 				public void run() {
-					mUVCCamera.open(ctrlBlock);
-					if (DEBUG) Log.i(TAG, "supportedSize:" + mUVCCamera.getSupportedSize());
+					final UVCCamera camera = new UVCCamera();
+					camera.open(ctrlBlock);
+					if (DEBUG) Log.i(TAG, "supportedSize:" + camera.getSupportedSize());
 					if (mPreviewSurface != null) {
 						mPreviewSurface.release();
 						mPreviewSurface = null;
 					}
 					try {
-						mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
+						camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
 					} catch (final IllegalArgumentException e) {
 						try {
 							// fallback to YUV mode
-							mUVCCamera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
+							camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
 						} catch (final IllegalArgumentException e1) {
-							mUVCCamera.destroy();
-							mUVCCamera = null;
+							camera.destroy();
+							return;
 						}
 					}
-					if (mUVCCamera != null) {
-						final SurfaceTexture st = mUVCCameraView.getSurfaceTexture();
-						if (st != null)
-							mPreviewSurface = new Surface(st);
-						mUVCCamera.setPreviewDisplay(mPreviewSurface);
-						mUVCCamera.startPreview();
+					final SurfaceTexture st = mUVCCameraView.getSurfaceTexture();
+					if (st != null) {
+						mPreviewSurface = new Surface(st);
+						camera.setPreviewDisplay(mPreviewSurface);
+						camera.startPreview();
+					}
+					synchronized (mSync) {
+						mUVCCamera = camera;
 					}
 				}
-			});
+			}, 0);
 		}
 
 		@Override
 		public void onDisconnect(final UsbDevice device, final UsbControlBlock ctrlBlock) {
 			// XXX you should check whether the comming device equal to camera device that currently using
-			if (mUVCCamera != null) {
-				mUVCCamera.close();
-				if (mPreviewSurface != null) {
-					mPreviewSurface.release();
-					mPreviewSurface = null;
+			queueEvent(new Runnable() {
+				@Override
+				public void run() {
+					synchronized (mSync) {
+						if (mUVCCamera != null) {
+							mUVCCamera.close();
+						}
+					}
+					if (mPreviewSurface != null) {
+						mPreviewSurface.release();
+						mPreviewSurface = null;
+					}
 				}
-			}
+			}, 0);
+			setCameraButton(false);
 		}
 
 		@Override
@@ -227,7 +245,8 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 		}
 
 		@Override
-		public void onCancel() {
+		public void onCancel(final UsbDevice device) {
+			setCameraButton(false);
 		}
 	};
 
@@ -238,6 +257,32 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 	@Override
 	public USBMonitor getUSBMonitor() {
 		return mUSBMonitor;
+	}
+
+	@Override
+	public void onDialogResult(boolean canceled) {
+		if (canceled) {
+			setCameraButton(false);
+		}
+	}
+
+	private void setCameraButton(final boolean isOn) {
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				if (mCameraButton != null) {
+					try {
+						mCameraButton.setOnCheckedChangeListener(null);
+						mCameraButton.setChecked(isOn);
+					} finally {
+						mCameraButton.setOnCheckedChangeListener(mOnCheckedChangeListener);
+					}
+				}
+				if (!isOn && (mCaptureButton != null)) {
+					mCaptureButton.setVisibility(View.INVISIBLE);
+				}
+			}
+		}, 0);
 	}
 
 //**********************************************************************
@@ -276,7 +321,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 		if (DEBUG) Log.v(TAG, "startCapture:");
 		if (mEncoder == null && (mCaptureState == CAPTURE_STOP)) {
 			mCaptureState = CAPTURE_PREPARE;
-			EXECUTER.execute(new Runnable() {
+			queueEvent(new Runnable() {
 				@Override
 				public void run() {
 					final String path = getCaptureFile(Environment.DIRECTORY_MOVIES, ".mp4");
@@ -292,7 +337,7 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 					} else
 						throw new RuntimeException("Failed to start capture.");
 				}
-			});
+			}, 0);
 			updateItems();
 		}
 	}
@@ -302,10 +347,20 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 	 */
 	private final void stopCapture() {
 		if (DEBUG) Log.v(TAG, "stopCapture:");
-		if (mEncoder != null) {
-			mEncoder.stopRecording();
-			mEncoder = null;
-		}
+		queueEvent(new Runnable() {
+			@Override
+			public void run() {
+				synchronized (mSync) {
+					if (mUVCCamera != null) {
+						mUVCCamera.stopCapture();
+					}
+				}
+				if (mEncoder != null) {
+					mEncoder.stopRecording();
+					mEncoder = null;
+				}
+			}
+		}, 0);
 	}
 
     /**
@@ -315,13 +370,22 @@ public final class MainActivity extends Activity implements CameraDialog.CameraD
 		@Override
 		public void onPreapared(final Encoder encoder) {
 			if (DEBUG) Log.v(TAG, "onPreapared:");
-			mUVCCamera.startCapture(((SurfaceEncoder)encoder).getInputSurface());
+			synchronized (mSync) {
+				if (mUVCCamera != null) {
+					mUVCCamera.startCapture(((SurfaceEncoder)encoder).getInputSurface());
+				}
+			}
 			mCaptureState = CAPTURE_RUNNING;
 		}
+
 		@Override
 		public void onRelease(final Encoder encoder) {
 			if (DEBUG) Log.v(TAG, "onRelease:");
-			mUVCCamera.stopCapture();
+			synchronized (mSync) {
+				if (mUVCCamera != null) {
+					mUVCCamera.stopCapture();
+				}
+			}
 			mCaptureState = CAPTURE_STOP;
 			updateItems();
 		}

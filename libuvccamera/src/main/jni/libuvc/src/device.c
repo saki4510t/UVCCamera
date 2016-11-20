@@ -3,7 +3,7 @@
 /*********************************************************************
  * add and modified some functions to support non-rooted Android devices
  * and modified some function for optimaization with gcc
- * Copyright (C) 2014 saki@serenegiant All rights reserved.
+ * Copyright (C) 2014-2016 saki@serenegiant All rights reserved.
  *********************************************************************/
 /*********************************************************************
  * Software License Agreement (BSD License)
@@ -42,6 +42,21 @@
  * @defgroup device Device handling and enumeration
  * @brief Support for finding, inspecting and opening UVC devices
  */
+
+#define LOCAL_DEBUG 0
+
+#define LOG_TAG "libuvc/device"
+#if 1	// デバッグ情報を出さない時1
+	#ifndef LOG_NDEBUG
+		#define	LOG_NDEBUG		// LOGV/LOGD/MARKを出力しない時
+		#endif
+	#undef USE_LOGALL			// 指定したLOGxだけを出力
+#else
+	#define USE_LOGALL
+	#undef LOG_NDEBUG
+	#undef NDEBUG
+	#define GET_RAW_DESCRIPTOR
+#endif
 
 #include "libuvc/libuvc.h"
 #include "libuvc/libuvc_internal.h"
@@ -173,13 +188,14 @@ uvc_error_t uvc_find_device(uvc_context_t *ctx, uvc_device_t **dev, int vid,
  * XXX add for non-rooted Android devices
  * get uvc_device_t from specified vid/pid/serial
  * return UVC_ERROR_NO_DEVICE when device not found
- * return UVC_SUCCESS and set uvc_device_t when specific device dound
+ * return UVC_SUCCESS and set uvc_device_t when specific device found
  */
 uvc_error_t uvc_find_device2(uvc_context_t *ctx, uvc_device_t **device, int vid,
 		int pid, const char *sn, int fd) {
 
 	UVC_ENTER();
 
+	LOGD("call libusb_find_device");
 	struct libusb_device *usb_dev = libusb_find_device(ctx->usb_ctx, vid, pid, sn, fd);
 
 	if (usb_dev) {
@@ -192,10 +208,41 @@ uvc_error_t uvc_find_device2(uvc_context_t *ctx, uvc_device_t **device, int vid,
 		UVC_EXIT(UVC_SUCCESS);
 		return UVC_SUCCESS;
 	} else {
+		LOGE("could not find specific device");
 		*device = NULL;
 	}
 	UVC_EXIT(UVC_ERROR_NO_DEVICE);
 	return UVC_ERROR_NO_DEVICE;
+}
+
+/**
+ * XXX add for non-rooted Android device, >= Android7
+ * generate fake libusb_device according to specific params
+ * and set it to uvc_device_t to access UVC device on Android7 or later
+ */
+uvc_error_t uvc_get_device_with_fd(uvc_context_t *ctx, uvc_device_t **device,
+		int vid, int pid, const char *serial, int fd, int busnum, int devaddr) {
+
+	ENTER();
+
+	LOGD("call libusb_get_device_with_fd");
+	struct libusb_device *usb_dev = libusb_get_device_with_fd(ctx->usb_ctx, vid, pid, serial, fd, busnum, devaddr);
+
+	if (LIKELY(usb_dev)) {
+		*device = malloc(sizeof(uvc_device_t/* *device */));
+		(*device)->ctx = ctx;
+		(*device)->ref = 0;
+		(*device)->usb_dev = usb_dev;
+//		libusb_set_device_fd(usb_dev, fd);	// assign fd to libusb_device for non-rooted Android devices
+		uvc_ref_device(*device);
+		UVC_EXIT(UVC_SUCCESS);
+		RETURN(UVC_SUCCESS, int);
+	} else {
+		LOGE("could not find specific device");
+		*device = NULL;
+		RETURN(UVC_ERROR_NO_DEVICE, int);
+	}
+
 }
 
 /** @brief Get the number of the bus to which the device is attached
@@ -242,6 +289,7 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 	internal_devh->usb_devh = usb_devh;
 	internal_devh->reset_on_release_if = 0;	// XXX
 	ret = uvc_get_device_info(dev, &(internal_devh->info));
+	pthread_mutex_init(&internal_devh->status_mutex, NULL);	// XXX saki
 
 	if (UNLIKELY(ret != UVC_SUCCESS))
 		goto fail2;	// uvc_claim_if was not called yet and we don't need to call uvc_release_if
@@ -743,7 +791,8 @@ const uvc_extension_unit_t *uvc_get_extension_units(uvc_device_handle_t *devh) {
 void uvc_ref_device(uvc_device_t *dev) {
 	UVC_ENTER();
 
-	dev->ref++;
+	dev->ref++;	// これ排他制御要るんちゃうかなぁ(｡･_･｡)
+//	LOGI("ref=%d", dev->ref);
 	libusb_ref_device(dev->usb_dev);
 
 	UVC_EXIT_VOID();
@@ -760,8 +809,9 @@ void uvc_unref_device(uvc_device_t *dev) {
 	UVC_ENTER();
 
 	libusb_unref_device(dev->usb_dev);
-	dev->ref--;
+	dev->ref--;	// これ排他制御要るんちゃうかなぁ(｡･_･｡)
 
+//	LOGI("ref=%d", dev->ref);
 	if (dev->ref == 0) {
 		free(dev);
 		dev = NULL;
@@ -1482,6 +1532,7 @@ uvc_error_t uvc_parse_vs(uvc_device_t *dev, uvc_device_info_t *info,
 void uvc_free_devh(uvc_device_handle_t *devh) {
 	UVC_ENTER();
 
+	pthread_mutex_destroy(&devh->status_mutex);	// XXX saki
 	if (devh->info)
 		uvc_free_device_info(devh->info);
 
@@ -1631,6 +1682,8 @@ void uvc_process_control_status(uvc_device_handle_t *devh, unsigned char *data, 
 	UVC_DEBUG("Event: class=%d, event=%d, selector=%d, attribute=%d, content_len=%zd",
 			  status_class, event, selector, attribute, content_len);
 
+	pthread_mutex_lock(&devh->status_mutex);	// XXX saki
+	{
 	if(devh->status_cb) {
 		UVC_DEBUG("Running user-supplied status callback");
 		devh->status_cb(status_class,
@@ -1640,6 +1693,8 @@ void uvc_process_control_status(uvc_device_handle_t *devh, unsigned char *data, 
 						content, content_len,
 						devh->status_user_ptr);
 	}
+	}
+	pthread_mutex_unlock(&devh->status_mutex);	// XXX saki
 
 	UVC_EXIT_VOID();
 }
@@ -1662,12 +1717,16 @@ void uvc_process_streaming_status(uvc_device_handle_t *devh, unsigned char *data
 		}
 		UVC_DEBUG("Button (intf %u) %s len %d\n", data[1], data[3] ? "pressed" : "released", len);
 
-		if(devh->button_cb) {
-			UVC_DEBUG("Running user-supplied button callback");
-			devh->button_cb(data[1],
-							data[3],
-							devh->button_user_ptr);
+		pthread_mutex_lock(&devh->status_mutex);	// XXX saki
+		{
+			if(devh->button_cb) {
+				UVC_DEBUG("Running user-supplied button callback");
+				devh->button_cb(data[1],
+								data[3],
+								devh->button_user_ptr);
 		}
+		}
+		pthread_mutex_unlock(&devh->status_mutex);	// XXX saki
 	} else {
 		UVC_DEBUG("Stream %u error event %02x %02x len %d.\n", data[1], data[2], data[3], len);
 	}
@@ -1734,8 +1793,12 @@ void uvc_set_status_callback(uvc_device_handle_t *devh,
 		uvc_status_callback_t cb, void *user_ptr) {
 	UVC_ENTER();
 
-	devh->status_cb = cb;
-	devh->status_user_ptr = user_ptr;
+	pthread_mutex_lock(&devh->status_mutex);	// XXX saki
+	{
+		devh->status_cb = cb;
+		devh->status_user_ptr = user_ptr;
+	}
+	pthread_mutex_unlock(&devh->status_mutex);	// XXX saki
 
 	UVC_EXIT_VOID();
 }
@@ -1748,8 +1811,12 @@ void uvc_set_button_callback(uvc_device_handle_t *devh,
 		uvc_button_callback_t cb, void *user_ptr) {
 	UVC_ENTER();
 
-	devh->button_cb = cb;
-	devh->button_user_ptr = user_ptr;
+	pthread_mutex_lock(&devh->status_mutex);	// XXX saki
+	{
+		devh->button_cb = cb;
+		devh->button_user_ptr = user_ptr;
+	}
+	pthread_mutex_unlock(&devh->status_mutex);	// XXX saki
 
 	UVC_EXIT_VOID();
 }
