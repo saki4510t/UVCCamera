@@ -35,6 +35,8 @@ public interface CameraViewInterface extends AspectRatioViewInterface {
 		public void onSurfaceChanged(CameraViewInterface view, Surface surface, int width, int height);
 		public void onSurfaceDestroy(CameraViewInterface view, Surface surface);
 	}
+	public void onPause();
+	public void onResume();
 	public void setCallback(Callback callback);
 	public SurfaceTexture getSurfaceTexture();
 	public Surface getSurface();

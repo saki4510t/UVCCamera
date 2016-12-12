@@ -81,6 +81,16 @@ public class UVCCameraTextureView2 extends TextureView	// API >= 14
         }
     }
 
+	@Override
+    public void setAspectRatio(final int width, final int height) {
+		setAspectRatio(width / (double)height);
+    }
+
+	@Override
+	public double getAspectRatio() {
+		return mRequestedAspect;
+	}
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 
