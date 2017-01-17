@@ -489,6 +489,7 @@ abstract class AbstractUVCCameraHandler extends Handler {
 				mUVCCamera.setPreviewTexture((SurfaceTexture)surface);
 			}
 			mUVCCamera.startPreview();
+			mUVCCamera.updateCameraParams();
 			synchronized (mSync) {
 				mIsPreviewing = true;
 			}
