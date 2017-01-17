@@ -3,7 +3,7 @@ UVCCamera
 
 library and sample to access to UVC web camera on non-rooted Android device
 
-Copyright (c) 2014-2016 saki t_saki@serenegiant.com
+Copyright (c) 2014-2017 saki t_saki@serenegiant.com
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -159,3 +159,5 @@ apply bandwidth factor setting of usbcameratest7 on master branch
 ###2016/11/21
 Now this repository supports Android N(7.x) and dynamic permission model of Android N and later.
 
+###2017/01/16
+Add new sample app `usbCameraTest8` to show how to set/get uvc control like brightness 

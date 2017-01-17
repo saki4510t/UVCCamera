@@ -2,7 +2,7 @@
 /*
  * add some functions for no-rooted Android
  * add optimaization when compiling with gcc
- * Copyright © 2014-2016 saki <t_saki@serenegiant.com>
+ * Copyright © 2014-2017 saki <t_saki@serenegiant.com>
  *
  * Core functions for libusb
  * Copyright © 2012-2013 Nathan Hjelm <hjelmn@cs.unm.edu>

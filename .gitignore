@@ -68,3 +68,5 @@ build
 profiles_settings.xml
 .idea/libraries
 libuvccamera/src/main/libs
+.idea/copyright
+.idea/scopes
