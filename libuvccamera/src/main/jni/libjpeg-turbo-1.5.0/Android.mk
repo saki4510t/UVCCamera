@@ -210,9 +210,27 @@ LOCAL_CFLAGS += \
 
 else ifeq ($(TARGET_ARCH_ABI),mips)
 
+# Unfortunately it seems Clang in NDK(at least until r14)
+# does not support SIMD for mips(MSA) correctly now.
+# If you really needs MSA, try `NDK_TOOLCHAIN_VERSION := 4.9` in Application.mk
+# with r13b/r14 (so that you can build libraries with GCC),
+# but I don't recommend because supporting GCC on NDK is already deprecated
+# and GCC will bre removed from NDK soon.
+
+ifeq ($(NDK_TOOLCHAIN_VERSION),clang)
+
+#disable MSA
+
+LOCAL_SRC_FILES += \
+	jsimd_none.c
+
+else
+
 LOCAL_SRC_FILES += \
 	simd/jsimd_mips.c \
 	simd/jsimd_mips_dspr2.S \
+
+endif
 
 LOCAL_CFLAGS += \
 	-DSIZEOF_SIZE_T=4 \
