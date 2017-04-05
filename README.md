@@ -74,15 +74,78 @@ setPreviewTexture method in UVCCamera.java etc.), but we have not confirm whethe
 project run on Android 3.1 yet.
 Some sample projects need API>=18 though.
 
-###2014/07/25
-Add some modification to the library and new sample project named "USBCameraTest2".
-This new sample project demonstrate how to capture movie using frame data from
-UVC camera with MediaCodec and MediaMuxer.
-New sample requires at least Android 4.3(API>=18).
-This limitation does not come from the library itself but from the limitation of
-MediaMuxer and MediaCodec#createInputSurface.
+### 2017/01/16
+Add new sample app `usbCameraTest8` to show how to set/get uvc control like brightness 
 
-###2014/09/01
+### 2016/11/21
+Now this repository supports Android N(7.x) and dynamic permission model of Android N and later.
+
+### 2016/11/17
+apply bandwidth factor setting of usbcameratest7 on master branch
+
+### 2016/06/18
+replace libjpeg-turbo 1.4.0 with 1.5.0
+
+### 2016/03/01
+update minoru001 branch, experimentaly support streo camera.
+
+### 2015/12/16
+Add feature so that user can request fps range from Java code when negotiating with camera. Actual resulted fps depends on each UVC camera. Currently there is no way to get resulted fps(will add on future).
+
+### 2015/10/30
+Merge pull request(add status and button callback). Thanks Alexey Pelykh.
+
+### 2015/09/20
+Fixed the issue that building native libraries fail on Windows.
+
+### 2015/08/17
+Add new sample project `USBCameraTest7` to demonstrate how to use two camera at the same time.  
+
+### 2015/07/19
+Add new methods to get/set camera features like brightness, contrast etc.  
+Add new method to get supported resolution from camera as json format.  
+
+### 2015/06/11
+Improve the issue of `USBCameraTest4` that fails to connect/disconnect.
+
+### 2015/06/10
+Fixed the issue of pixel format is wrong when NV21 mode on calling IFrameCallback#onFrame(U and V plane was swapped) and added YUV420SP mode.
+
+### 2015/06/03
+Add new sample project named `USBCameraTest6`
+This new sample project mainly demonstrate how to show video images on two TextureView simultaneously, side by side.
+
+### 2015/05/30
+Fixed the issue that DeviceFilter class could not work well when providing venderID, productID etc.
+
+### 2015/05/25
+libraryProject branch merged to master.
+
+### 2015/02/18
+Add `libUVCCamera` as a library project(source code is almost same as previous release except Android.mk).
+All files and directories under `library` directory is deprecated.
+
+### 2015/02/12
+Add IFrameCallback interface to get frame data as ByteArray
+and new sample project `USBCameraTest5` to demonstrate how to use the callback method.
+
+### 2015/01/22
+Add method to adjust preview resolution and frame data mode.
+
+### 2015/01/12
+Add wiki page: https://github.com/saki4510t/UVCCamera/wiki
+
+### 2014/12/17
+Add bulk transfer mode and update sample projects.
+
+### 2014/11/16
+Add new sample project named `USBCameraTest4`
+This new sample project mainly demonstrate how to use offscreen rendering
+and record movie without any display.
+The communication with camera execute as Service and continue working
+even if you stop app. If you stop camera communication, click "stop service" button.
+
+### 2014/09/01
 Add new sample project named `USBCameraTest3`
 This new sample project demonstrate how to capture audio and movie simultaneously
 using frame data from UVC camera and internal mic with MediaCodec and MediaMuxer.
@@ -91,73 +154,13 @@ save as jpeg) This sample also requires at least Android 4.3(API>=18).
 This limitation does not come from the library itself but from the limitation of
 MediaMuxer and MediaCodec#createInputSurface.
 
-###2014/11/16
-Add new sample project named `USBCameraTest4`
-This new sample project mainly demonstrate how to use offscreen rendering
-and record movie without any display.
-The communication with camera execute as Service and continue working
-even if you stop app. If you stop camera communication, click "stop service" button.
+### 2014/07/25
+Add some modification to the library and new sample project named "USBCameraTest2".
+This new sample project demonstrate how to capture movie using frame data from
+UVC camera with MediaCodec and MediaMuxer.
+New sample requires at least Android 4.3(API>=18).
+This limitation does not come from the library itself but from the limitation of
+MediaMuxer and MediaCodec#createInputSurface.
 
-###2014/12/17
-Add bulk transfer mode and update sample projects.
 
-###2015/01/12
-Add wiki page, [HowTo](https://github.com/saki4510t/UVCCamera/wiki/howto "HowTo")
 
-###2015/01/22
-Add method to adjust preview resolution and frame data mode.
-
-###2015/02/12
-Add IFrameCallback interface to get frame data as ByteArray
-and new sample project `USBCameraTest5` to demonstrate how to use the callback method.
-
-###2015/02/18
-Add `libUVCCamera` as a library project(source code is almost same as previous release except Android.mk).
-All files and directories under `library` directory is deprecated.
-
-###2015/05/25
-libraryProject branch merged to master.
-
-###2015/05/30
-Fixed the issue that DeviceFilter class could not work well when providing venderID, productID etc.
-
-###2015/06/03
-Add new sample project named `USBCameraTest6`
-This new sample project mainly demonstrate how to show video images on two TextureView simultaneously, side by side.
-
-###2015/06/10
-Fixed the issue of pixel format is wrong when NV21 mode on calling IFrameCallback#onFrame(U and V plane was swapped) and added YUV420SP mode.
-
-###2015/06/11
-Improve the issue of `USBCameraTest4` that fails to connect/disconnect.
-
-###2015/07/19
-Add new methods to get/set camera features like brightness, contrast etc.  
-Add new method to get supported resolution from camera as json format.  
-
-###2015/08/17
-Add new sample project `USBCameraTest7` to demonstrate how to use two camera at the same time.  
-
-###2015/09/20
-Fixed the issue that building native libraries fail on Windows.
-
-###2015/10/30
-Merge pull request(add status and button callback). Thanks Alexey Pelykh.
-
-###2015/12/16
-Add feature so that user can request fps range from Java code when negotiating with camera. Actual resulted fps depends on each UVC camera. Currently there is no way to get resulted fps(will add on future).
-
-###2016/03/01
-update minoru001 branch, experimentaly support streo camera.
-
-###2016/06/18
-replace libjpeg-turbo 1.4.0 with 1.5.0
-
-###2016/11/17
-apply bandwidth factor setting of usbcameratest7 on master branch
-
-###2016/11/21
-Now this repository supports Android N(7.x) and dynamic permission model of Android N and later.
-
-###2017/01/16
-Add new sample app `usbCameraTest8` to show how to set/get uvc control like brightness 
