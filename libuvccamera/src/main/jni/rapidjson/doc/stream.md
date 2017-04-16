@@ -13,7 +13,7 @@ Memory streams store JSON in memory.
 `StringStream` is the most basic input stream. It represents a complete, read-only JSON stored in memory. It is defined in `rapidjson/rapidjson.h`.
 
 ~~~~~~~~~~cpp
-#include "rapidjson/document.h" // will include "rapidjson/rapidjson.h"
+# include "rapidjson/document.h" // will include "rapidjson/rapidjson.h"
 
 using namespace rapidjson;
 
@@ -41,7 +41,7 @@ Note that, `StringStream` is a typedef of `GenericStringStream<UTF8<> >`, user m
 `StringBuffer` is a simple output stream. It allocates a memory buffer for writing the whole JSON. Use `GetString()` to obtain the buffer.
 
 ~~~~~~~~~~cpp
-#include "rapidjson/stringbuffer.h"
+# include "rapidjson/stringbuffer.h"
 
 StringBuffer buffer;
 Writer<StringBuffer> writer(buffer);
@@ -72,8 +72,8 @@ However, if the JSON is big, or memory is limited, you can use `FileReadStream`.
 `FileReadStream` reads the file via a `FILE` pointer. And user need to provide a buffer.
 
 ~~~~~~~~~~cpp
-#include "rapidjson/filereadstream.h"
-#include <cstdio>
+# include "rapidjson/filereadstream.h"
+# include <cstdio>
 
 using namespace rapidjson;
 
@@ -97,8 +97,8 @@ Apart from reading file, user can also use `FileReadStream` to read `stdin`.
 `FileWriteStream` is buffered output stream. Its usage is very similar to `FileReadStream`.
 
 ~~~~~~~~~~cpp
-#include "rapidjson/filewritestream.h"
-#include <cstdio>
+# include "rapidjson/filewritestream.h"
+# include <cstdio>
 
 using namespace rapidjson;
 
@@ -136,10 +136,10 @@ Note that, these encoded streams can be applied to streams other than file. For 
 `EncodedInputStream` has two template parameters. The first one is a `Encoding` class, such as `UTF8`, `UTF16LE`, defined in `rapidjson/encodings.h`. The second one is the class of stream to be wrapped.
 
 ~~~~~~~~~~cpp
-#include "rapidjson/document.h"
-#include "rapidjson/filereadstream.h"   // FileReadStream
-#include "rapidjson/encodedstream.h"    // EncodedInputStream
-#include <cstdio>
+# include "rapidjson/document.h"
+# include "rapidjson/filereadstream.h"   // FileReadStream
+# include "rapidjson/encodedstream.h"    // EncodedInputStream
+# include <cstdio>
 
 using namespace rapidjson;
 
@@ -161,9 +161,9 @@ fclose(fp);
 `EncodedOutputStream` is similar but it has a `bool putBOM` parameter in the constructor, controlling whether to write BOM into output byte stream.
 
 ~~~~~~~~~~cpp
-#include "rapidjson/filewritestream.h"  // FileWriteStream
-#include "rapidjson/encodedstream.h"    // EncodedOutputStream
-#include <cstdio>
+# include "rapidjson/filewritestream.h"  // FileWriteStream
+# include "rapidjson/encodedstream.h"    // EncodedOutputStream
+# include <cstdio>
 
 Document d;         // Document is GenericDocument<UTF8<> > 
 // ...
@@ -189,10 +189,10 @@ Sometimes an application may want to handle all supported JSON encoding. `AutoUT
 Since the characters (code units) may be 8-bit, 16-bit or 32-bit. `AutoUTFInputStream` requires a character type which can hold at least 32-bit. We may use `unsigned`, as in the template parameter:
 
 ~~~~~~~~~~cpp
-#include "rapidjson/document.h"
-#include "rapidjson/filereadstream.h"   // FileReadStream
-#include "rapidjson/encodedstream.h"    // AutoUTFInputStream
-#include <cstdio>
+# include "rapidjson/document.h"
+# include "rapidjson/filereadstream.h"   // FileReadStream
+# include "rapidjson/encodedstream.h"    // AutoUTFInputStream
+# include <cstdio>
 
 using namespace rapidjson;
 
