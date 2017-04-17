@@ -95,7 +95,7 @@ public class AspectRatioTextureView extends TextureView	// API >= 14
 					// width priority decision
 					initialHeight = (int) (initialWidth / mRequestedAspect);
 				} else {
-					// height priority decison
+					// height priority decision
 					initialWidth = (int) (initialHeight * mRequestedAspect);
 				}
 				initialWidth += horizPadding;
