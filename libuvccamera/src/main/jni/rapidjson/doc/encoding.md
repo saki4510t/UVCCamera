@@ -122,7 +122,7 @@ Although the encoding functions in RapidJSON are designed for JSON parsing/gener
 Here is an example for transcoding a string from UTF-8 to UTF-16:
 
 ~~~~~~~~~~cpp
-# include "rapidjson/encodings.h"
+#include "rapidjson/encodings.h"
 
 using namespace rapidjson;
 

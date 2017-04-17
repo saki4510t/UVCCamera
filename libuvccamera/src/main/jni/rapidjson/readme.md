@@ -63,10 +63,10 @@ This simple example parses a JSON string into a document (DOM), make a simple mo
 
 ~~~~~~~~~~cpp
 // rapidjson/example/simpledom/simpledom.cpp`
-# include "rapidjson/document.h"
-# include "rapidjson/writer.h"
-# include "rapidjson/stringbuffer.h"
-# include <iostream>
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include <iostream>
 
 using namespace rapidjson;
 
