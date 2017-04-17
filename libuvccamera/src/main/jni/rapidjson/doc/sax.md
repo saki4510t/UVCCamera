@@ -53,8 +53,8 @@ EndObject(7)
 These events can be easily matched with the JSON, except some event parameters need further explanation. Let's see the `simplereader` example which produces exactly the same output as above:
 
 ~~~~~~~~~~cpp
-# include "rapidjson/reader.h"
-# include <iostream>
+#include "rapidjson/reader.h"
+#include <iostream>
 
 using namespace rapidjson;
 using namespace std;
@@ -182,9 +182,9 @@ If an error occurs during parsing, it will return `false`. User can also calls `
 In `simplewriter` example, we do exactly the reverse of `simplereader`.
 
 ~~~~~~~~~~cpp
-# include "rapidjson/writer.h"
-# include "rapidjson/stringbuffer.h"
-# include <iostream>
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include <iostream>
 
 using namespace rapidjson;
 using namespace std;
@@ -288,11 +288,11 @@ User may uses `Reader` to build other data structures directly. This eliminates 
 In the following `messagereader` example, `ParseMessages()` parses a JSON which should be an object with key-string pairs.
 
 ~~~~~~~~~~cpp
-# include "rapidjson/reader.h"
-# include "rapidjson/error/en.h"
-# include <iostream>
-# include <string>
-# include <map>
+#include "rapidjson/reader.h"
+#include "rapidjson/error/en.h"
+#include <iostream>
+#include <string>
+#include <map>
 
 using namespace std;
 using namespace rapidjson;
@@ -396,13 +396,13 @@ As mentioned earlier, `Writer` can handle the events published by `Reader`. `con
 Actually, we can add intermediate layer(s) to filter the contents of JSON via these SAX-style API. For example, `capitalize` example capitalize all strings in a JSON.
 
 ~~~~~~~~~~cpp
-# include "rapidjson/reader.h"
-# include "rapidjson/writer.h"
-# include "rapidjson/filereadstream.h"
-# include "rapidjson/filewritestream.h"
-# include "rapidjson/error/en.h"
-# include <vector>
-# include <cctype>
+#include "rapidjson/reader.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/filereadstream.h"
+#include "rapidjson/filewritestream.h"
+#include "rapidjson/error/en.h"
+#include <vector>
+#include <cctype>
 
 using namespace rapidjson;
 
