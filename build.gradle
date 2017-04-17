@@ -4,7 +4,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.0'
+        classpath 'com.android.tools.build:gradle:2.3.1'
     }
 }
 
@@ -20,8 +20,8 @@ task clean(type: Delete) {
 }
 
 ext {
-	supportLibVersion = '25.1.0'  // variable that can be referenced to keep support libs consistent
-	commonLibVersion= '1.4.3'
+	supportLibVersion = '25.3.1'  // variable that can be referenced to keep support libs consistent
+	commonLibVersion= '1.5.20'
 	versionBuildTool = '25.0.2'
 	versionCompiler = 25
 	versionTarget = 23
