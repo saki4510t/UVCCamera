@@ -29,7 +29,7 @@ Assumes we have a JSON stored in a C string (`const char* json`):
 
 Parse it into a `Document`
 ~~~~~~~~~~cpp
-#include "rapidjson/document.h"
+# include "rapidjson/document.h"
 
 using namespace rapidjson;
 
