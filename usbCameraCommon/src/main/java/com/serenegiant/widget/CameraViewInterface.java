@@ -29,7 +29,7 @@ import android.view.Surface;
 
 import com.serenegiant.encoder.IVideoEncoder;
 
-public interface CameraViewInterface extends AspectRatioViewInterface {
+public interface CameraViewInterface extends IAspectRatioView {
 	public interface Callback {
 		public void onSurfaceCreated(CameraViewInterface view, Surface surface);
 		public void onSurfaceChanged(CameraViewInterface view, Surface surface, int width, int height);

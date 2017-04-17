@@ -47,13 +47,12 @@ import com.serenegiant.glutils.es1.GLHelper;
  * you can show this view in the center of screen and keep the aspect ratio of content
  * XXX it is better that can set the aspect ratio as xml property
  */
-public class UVCCameraTextureView extends TextureView	// API >= 14
+public class UVCCameraTextureView extends AspectRatioTextureView    // API >= 14
 	implements TextureView.SurfaceTextureListener, CameraViewInterface {
 
 	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "UVCCameraTextureView";
 
-    private double mRequestedAspect = -1.0;
     private boolean mHasSurface;
 	private RenderHandler mRenderHandler;
     private final Object mCaptureSync = new Object();
@@ -94,60 +93,6 @@ public class UVCCameraTextureView extends TextureView	// API >= 14
 			mTempBitmap = null;
 		}
 	}
-
-	@Override
-    public void setAspectRatio(final double aspectRatio) {
-        if (aspectRatio < 0) {
-            throw new IllegalArgumentException();
-        }
-        if (mRequestedAspect != aspectRatio) {
-            mRequestedAspect = aspectRatio;
-            requestLayout();
-        }
-    }
-
-	@Override
-    public void setAspectRatio(final int width, final int height) {
-		setAspectRatio(width / (double)height);
-    }
-
-	@Override
-	public double getAspectRatio() {
-		return mRequestedAspect;
-	}
-
-    @Override
-    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-
-		if (mRequestedAspect > 0) {
-			int initialWidth = MeasureSpec.getSize(widthMeasureSpec);
-			int initialHeight = MeasureSpec.getSize(heightMeasureSpec);
-
-			final int horizPadding = getPaddingLeft() + getPaddingRight();
-			final int vertPadding = getPaddingTop() + getPaddingBottom();
-			initialWidth -= horizPadding;
-			initialHeight -= vertPadding;
-
-			final double viewAspectRatio = (double)initialWidth / initialHeight;
-			final double aspectDiff = mRequestedAspect / viewAspectRatio - 1;
-
-			if (Math.abs(aspectDiff) > 0.01) {
-				if (aspectDiff > 0) {
-					// width priority decision
-					initialHeight = (int) (initialWidth / mRequestedAspect);
-				} else {
-					// height priority decison
-					initialWidth = (int) (initialHeight * mRequestedAspect);
-				}
-				initialWidth += horizPadding;
-				initialHeight += vertPadding;
-				widthMeasureSpec = MeasureSpec.makeMeasureSpec(initialWidth, MeasureSpec.EXACTLY);
-				heightMeasureSpec = MeasureSpec.makeMeasureSpec(initialHeight, MeasureSpec.EXACTLY);
-			}
-		}
-
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-    }
 
 	@Override
 	public void onSurfaceTextureAvailable(final SurfaceTexture surface, final int width, final int height) {
