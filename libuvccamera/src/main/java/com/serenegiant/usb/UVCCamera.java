@@ -347,12 +347,15 @@ public class UVCCamera {
 			final int format_nums = formats.length();
 			for (int i = 0; i < format_nums; i++) {
 				final JSONObject format = formats.getJSONObject(i);
-				final int format_type = format.getInt("type");
-				if ((format_type == type) || (type == -1)) {
-					addSize(format, format_type, 0, result);
+				if(format.has("type") && format.has("size")) {
+					final int format_type = format.getInt("type");
+					if ((format_type == type) || (type == -1)) {
+						addSize(format, format_type, 0, result);
+					}
 				}
 			}
 		} catch (final JSONException e) {
+			e.printStackTrace();
 		}
 		return result;
 	}
