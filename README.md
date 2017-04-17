@@ -161,3 +161,7 @@ Now this repository supports Android N(7.x) and dynamic permission model of Andr
 
 ### 2017/01/16
 Add new sample app `usbCameraTest8` to show how to set/get uvc control like brightness 
+
+### 2017/04/17
+Add new sample app on [OpenCVwithUVC](https://github.com/saki4510t/OpenCVwithUVC.git) repository.
+This shows the way to pass video images from UVC into `cv::Mat` (after optional applying video effect by OpenGL|ES) and execute image processing by `OpenCV`.
