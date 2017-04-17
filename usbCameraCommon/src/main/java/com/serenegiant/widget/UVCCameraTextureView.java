@@ -40,6 +40,7 @@ import com.serenegiant.encoder.MediaVideoEncoder;
 import com.serenegiant.glutils.EGLBase;
 import com.serenegiant.glutils.GLDrawer2D;
 import com.serenegiant.glutils.es1.GLHelper;
+import com.serenegiant.utils.FpsCounter;
 
 /**
  * change the view size with keeping the specified aspect ratio.
@@ -59,6 +60,8 @@ public class UVCCameraTextureView extends AspectRatioTextureView    // API >= 14
     private Bitmap mTempBitmap;
     private boolean mReqesutCaptureStillImage;
 	private Callback mCallback;
+	/** for calculation of frame rate */
+	private final FpsCounter mFpsCounter = new FpsCounter();
 
 	public UVCCameraTextureView(final Context context) {
 		this(context, null, 0);
@@ -77,7 +80,7 @@ public class UVCCameraTextureView extends AspectRatioTextureView    // API >= 14
 	public void onResume() {
 		if (DEBUG) Log.v(TAG, "onResume:");
 		if (mHasSurface) {
-			mRenderHandler = RenderHandler.createHandler(super.getSurfaceTexture(), getWidth(), getHeight());
+			mRenderHandler = RenderHandler.createHandler(mFpsCounter, super.getSurfaceTexture(), getWidth(), getHeight());
 		}
 	}
 
@@ -98,7 +101,7 @@ public class UVCCameraTextureView extends AspectRatioTextureView    // API >= 14
 	public void onSurfaceTextureAvailable(final SurfaceTexture surface, final int width, final int height) {
 		if (DEBUG) Log.v(TAG, "onSurfaceTextureAvailable:" + surface);
 		if (mRenderHandler == null) {
-			mRenderHandler = RenderHandler.createHandler(surface, width, height);
+			mRenderHandler = RenderHandler.createHandler(mFpsCounter, surface, width, height);
 		} else {
 			mRenderHandler.resize(width, height);
 		}
@@ -206,6 +209,31 @@ public class UVCCameraTextureView extends AspectRatioTextureView    // API >= 14
 		mCallback = callback;
 	}
 
+	public void resetFps() {
+		mFpsCounter.reset();
+	}
+	
+	/** update frame rate of image processing */
+	public void updateFps() {
+		mFpsCounter.update();
+	}
+
+	/**
+	 * get current frame rate of image processing
+	 * @return
+	 */
+	public float getFps() {
+		return mFpsCounter.getFps();
+	}
+
+	/**
+	 * get total frame rate from start
+	 * @return
+	 */
+	public float getTotalFps() {
+		return mFpsCounter.getTotalFps();
+	}
+
 	/**
 	 * render camera frames on this view on a private thread
 	 * @author saki
@@ -222,15 +250,19 @@ public class UVCCameraTextureView extends AspectRatioTextureView    // API >= 14
 
 		private RenderThread mThread;
 		private boolean mIsActive = true;
+		private final FpsCounter mFpsCounter;
 
-		public static final RenderHandler createHandler(final SurfaceTexture surface, final int width, final int height) {
-			final RenderThread thread = new RenderThread(surface, width, height);
+		public static final RenderHandler createHandler(final FpsCounter counter,
+			final SurfaceTexture surface, final int width, final int height) {
+			
+			final RenderThread thread = new RenderThread(counter, surface, width, height);
 			thread.start();
 			return thread.getHandler();
 		}
 
-		private RenderHandler(final RenderThread thread) {
+		private RenderHandler(final FpsCounter counter, final RenderThread thread) {
 			mThread = thread;
+			mFpsCounter = counter;
 		}
 
 		public final void setVideoEncoder(final IVideoEncoder encoder) {
@@ -281,6 +313,7 @@ public class UVCCameraTextureView extends AspectRatioTextureView    // API >= 14
 		@Override
 		public final void onFrameAvailable(final SurfaceTexture surfaceTexture) {
 			if (mIsActive) {
+				mFpsCounter.count();
 				sendEmptyMessage(MSG_REQUEST_RENDER);
 			}
 		}
@@ -324,12 +357,14 @@ public class UVCCameraTextureView extends AspectRatioTextureView    // API >= 14
 			private final float[] mStMatrix = new float[16];
 			private MediaEncoder mEncoder;
 			private int mViewWidth, mViewHeight;
+			private final FpsCounter mFpsCounter;
 
 			/**
 			 * constructor
 			 * @param surface: drawing surface came from TexureView
 			 */
-	    	public RenderThread(final SurfaceTexture surface, final int width, final int height) {
+	    	public RenderThread(final FpsCounter fpsCounter, final SurfaceTexture surface, final int width, final int height) {
+				mFpsCounter = fpsCounter;
 	    		mSurface = surface;
 				mViewWidth = width;
 				mViewHeight = height;
@@ -508,7 +543,7 @@ public class UVCCameraTextureView extends AspectRatioTextureView    // API >= 14
 	            init();
 	            Looper.prepare();
 	            synchronized (mSync) {
-	            	mHandler = new RenderHandler(this);
+	            	mHandler = new RenderHandler(mFpsCounter, this);
 	                mSync.notify();
 	            }
 
