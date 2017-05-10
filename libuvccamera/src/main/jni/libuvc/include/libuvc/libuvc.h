@@ -813,9 +813,11 @@ uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
 uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
 uvc_error_t uvc_any2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
 
-uvc_error_t uvc_yuyv2yuv420P(uvc_frame_t *in, uvc_frame_t *out);	// XXX
+uvc_error_t uvc_yuyv2i420(uvc_frame_t *in, uvc_frame_t *out);		// XXX
 uvc_error_t uvc_yuyv2yuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
 uvc_error_t uvc_any2yuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
+
+uvc_error_t uvc_yuyv2yv12(uvc_frame_t *in, uvc_frame_t *out);		// XXX
 
 uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
 uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX

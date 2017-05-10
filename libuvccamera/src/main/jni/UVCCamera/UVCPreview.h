@@ -47,10 +47,15 @@ typedef uvc_error_t (*convFunc_t)(uvc_frame_t *in, uvc_frame_t *out);
 #define PIXEL_FORMAT_RGBX 3
 #define PIXEL_FORMAT_YUV20SP 4
 #define PIXEL_FORMAT_NV21 5		// YVU420SemiPlanar
+#define PIXEL_FORMAT_YV12 6
+#define PIXEL_FORMAT_I420 7
+
+
 
 // for callback to Java object
 typedef struct {
 	jmethodID onFrame;
+	jmethodID onRawFrame;
 } Fields_iframecallback;
 
 class UVCPreview {
@@ -71,17 +76,26 @@ private:
 	int previewFormat;
 	size_t previewBytes;
 //
-	volatile bool mIsCapturing;
 	ANativeWindow *mCaptureWindow;
+	convFunc_t mFrameCallbackFunc;
+	int mPixelFormat;
+	size_t callbackPixelBytes;
+	volatile bool mIsCapturing;
 	pthread_t capture_thread;
 	pthread_mutex_t capture_mutex;
 	pthread_cond_t capture_sync;
 	uvc_frame_t *captureQueu;			// keep latest frame
 	jobject mFrameCallbackObj;
-	convFunc_t mFrameCallbackFunc;
+
+	volatile bool mIsRawCapturing;
+    pthread_t raw_capture_thread;
+    pthread_mutex_t raw_capture_mutex;
+    pthread_cond_t raw_capture_sync;
+    uvc_frame_t *raw_captureQueu;			// keep latest frame
+	jobject mRawFrameCallbackObj;
+
 	Fields_iframecallback iframecallback_fields;
-	int mPixelFormat;
-	size_t callbackPixelBytes;
+
 // improve performance by reducing memory allocation
 	pthread_mutex_t pool_mutex;
 	ObjectArray<uvc_frame_t *> mFramePool;
@@ -101,13 +115,21 @@ private:
 	uvc_frame_t *draw_preview_one(uvc_frame_t *frame, ANativeWindow **window, convFunc_t func, int pixelBytes);
 //
 	void addCaptureFrame(uvc_frame_t *frame);
+	void addRawCaptureFrame(uvc_frame_t *frame);
 	uvc_frame_t *waitCaptureFrame();
+	uvc_frame_t *waitRawCaptureFrame();
 	void clearCaptureFrame();
+	void clearRawCaptureFrame();
 	static void *capture_thread_func(void *vptr_args);
+	static void *raw_capture_thread_func(void *vptr_args);
+
 	void do_capture(JNIEnv *env);
+	void do_raw_capture(JNIEnv *env);
 	void do_capture_surface(JNIEnv *env);
 	void do_capture_idle_loop(JNIEnv *env);
+	void do_raw_capture_idle_loop(JNIEnv *env);
 	void do_capture_callback(JNIEnv *env, uvc_frame_t *frame);
+	void do_raw_capture_callback(JNIEnv *env, uvc_frame_t *frame);
 	void callbackPixelFormatChanged();
 public:
 	UVCPreview(uvc_device_handle_t *devh);
@@ -117,9 +139,11 @@ public:
 	int setPreviewSize(int width, int height, int min_fps, int max_fps, int mode, float bandwidth = 1.0f);
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
+	int setRawFrameCallback(JNIEnv *env, jobject frame_callback_obj);
 	int startPreview();
 	int stopPreview();
 	inline const bool isCapturing() const;
+	inline const bool isRawCapturing() const;
 	int setCaptureDisplay(ANativeWindow *capture_window);
 };
 

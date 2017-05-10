@@ -59,7 +59,9 @@ public class UVCCamera {
 	public static final int PIXEL_FORMAT_RGB565 = 2;
 	public static final int PIXEL_FORMAT_RGBX = 3;
 	public static final int PIXEL_FORMAT_YUV420SP = 4;
-	public static final int PIXEL_FORMAT_NV21 = 5;		// = YVU420SemiPlanar
+	public static final int PIXEL_FORMAT_NV21 = 5;		// YVU420SemiPlanar
+	public static final int PIXEL_FORMAT_YV12 = 6; 		// YUV420 Planar
+	public static final int PIXEL_FORMAT_I420 = 7;
 
 	//--------------------------------------------------------------------------------
     public static final int	CTRL_SCANNING		= 0x00000001;	// D0:  Scanning Mode
@@ -114,6 +116,7 @@ public class UVCCamera {
 	public static final int STATUS_ATTRIBUTE_UNKNOWN = 0xff;
 
 	private static boolean isLoaded;
+
 	static {
 		if (!isLoaded) {
 			System.loadLibrary("jpeg-turbo1500");
@@ -122,6 +125,35 @@ public class UVCCamera {
 			System.loadLibrary("UVCCamera");
 			isLoaded = true;
 		}
+	}
+
+	/**
+	 * Determine frame size in bytes for given parameters.
+	 *
+	 * @param width the width of the frame.
+	 * @param height the height of the frame.
+	 * @param pixelFormat the pixel format.
+	 * @return size of the frame in bytes.
+	 */
+	public static int getFrameSizeInBytes(int width, int height, int pixelFormat) {
+		int size = width * height;
+		switch (pixelFormat) {
+			case PIXEL_FORMAT_RAW:
+			case PIXEL_FORMAT_YUV:
+			case PIXEL_FORMAT_RGB565:
+				size *= 2;
+				break;
+			case PIXEL_FORMAT_RGBX:
+				size *= 4;
+				break;
+			case PIXEL_FORMAT_YUV420SP:
+			case PIXEL_FORMAT_NV21:
+			case PIXEL_FORMAT_YV12:
+			case PIXEL_FORMAT_I420:
+				size = (size * 3) / 2;
+				break;
+		}
+		return size;
 	}
 
 	private UsbControlBlock mCtrlBlock;
@@ -411,7 +443,17 @@ public class UVCCamera {
     	}
     }
 
-    /**
+	/**
+	 * set frame callback
+	 * @param callback
+	 */
+	public void setRawFrameCallback(final IFrameCallback callback) {
+		if (mNativePtr != 0) {
+			nativeSetRawFrameCallback(mNativePtr, callback);
+		}
+	}
+
+	/**
      * start preview
      */
     public synchronized void startPreview() {
@@ -1044,6 +1086,7 @@ public class UVCCamera {
     private static final native int nativeStopPreview(final long id_camera);
     private static final native int nativeSetPreviewDisplay(final long id_camera, final Surface surface);
     private static final native int nativeSetFrameCallback(final long mNativePtr, final IFrameCallback callback, final int pixelFormat);
+	private static final native int nativeSetRawFrameCallback(final long mNativePtr, final IFrameCallback callback);
 
 //**********************************************************************
     /**
