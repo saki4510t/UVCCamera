@@ -1,0 +1,4 @@
+/build
+!/build/outputs/mapping/release/*
+*.iml
+obj/

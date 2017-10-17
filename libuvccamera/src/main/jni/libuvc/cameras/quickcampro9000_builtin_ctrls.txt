@@ -1,0 +1,13 @@
+Listing available controls for device video0:
+  Exposure, Auto Priority
+  Exposure (Absolute)
+  Exposure, Auto
+  Backlight Compensation
+  Sharpness
+  White Balance Temperature
+  Power Line Frequency
+  Gain
+  White Balance Temperature, Auto
+  Saturation
+  Contrast
+  Brightness

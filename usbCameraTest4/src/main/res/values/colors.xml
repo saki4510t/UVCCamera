@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~  UVCCamera
+  ~  library and sample to access to UVC web camera on non-rooted Android device
+  ~
+  ~ Copyright (c) 2014-2017 saki t_saki@serenegiant.com
+  ~
+  ~  Licensed under the Apache License, Version 2.0 (the "License");
+  ~  you may not use this file except in compliance with the License.
+  ~   You may obtain a copy of the License at
+  ~
+  ~      http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~   Unless required by applicable law or agreed to in writing, software
+  ~   distributed under the License is distributed on an "AS IS" BASIS,
+  ~   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~   See the License for the specific language governing permissions and
+  ~   limitations under the License.
+  ~
+  ~  All files in the folder are under this Apache License, Version 2.0.
+  ~  Files in the libjpeg-turbo, libusb, libuvc, rapidjson folder
+  ~  may have a different license, see the respective files.
+  -->
+<resources>
+
+    <!-- Web colors -->
+    <color name="CLEAR">#00000000</color>
+    <color name="HALF_CLEAR_WHITE">#7fffffff</color>
+    <color name="QUATER_CLEAR_WHITE">#3fffffff</color>
+    <color name="TRANSPARENT">#00000000</color>
+    <color name="BLACK">#ff000000</color>
+    <color name="ALICEBLUE">#fff0f8ff</color>
+    <color name="DARKCYAN">#ff008b8b</color>
+    <color name="LIGHTYELLOW">#ffffffe0</color>
+    <color name="CORAL">#ffff7f50</color>
+    <color name="DIMGRAY">#ff696969</color>
+    <color name="LAVENDER">#ffe6e6fa</color>
+    <color name="TEAL">#ff008080</color>
+    <color name="LIGHTGOLDENRODYELLOW">#fffafad2</color>
+    <color name="TOMATO">#ffff6347</color>
+    <color name="GRAY">#ff808080</color>
+    <color name="LIGHTSTEELBLUE">#ffb0c4de</color>
+    <color name="DARKSLATEGRAY">#ff2f4f4f</color>
+    <color name="LEMONCHIFFON">#fffffacd</color>
+    <color name="ORANGERED">#ffff4500</color>
+    <color name="DARKGRAY">#ffa9a9a9</color>
+    <color name="LIGHTSLATEGRAY">#ff778899</color>
+    <color name="DARKGREEN">#ff006400</color>
+    <color name="WHEAT">#fff5deb3</color>
+    <color name="RED">#ffff0000</color>
+    <color name="SILVER">#ffc0c0c0</color>
+    <color name="SLATEGRAY">#ff708090</color>
+    <color name="GREEN">#ff008000</color>
+    <color name="BURLYWOOD">#ffdeb887</color>
+    <color name="CRIMSON">#ffdc143c</color>
+    <color name="LIGHTGRAY">#ffd3d3d3</color>
+    <color name="STEELBLUE">#ff4682b4</color>
+    <color name="FORESTGREEN">#ff228b22</color>
+    <color name="TAN">#ffd2b48c</color>
+    <color name="MEDIUMVIOLETRED">#ffc71585</color>
+    <color name="GAINSBORO">#ffdcdcdc</color>
+    <color name="ROYALBLUE">#ff4169e1</color>
+    <color name="SEAGREEN">#ff2e8b57</color>
+    <color name="KHAKI">#fff0e68c</color>
+    <color name="DEEPPINK">#ffff1493</color>
+    <color name="WHITESMOKE">#fff5f5f5</color>
+    <color name="MIDNIGHTBLUE">#ff191970</color>
+    <color name="MEDIUMSEAGREEN">#ff3cb371</color>
+    <color name="YELLOW">#ffffff00</color>
+    <color name="HOTPINK">#ffff69b4</color>
+    <color name="WHITE">#ffffffff</color>
+    <color name="NAVY">#ff000080</color>
+    <color name="MEDIUMAQUAMARINE">#ff66cdaa</color>
+    <color name="GOLD">#ffffd700</color>
+    <color name="PALEVIOLETRED">#ffdb7093</color>
+    <color name="SNOW">#fffffafa</color>
+    <color name="DARKBLUE">#ff00008b</color>
+    <color name="DARKSEAGREEN">#ff8fbc8f</color>
+    <color name="ORANGE">#ffffa500</color>
+    <color name="PINK">#ffffc0cb</color>
+    <color name="GHOSTWHITE">#fff8f8ff</color>
+    <color name="MEDIUMBLUE">#ff0000cd</color>
+    <color name="AQUAMARINE">#ff7fffd4</color>
+    <color name="SANDYBROWN">#fff4a460</color>
+    <color name="LIGHTPINK">#ffffb6c1</color>
+    <color name="FLORALWHITE">#fffffaf0</color>
+    <color name="BLUE">#ff0000ff</color>
+    <color name="PALEGREEN">#ff98fb98</color>
+    <color name="DARKORANGE">#ffff8c00</color>
+    <color name="THISTLE">#ffd8bfd8</color>
+    <color name="LINEN">#fffaf0e6</color>
+    <color name="DODGERBLUE">#ff1e90ff</color>
+    <color name="LIGHTGREEN">#ff90ee90</color>
+    <color name="GOLDENROD">#ffdaa520</color>
+    <color name="MAGENTA">#ffff00ff</color>
+    <color name="ANTIQUEWHITE">#fffaebd7</color>
+    <color name="CORNFLOWERBLUE">#ff6495ed</color>
+    <color name="SPRINGGREEN">#ff00ff7f</color>
+    <color name="PERU">#ffcd853f</color>
+    <color name="FUCHSIA">#ffff00ff</color>
+    <color name="PAPAYAWHIP">#ffffefd5</color>
+    <color name="DEEPSKYBLUE">#ff00bfff</color>
+    <color name="MEDIUMSPRINGGREEN">#ff00fa9a</color>
+    <color name="DARKGOLDENROD">#ffb8860b</color>
+    <color name="VIOLET">#ffee82ee</color>
+    <color name="BLANCHEDALMOND">#ffffebcd</color>
+    <color name="LIGHTSKYBLUE">#ff87cefa</color>
+    <color name="LAWNGREEN">#ff7cfc00</color>
+    <color name="CHOCOLATE">#ffd2691e</color>
+    <color name="PLUM">#ffdda0dd</color>
+    <color name="BISQUE">#ffffe4c4</color>
+    <color name="SKYBLUE">#ff87ceeb</color>
+    <color name="CHARTREUSE">#ff7fff00</color>
+    <color name="SIENNA">#ffa0522d</color>
+    <color name="ORCHID">#ffda70d6</color>
+    <color name="MOCCASIN">#ffffe4b5</color>
+    <color name="LIGHTBLUE">#ffadd8e6</color>
+    <color name="GREENYELLOW">#ffadff2f</color>
+    <color name="SADDLEBROWN">#ff8b4513</color>
+    <color name="MEDIUMORCHID">#ffba55d3</color>
+    <color name="NAVAJOWHITE">#ffffdead</color>
+    <color name="POWDERBLUE">#ffb0e0e6</color>
+    <color name="LIME">#ff00ff00</color>
+    <color name="MAROON">#ff800000</color>
+    <color name="DARKORCHID">#ff9932cc</color>
+    <color name="PEACHPUFF">#ffffdab9</color>
+    <color name="PALETURQUOISE">#ffafeeee</color>
+    <color name="LIMEGREEN">#ff32cd32</color>
+    <color name="DARKRED">#ff8b0000</color>
+    <color name="DARKVIOLET">#ff9400d3</color>
+    <color name="MISTYROSE">#ffffe4e1</color>
+    <color name="LIGHTCYAN">#ffe0ffff</color>
+    <color name="YELLOWGREEN">#ff9acd32</color>
+    <color name="BROWN">#ffa52a2a</color>
+    <color name="DARKMAGENTA">#ff8b008b</color>
+    <color name="LAVENDERBLUSH">#fffff0f5</color>
+    <color name="CYAN">#ff00ffff</color>
+    <color name="DARKOLIVEGREEN">#ff556b2f</color>
+    <color name="FIREBRICK">#ffb22222</color>
+    <color name="PURPLE">#ff800080</color>
+    <color name="SEASHELL">#fffff5ee</color>
+    <color name="AQUA">#ff00ffff</color>
+    <color name="OLIVEDRAB">#ff6b8e23</color>
+    <color name="INDIANRED">#ffcd5c5c</color>
+    <color name="INDIGO">#ff4b0082</color>
+    <color name="OLDLACE">#fffdf5e6</color>
+    <color name="TURQUOISE">#ff40e0d0</color>
+    <color name="OLIVE">#ff808000</color>
+    <color name="ROSYBROWN">#ffbc8f8f</color>
+    <color name="DARKSLATEBLUE">#ff483d8b</color>
+    <color name="IVORY">#fffffff0</color>
+    <color name="MEDIUMTURQUOISE">#ff48d1cc</color>
+    <color name="DARKKHAKI">#ffbdb76b</color>
+    <color name="DARKSALMON">#ffe9967a</color>
+    <color name="BLUEVIOLET">#ff8a2be2</color>
+    <color name="HONEYDEW">#fff0fff0</color>
+    <color name="DARKTURQUOISE">#ff00ced1</color>
+    <color name="PALEGOLDENROD">#ffeee8aa</color>
+    <color name="LIGHTCORAL">#fff08080</color>
+    <color name="MEDIUMPURPLE">#ff9370db</color>
+    <color name="MINTCREAM">#fff5fffa</color>
+    <color name="LIGHTSEAGREEN">#ff20b2aa</color>
+    <color name="CORNSILK">#fffff8dc</color>
+    <color name="SALMON">#fffa8072</color>
+    <color name="SLATEBLUE">#ff6a5acd</color>
+    <color name="AZURE">#fff0ffff</color>
+    <color name="CADETBLUE">#ff5f9ea0</color>
+    <color name="BEIGE">#fff5f5dc</color>
+    <color name="LIGHTSALMON">#ffffa07a</color>
+    <color name="MEDIUMSLATEBLUE">#ff7b68ee</color>
+
+</resources>
