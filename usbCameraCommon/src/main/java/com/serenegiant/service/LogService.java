@@ -92,7 +92,7 @@ public class LogService extends Service {
 
 	private static final String TAG = "LOGSERVICELOG";
 
-	private static final int MEMORY_LOG_FILE_MAX_SIZE = 50 * 1024; // 内存中日志文件最大值, 200K
+	private static final int MEMORY_LOG_FILE_MAX_SIZE = 10 * 1024; // 内存中日志文件最大值, 10K
 	private static final int MEMORY_LOG_FILE_MONITOR_INTERVAL = 60 * 1000; // 内存中的日志文件大小监控时间间隔，1分钟
 	private static final int MEMORY_LOG_FILE_MAX_NUMBER = 2; // 内存中允许保存的最大文件个数
 

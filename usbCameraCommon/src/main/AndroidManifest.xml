@@ -21,4 +21,12 @@
   ~  may have a different license, see the respective files.
   -->
 
-<manifest package="com.serenegiant.usbcameracommon"/>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.serenegiant.usbcameracommon" >
+
+<application
+    android:name="com.serenegiant.app.UvcApp"
+    android:allowBackup="true">
+</application>
+
+</manifest>

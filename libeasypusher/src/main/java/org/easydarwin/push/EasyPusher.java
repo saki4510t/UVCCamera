@@ -124,7 +124,7 @@ public class EasyPusher implements IPusher {
         if (mPusherObj == 0) {
             return;
         }
-        mTotal += length;
+        /*mTotal += length;
         if (type == 1) {
             mTotalFrms++;
         }
@@ -136,9 +136,8 @@ public class EasyPusher implements IPusher {
             pPreviewTS = System.currentTimeMillis();
             mTotal = 0;
             mTotalFrms = 0;
-
 //            BUS.post(new StreamStat((int)fps, (int)bps));
-        }
+        }*/
         push(mPusherObj, data, offset, length, timestamp, type);
     }
 

@@ -74,6 +74,10 @@ setPreviewTexture method in UVCCamera.java etc.), but we have not confirm whethe
 project run on Android 3.1 yet.
 Some sample projects need API>=18 though.
 
+### 2017/10/20
+1. 优化easypusher
+1. 码流边推边保存, test4点击录制按钮即可完成
+
 ### 2014/07/25
 Add some modification to the library and new sample project named "USBCameraTest2".
 This new sample project demonstrate how to capture movie using frame data from

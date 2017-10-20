@@ -25,7 +25,6 @@ package com.serenegiant.service;
 
 import android.content.Context;
 import android.media.AudioManager;
-import android.media.MediaCodec;
 import android.media.MediaScannerConnection;
 import android.media.SoundPool;
 import android.os.Handler;
@@ -46,13 +45,9 @@ import com.serenegiant.usb.IFrameCallback;
 import com.serenegiant.usb.Size;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usb.UVCCamera;
-import com.serenegiant.usbcameratest4.BuildConfig;
 import com.serenegiant.usbcameratest4.R;
 import com.serenegiant.utils.Constants;
 import com.socks.library.KLog;
-
-import org.easydarwin.push.EasyPusher;
-import org.easydarwin.push.InitCallback;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -344,10 +339,6 @@ public final class CameraServer extends Handler {
 		private int mEncoderSurfaceId;
 		private int mFrameWidth, mFrameHeight;
 
-		private EasyPusher mEasyPusher;
-		private volatile boolean isPushing;	//是否推流
-		private byte[] mPpsSps;
-
 		/**
 		 * shutter sound
 		 */
@@ -513,84 +504,19 @@ public final class CameraServer extends Handler {
 			}
 		}
 
-		/**
-		 * 初始化easypusher
-		 */
-		private void initEasyPusher() {
-			final Context context = mWeakContext.get();
-			if (context != null) {
-				mEasyPusher = new EasyPusher();
-				String id = "107700000088_11";
-				String key = "6A36334A743536526D3430416F36685A706C6463532F64685A6E646C59575A6B5A723558444661672F307667523246326157346D516D466962334E68514449774D545A4659584E355247467964326C75564756686257566863336B3D";
-				String videoIp = "video.qdsxkj.com";
-				String tcpPort = "10554";
-				KLog.w(TAG, "推流: url: " + String.format("rtsp://%s:%s/%s.sdp", videoIp, tcpPort, id));
-				mEasyPusher.initPush(videoIp, tcpPort + "", String.format("%s.sdp", id), key,
-						context.getApplicationContext(), new InitCallback() {
-							@Override
-							public void onCallback(int code) {
-								KLog.w(TAG, "推流onCallback: " + code);
-								switch (code) {
-									case EasyPusher.OnInitPusherCallback.CODE.EASY_ACTIVATE_INVALID_KEY:
-										KLog.w(TAG, "推流无效Key");
-										break;
-									case EasyPusher.OnInitPusherCallback.CODE.EASY_ACTIVATE_SUCCESS:
-										KLog.w(TAG, "推流激活成功");
-										synchronized (mSync) {
-											if (!isPushing) {
-												isPushing = true;
-											}
-										}
-
-										break;
-									case EasyPusher.OnInitPusherCallback.CODE.EASY_PUSH_STATE_CONNECTING:
-										KLog.w(TAG, "推流连接中");
-										break;
-									case EasyPusher.OnInitPusherCallback.CODE.EASY_PUSH_STATE_CONNECTED:
-										KLog.w(TAG, "推流连接成功");
-										break;
-									case EasyPusher.OnInitPusherCallback.CODE.EASY_PUSH_STATE_CONNECT_FAILED:
-										KLog.w(TAG, "推流连接失败");
-										break;
-									case EasyPusher.OnInitPusherCallback.CODE.EASY_PUSH_STATE_CONNECT_ABORT:
-										KLog.w(TAG, "推流连接异常中断");
-										break;
-									case EasyPusher.OnInitPusherCallback.CODE.EASY_PUSH_STATE_PUSHING:
-										KLog.w(TAG, "推流推流中");
-
-										break;
-									case EasyPusher.OnInitPusherCallback.CODE.EASY_PUSH_STATE_DISCONNECTED:
-										KLog.w(TAG, "推流断开连接");
-										handleStopPush();
-										break;
-									case EasyPusher.OnInitPusherCallback.CODE.EASY_ACTIVATE_PLATFORM_ERR:
-										KLog.w(TAG, "推流平台不匹配");
-										break;
-									case EasyPusher.OnInitPusherCallback.CODE.EASY_ACTIVATE_COMPANY_ID_LEN_ERR:
-										KLog.w(TAG, "推流断授权使用商不匹配");
-										break;
-									case EasyPusher.OnInitPusherCallback.CODE.EASY_ACTIVATE_PROCESS_NAME_LEN_ERR:
-										KLog.w(TAG, "推流进程名称长度不匹配");
-										break;
-								}
-							}
-						});
-			}
-		}
-
 		private void handleStartPush() {
 			KLog.w(TAG_THREAD, "handleStartPush:mMuxer=" + mMuxer);
 
-			initEasyPusher();
+//			initEasyPusher();
 		}
 
 		private void handleStopPush() {
 			KLog.w(TAG_THREAD, "handleStopPush:mMuxer=" + mMuxer);
 			if (mMuxer != null) {
 				synchronized (mSync) {
-					if (isPushing) {
+					/*if (isPushing) {
 						isPushing = false;
-					}
+					}*/
 				}
 			}
 		}
@@ -704,69 +630,6 @@ public final class CameraServer extends Handler {
 					}
 				} catch (final Exception e) {
 					KLog.e(TAG, "onPrepared:", e);
-				}
-			}
-
-			@Override
-			public void onDrained(MediaCodec.BufferInfo bufferInfo, ByteBuffer encodedData) {
-//				KLog.w(TAG, "onDrained......");
-
-				byte[] mPpsSps = new byte[0];
-				byte[] h264 = new byte[mFrameWidth * mFrameHeight];
-
-				//推流并且有网络时开始推流
-				if (isPushing) {
-					try {
-						encodedData.position(bufferInfo.offset);
-						encodedData.limit(bufferInfo.offset + bufferInfo.size);
-
-						/*EasyMuxer muxer = mMuxer;
-						if (muxer != null) {
-							muxer.pumpStream(encodedData, bufferInfo, true);
-						}*/
-
-						boolean sync = false;
-						if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {// sps
-							sync = (bufferInfo.flags & MediaCodec.BUFFER_FLAG_SYNC_FRAME) != 0;
-							if (!sync) {
-								byte[] temp = new byte[bufferInfo.size];
-								encodedData.get(temp);
-								mPpsSps = temp;
-//								mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
-//								continue;
-							} else {
-								mPpsSps = new byte[0];
-							}
-						}
-						sync |= (bufferInfo.flags & MediaCodec.BUFFER_FLAG_SYNC_FRAME) != 0;
-						int len = mPpsSps.length + bufferInfo.size;
-						if (len > h264.length) {
-							h264 = new byte[len];
-						}
-						if (sync) {
-							System.arraycopy(mPpsSps, 0, h264, 0, mPpsSps.length);
-							encodedData.get(h264, mPpsSps.length, bufferInfo.size);
-							if (BuildConfig.DEBUG) {
-								KLog.w(TAG, String.format("push i video stamp:%d", bufferInfo.presentationTimeUs / 1000));
-							}
-							mEasyPusher.push(h264, 0, mPpsSps.length + bufferInfo.size, bufferInfo.presentationTimeUs / 1000, 1);
-						} else {
-							encodedData.get(h264, 0, bufferInfo.size);
-							if (BuildConfig.DEBUG) {
-								KLog.w(TAG, String.format("push video stamp:%d", bufferInfo.presentationTimeUs / 1000));
-							}
-							mEasyPusher.push(h264, 0, bufferInfo.size, bufferInfo.presentationTimeUs / 1000, 1);
-						}
-					} catch (Exception e) {
-						KLog.e(TAG, "push error: " + e.getMessage());
-						e.printStackTrace();
-					}
-
-				} else {
-					if (mEasyPusher != null) {
-						mEasyPusher.stop();
-						mEasyPusher = null;
-					}
 				}
 			}
 

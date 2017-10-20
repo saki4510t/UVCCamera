@@ -29,7 +29,6 @@ import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
 import android.media.AudioManager;
-import android.media.MediaCodec;
 import android.media.MediaScannerConnection;
 import android.media.SoundPool;
 import android.os.Environment;
@@ -41,7 +40,6 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
-import com.serenegiant.encoder.MediaAudioEncoder;
 import com.serenegiant.encoder.MediaEncoder;
 import com.serenegiant.encoder.MediaMuxerWrapper;
 import com.serenegiant.encoder.MediaSurfaceEncoder;
@@ -702,11 +700,6 @@ abstract class AbstractUVCCameraHandler extends Handler {
 				} catch (final Exception e) {
 					Log.e(TAG, "onPrepared:", e);
 				}
-			}
-
-			@Override
-			public void onDrained(MediaCodec.BufferInfo bufferInfo, ByteBuffer encodedData) {
-
 			}
 		};
 
