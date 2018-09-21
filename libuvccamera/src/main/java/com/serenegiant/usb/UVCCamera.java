@@ -206,8 +206,29 @@ public class UVCCamera {
     	if (mNativePtr != 0 && TextUtils.isEmpty(mSupportedSize)) {
     		mSupportedSize = nativeGetSupportedSize(mNativePtr);
     	}
-		nativeSetPreviewSize(mNativePtr, DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT,
-			DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, DEFAULT_PREVIEW_MODE, DEFAULT_BANDWIDTH);
+
+		mCurrentFrameFormat = DEFAULT_PREVIEW_MODE;
+		mCurrentWidth = DEFAULT_PREVIEW_WIDTH;
+		mCurrentHeight = DEFAULT_PREVIEW_HEIGHT;
+		List<Size> mjpegSizeList = getSupportedSizeList(FRAME_FORMAT_MJPEG);
+		List<Size> yuyvSizeList = getSupportedSizeList(FRAME_FORMAT_YUYV);
+		if (mjpegSizeList.size() > 0 || yuyvSizeList.size() > 0) {
+			// Take MJPEG first if the camera supports both formats
+			mCurrentFrameFormat = (mjpegSizeList.size() > 0) ? FRAME_FORMAT_MJPEG : FRAME_FORMAT_YUYV;
+			List<Size> sizeList = (mjpegSizeList.size() > 0) ? mjpegSizeList : yuyvSizeList;
+			// Find the size with least absolute error
+			int error = Integer.MAX_VALUE;
+			for (Size sz : sizeList) {
+				int e = Math.abs(sz.width - DEFAULT_PREVIEW_WIDTH) + Math.abs(sz.height - DEFAULT_PREVIEW_HEIGHT);
+				if (e < error) {
+					mCurrentWidth = sz.width;
+					mCurrentHeight = sz.height;
+					error = e;
+				}
+			}
+		}
+
+		setPreviewSize(mCurrentWidth, mCurrentHeight, mCurrentFrameFormat);
     }
 
 	/**
@@ -335,6 +356,11 @@ public class UVCCamera {
 
 	public List<Size> getSupportedSizeList() {
 		final int type = (mCurrentFrameFormat > 0) ? 6 : 4;
+		return getSupportedSize(type, mSupportedSize);
+	}
+
+	public List<Size> getSupportedSizeList(int frameFormat) {
+		final int type = (frameFormat > 0) ? 6 : 4;
 		return getSupportedSize(type, mSupportedSize);
 	}
 
