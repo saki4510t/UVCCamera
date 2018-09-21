@@ -139,7 +139,12 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 				@Override
 				public void run() {
 					final UVCCamera camera = new UVCCamera();
-					camera.open(ctrlBlock);
+					try {
+						camera.open(ctrlBlock);
+					} catch (final UnsupportedOperationException | IllegalArgumentException e) {
+						camera.destroy();
+						return;
+					}
 					camera.setStatusCallback(new IStatusCallback() {
 						@Override
 						public void onStatus(final int statusClass, final int event, final int selector,
@@ -187,17 +192,6 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 					if (mPreviewSurface != null) {
 						mPreviewSurface.release();
 						mPreviewSurface = null;
-					}
-					try {
-						camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
-					} catch (final IllegalArgumentException e) {
-						// fallback to YUV mode
-						try {
-							camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
-						} catch (final IllegalArgumentException e1) {
-							camera.destroy();
-							return;
-						}
 					}
 					final SurfaceTexture st = mUVCCameraView.getSurfaceTexture();
 					if (st != null) {

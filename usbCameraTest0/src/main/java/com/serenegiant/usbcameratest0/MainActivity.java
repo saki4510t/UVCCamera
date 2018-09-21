@@ -146,18 +146,12 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 				public void run() {
 					synchronized (mSync) {
 						final UVCCamera camera = new UVCCamera();
-						camera.open(ctrlBlock);
-						if (DEBUG) Log.i(TAG, "supportedSize:" + camera.getSupportedSize());
 						try {
-							camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
-						} catch (final IllegalArgumentException e) {
-							try {
-								// fallback to YUV mode
-								camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
-							} catch (final IllegalArgumentException e1) {
-								camera.destroy();
-								return;
-							}
+							camera.open(ctrlBlock);
+							if (DEBUG) Log.i(TAG, "supportedSize:" + camera.getSupportedSize());
+						} catch (final UnsupportedOperationException | IllegalArgumentException e) {
+							camera.destroy();
+							return;
 						}
 						mPreviewSurface = mUVCCameraView.getHolder().getSurface();
 						if (mPreviewSurface != null) {
