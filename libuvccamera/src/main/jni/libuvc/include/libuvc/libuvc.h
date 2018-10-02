@@ -566,6 +566,7 @@ const uvc_input_terminal_t *uvc_get_input_terminals(uvc_device_handle_t *devh);
 const uvc_output_terminal_t *uvc_get_output_terminals(uvc_device_handle_t *devh);
 const uvc_processing_unit_t *uvc_get_processing_units(uvc_device_handle_t *devh);
 const uvc_extension_unit_t *uvc_get_extension_units(uvc_device_handle_t *devh);
+const uvc_format_desc_t *uvc_get_format_descs(uvc_device_handle_t *devh);
 
 uvc_error_t uvc_get_stream_ctrl_format_size(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl, enum uvc_frame_format format, int width,
