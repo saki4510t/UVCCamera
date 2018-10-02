@@ -333,8 +333,20 @@ public class UVCCamera {
 		}
 	}
 
+	/**
+	 * Get list of sizes for the current frame format
+	 */
 	public List<Size> getSupportedSizeList() {
 		final int type = (mCurrentFrameFormat > 0) ? 6 : 4;
+		return getSupportedSize(type, mSupportedSize);
+	}
+
+	/**
+	 * Get list of sizes for a specific frame format
+	 * @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
+	 */
+	public List<Size> getSupportedSizeList(int frameFormat) {
+		final int type = (frameFormat > 0) ? 6 : 4;
 		return getSupportedSize(type, mSupportedSize);
 	}
 

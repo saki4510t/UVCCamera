@@ -36,10 +36,15 @@ import android.widget.Toast;
 
 import com.serenegiant.common.BaseActivity;
 import com.serenegiant.usb.CameraDialog;
+import com.serenegiant.usb.IFrameCallback;
+import com.serenegiant.usb.Size;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usb.UVCCamera;
+
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = true;	// TODO set false when production
@@ -148,12 +153,60 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 						final UVCCamera camera = new UVCCamera();
 						camera.open(ctrlBlock);
 						if (DEBUG) Log.i(TAG, "supportedSize:" + camera.getSupportedSize());
+
+						List<Size> mjpeg_camera_sizes = camera.getSupportedSizeList(UVCCamera.FRAME_FORMAT_MJPEG);
+						List<Size> yuv_camera_sizes = camera.getSupportedSizeList(UVCCamera.FRAME_FORMAT_YUYV);
+
+						// Pick the size that is closest to our required resolution
+						int required_width = 640;
+						int required_height = 480;
+						int required_area = required_width * required_height;
+
+						int preview_width = 0;
+						int preview_height = 0;
+						int error = Integer.MAX_VALUE; // trying to get this as small as possible
+
+						for (Size s : mjpeg_camera_sizes) {
+							// calculate the area for each camera size
+							int s_area = s.width * s.height;
+							// calculate the difference between this size and the target size
+							int abs_error = Math.abs(s_area - required_area);
+							// check if the abs_error is smaller than what we have already
+							// then use the new size
+							if (abs_error < error){
+								preview_width = s.width;
+								preview_height = s.height;
+								error = abs_error;
+							}
+						}
+
 						try {
-							camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.FRAME_FORMAT_MJPEG);
+							camera.setPreviewSize(preview_width, preview_height, UVCCamera.FRAME_FORMAT_MJPEG);
 						} catch (final IllegalArgumentException e) {
 							try {
 								// fallback to YUV mode
-								camera.setPreviewSize(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT, UVCCamera.DEFAULT_PREVIEW_MODE);
+
+								// find closest matching size
+								// Pick the size that is closest to our required resolution
+								int yuv_preview_width = 0;
+								int yuv_preview_height = 0;
+								int yuv_error = Integer.MAX_VALUE; // trying to get this as small as possible
+
+								for (Size s : yuv_camera_sizes) {
+									// calculate the area for each camera size
+									int s_area = s.width * s.height;
+									// calculate the difference between this size and the target size
+									int abs_error = Math.abs(s_area - required_area);
+									// check if the abs_error is smaller than what we have already
+									// then use the new size
+									if (abs_error < yuv_error) {
+										yuv_preview_width = s.width;
+										yuv_preview_height = s.height;
+										yuv_error = abs_error;
+									}
+								}
+
+								camera.setPreviewSize(yuv_preview_width, yuv_preview_height, UVCCamera.FRAME_FORMAT_YUYV);
 							} catch (final IllegalArgumentException e1) {
 								camera.destroy();
 								return;
