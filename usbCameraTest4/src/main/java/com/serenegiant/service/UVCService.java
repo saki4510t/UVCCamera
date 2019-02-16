@@ -23,6 +23,10 @@
 
 package com.serenegiant.service;
 
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
+import android.support.v4.app.NotificationCompat;
+import android.app.NotificationChannel;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -40,6 +44,7 @@ import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usbcameratest4.MainActivity;
 import com.serenegiant.usbcameratest4.R;
+import com.serenegiant.utils.BuildCheck;
 
 public class UVCService extends BaseService {
 	private static final boolean DEBUG = true;
@@ -111,6 +116,17 @@ public class UVCService extends BaseService {
 		return true;
 	}
 
+	@TargetApi(26)
+	private synchronized String createChannel() {
+		String channelId = "usbCameraTest4Service";
+		NotificationChannel mChannel = new NotificationChannel(channelId, "UsbCameraTest4 Service", NotificationManager.IMPORTANCE_LOW);
+		if (mNotificationManager != null) {
+		  mNotificationManager.createNotificationChannel(mChannel);
+		} else {
+		  stopSelf();
+		}
+		return channelId;
+	}
 //********************************************************************************
 	/**
 	 * helper method to show/change message on notification area
@@ -119,8 +135,14 @@ public class UVCService extends BaseService {
 	 */
 	private void showNotification(final CharSequence text) {
 		if (DEBUG) Log.v(TAG, "showNotification:" + text);
-        // Set the info for the views that show in the notification panel.
-        final Notification notification = new Notification.Builder(this)
+	  String channelId = "";
+	  // If earlier version channel ID is not used
+	  // https://developer.android.com/reference/android/support/v4/app/NotificationCompat.Builder.html#NotificationCompat.Builder(android.content.Context)
+	  if (BuildCheck.isAndroid8()) {
+	    channelId = createChannel();
+	  }
+	  // Set the info for the views that show in the notification panel.
+	  final Notification notification = new NotificationCompat.Builder(this, channelId)
 			.setSmallIcon(R.drawable.ic_launcher)  // the status icon
 			.setTicker(text)  // the status text
 			.setWhen(System.currentTimeMillis())  // the time stamp
@@ -132,7 +154,7 @@ public class UVCService extends BaseService {
 		startForeground(NOTIFICATION, notification);
         // Send the notification.
 		mNotificationManager.notify(NOTIFICATION, notification);
-    }
+  }
 
 	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
 		@Override
