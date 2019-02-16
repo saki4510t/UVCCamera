@@ -70,6 +70,7 @@ public final class USBMonitor {
 	private final WeakReference<Context> mWeakContext;
 	private final UsbManager mUsbManager;
 	private final OnDeviceConnectListener mOnDeviceConnectListener;
+	private UsbDevice connectionInProgressDevice = null;
 	private PendingIntent mPermissionIntent = null;
 	private List<DeviceFilter> mDeviceFilters = new ArrayList<DeviceFilter>();
 
@@ -169,7 +170,7 @@ public final class USBMonitor {
 			if (context != null) {
 				mPermissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), 0);
 				final IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
-				// ACTION_USB_DEVICE_ATTACHED never comes on some devices so it should not be added here
+				filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
 				filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
 				context.registerReceiver(mUsbReceiver, filter);
 			}
@@ -488,6 +489,16 @@ public final class USBMonitor {
 				}
 			} else if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
 				final UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+				if(
+					connectionInProgressDevice != null &&
+					connectionInProgressDevice.getVendorId() == device.getVendorId() &&
+					connectionInProgressDevice.getProductId() == device.getProductId() &&
+					connectionInProgressDevice.getDeviceClass() == device.getDeviceClass() &&
+					connectionInProgressDevice.getDeviceSubclass() == device.getDeviceSubclass()
+				){
+					// probably our last connection was interrupted by kernel detaching a v4l mount, try immediate reconnect
+					requestPermission(device);
+				}
 				updatePermission(device, hasPermission(device));
 				processAttach(device);
 			} else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
@@ -551,6 +562,7 @@ public final class USBMonitor {
 	 */
 	private final void processConnect(final UsbDevice device) {
 		if (destroyed) return;
+		connectionInProgressDevice = device;
 		updatePermission(device, true);
 		mAsyncHandler.post(new Runnable() {
 			@Override
@@ -566,7 +578,8 @@ public final class USBMonitor {
 				} else {
 					createNew = false;
 				}
-				if (mOnDeviceConnectListener != null) {
+				if (mOnDeviceConnectListener != null && ctrlBlock.getConnection() != null) {
+					connectionInProgressDevice = null;
 					mOnDeviceConnectListener.onConnect(device, ctrlBlock, createNew);
 				}
 			}
@@ -882,6 +895,7 @@ public final class USBMonitor {
 	 * @param _info
 	 * @return
 	 */
+	@SuppressLint("NewApi")
 	public static UsbDeviceInfo updateDeviceInfo(final UsbManager manager, final UsbDevice device, final UsbDeviceInfo _info) {
 		final UsbDeviceInfo info = _info != null ? _info : new UsbDeviceInfo();
 		info.clear();
@@ -897,6 +911,7 @@ public final class USBMonitor {
 			}
 			if ((manager != null) && manager.hasPermission(device)) {
 				final UsbDeviceConnection connection = manager.openDevice(device);
+				if(connection == null) return info; // return what we have without a connection
 				final byte[] desc = connection.getRawDescriptors();
 
 				if (TextUtils.isEmpty(info.usb_version)) {
@@ -1228,6 +1243,7 @@ public final class USBMonitor {
 		 * @return
 		 * @throws IllegalStateException
 		 */
+		@SuppressLint("NewApi")
 		public synchronized UsbInterface getInterface(final int interface_id, final int altsetting) throws IllegalStateException {
 			checkConnection();
 			SparseArray<UsbInterface> intfs = mInterfaces.get(interface_id);
