@@ -982,6 +982,8 @@ public final class USBMonitor {
 			}
 			mBusNum = busnum;
 			mDevNum = devnum;
+
+			try {
 //			if (DEBUG) {
 				if (mConnection != null) {
 					final int desc = mConnection.getFileDescriptor();
@@ -991,6 +993,9 @@ public final class USBMonitor {
 					Log.e(TAG, "could not connect to device " + name);
 				}
 //			}
+			} catch (Throwable e){
+				Log.e(TAG, "UsbControlBlock Throwable:" + e.toString());
+			}
 		}
 
 		/**
