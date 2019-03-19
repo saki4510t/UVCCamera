@@ -351,6 +351,7 @@ public final class DeviceFilter {
 	 * @return
 	 */
 	public boolean matches(final UsbDevice device) {
+		Log.i(TAG, "class=" + device.getDeviceClass() + ",subClass=" + device.getDeviceSubclass());
 		if (mVendorId != -1 && device.getVendorId() != mVendorId) {
 			return false;
 		}
