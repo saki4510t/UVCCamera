@@ -36,6 +36,13 @@ android {
     defaultConfig {
         minSdkVersion 14
 		targetSdkVersion versionTarget
+
+		externalNativeBuild {
+			cmake {
+				cppFlags "-std=c++11 -frtti -fexceptions"
+				abiFilters "armeabi-v7a"//, "armeabi", "x86", "mips"
+			}
+		}
     }
 
     buildTypes {
@@ -46,13 +53,19 @@ android {
     }
 	sourceSets {
 		main {
-			jniLibs.srcDir 'src/main/libs'
+//			jniLibs.srcDir 'src/main/libs'
 			jni.srcDirs = []
+		}
+	}
+
+	externalNativeBuild {
+		cmake {
+			path 'src/main/jni/CMakeLists.txt'
 		}
 	}
 }
 
-tasks.withType(JavaCompile) {
+/*tasks.withType(JavaCompile) {
 	compileTask -> compileTask.dependsOn ndkBuild
 }
 
@@ -81,7 +94,7 @@ task ndkClean(type: Exec, description: 'clean JNI libraries') {
 	commandLine ndkBuildPath, 'clean', '-C', file('src/main').absolutePath
 }
 
-clean.dependsOn 'ndkClean'
+clean.dependsOn 'ndkClean'*/
 
 dependencies {
     implementation fileTree(dir: new File(buildDir, 'libs'), include: '*.jar')
