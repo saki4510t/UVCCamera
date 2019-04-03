@@ -296,7 +296,7 @@ public final class USBMonitor {
 	 */
 	public List<UsbDevice> getDeviceList(final List<DeviceFilter> filters) throws IllegalStateException {
 		if (destroyed) throw new IllegalStateException("already destroyed");
-		final HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
+		final HashMap<String, UsbDevice> deviceList = getDeviceList(mUsbManager);
 		final List<UsbDevice> result = new ArrayList<UsbDevice>();
 		if (deviceList != null) {
 			if ((filters == null) || filters.isEmpty()) {
@@ -326,7 +326,7 @@ public final class USBMonitor {
 	 */
 	public List<UsbDevice> getDeviceList(final DeviceFilter filter) throws IllegalStateException {
 		if (destroyed) throw new IllegalStateException("already destroyed");
-		final HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
+		final HashMap<String, UsbDevice> deviceList = getDeviceList(mUsbManager);
 		final List<UsbDevice> result = new ArrayList<UsbDevice>();
 		if (deviceList != null) {
 			for (final UsbDevice device: deviceList.values() ) {
@@ -346,7 +346,7 @@ public final class USBMonitor {
 	public Iterator<UsbDevice> getDevices() throws IllegalStateException {
 		if (destroyed) throw new IllegalStateException("already destroyed");
 		Iterator<UsbDevice> iterator = null;
-		final HashMap<String, UsbDevice> list = mUsbManager.getDeviceList();
+		final HashMap<String, UsbDevice> list = getDeviceList(mUsbManager);
 		if (list != null)
 			iterator = list.values().iterator();
 		return iterator;
@@ -356,7 +356,7 @@ public final class USBMonitor {
 	 * output device list to LogCat
 	 */
 	public final void dumpDevices() {
-		final HashMap<String, UsbDevice> list = mUsbManager.getDeviceList();
+		final HashMap<String, UsbDevice> list = getDeviceList(mUsbManager);
 		if (list != null) {
 			final Set<String> keys = list.keySet();
 			if (keys != null && keys.size() > 0) {
@@ -873,6 +873,18 @@ public final class USBMonitor {
 	 */
 	public static UsbDeviceInfo getDeviceInfo(final Context context, final UsbDevice device) {
 		return updateDeviceInfo((UsbManager)context.getSystemService(Context.USB_SERVICE), device, new UsbDeviceInfo());
+	}
+
+	private static HashMap<String, UsbDevice> getDeviceList(UsbManager usbManager) {
+		HashMap<String, UsbDevice> list = null;
+		if (null != usbManager) {
+			try {
+				list = usbManager.getDeviceList();
+			} catch (Throwable e) {
+				Log.w(TAG, e);
+			}
+		}
+		return list;
 	}
 
 	/**
