@@ -386,7 +386,7 @@ public final class USBMonitor {
 	 */
 	public final boolean hasPermission(final UsbDevice device) throws IllegalStateException {
 		if (destroyed) throw new IllegalStateException("already destroyed");
-		return updatePermission(device, device != null && mUsbManager.hasPermission(device));
+		return updatePermission(device, device != null && hasPermission(mUsbManager, device));
 	}
 
 	/**
@@ -419,7 +419,7 @@ public final class USBMonitor {
 		boolean result = false;
 		if (isRegistered()) {
 			if (device != null) {
-				if (mUsbManager.hasPermission(device)) {
+				if (hasPermission(mUsbManager, device)) {
 					// call onConnect if app already has permission
 					processConnect(device);
 				} else {
@@ -875,6 +875,18 @@ public final class USBMonitor {
 		return updateDeviceInfo((UsbManager)context.getSystemService(Context.USB_SERVICE), device, new UsbDeviceInfo());
 	}
 
+	private static boolean hasPermission(final UsbManager manager, final UsbDevice device) {
+		boolean hasPermission = false;
+		if (null != manager && null != device) {
+			try {
+				hasPermission = manager.hasPermission(device);
+			} catch (Throwable e) {
+				Log.w(TAG, e);
+			}
+		}
+		return hasPermission;
+	}
+
 	private static HashMap<String, UsbDevice> getDeviceList(UsbManager usbManager) {
 		HashMap<String, UsbDevice> list = null;
 		if (null != usbManager) {
@@ -907,7 +919,7 @@ public final class USBMonitor {
 			if (BuildCheck.isMarshmallow()) {
 				info.usb_version = device.getVersion();
 			}
-			if ((manager != null) && manager.hasPermission(device)) {
+			if (hasPermission(manager, device)) {
 				final UsbDeviceConnection connection = manager.openDevice(device);
 				if (null != connection) {
 					final byte[] desc = connection.getRawDescriptors();
