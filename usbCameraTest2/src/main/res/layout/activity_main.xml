@@ -27,7 +27,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#ff000000"
-    tools:context="com.serenegiant.usbcameratest.MainActivity"
+    tools:context="com.serenegiant.usbcameratest2.MainActivity"
     tools:ignore="MergeRootFrame" >
 
     <com.serenegiant.widget.SimpleUVCCameraTextureView
@@ -35,8 +35,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_centerInParent="true"
-        android:layout_gravity="center"
-        android:background="#ff000000" />
+        android:layout_gravity="center"/>
 
     <ImageView
         android:id="@+id/imageView1"

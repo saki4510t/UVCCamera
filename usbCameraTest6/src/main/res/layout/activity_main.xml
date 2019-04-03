@@ -27,7 +27,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#ff000000"
-    tools:context="com.serenegiant.usbcameratest3.MainActivity"
+    tools:context="com.serenegiant.usbcameratest6.MainActivity"
     tools:ignore="MergeRootFrame" >
 
     <LinearLayout

@@ -31,7 +31,7 @@
     android:paddingLeft="@dimen/horizontal_margin"
     android:paddingRight="@dimen/horizontal_margin"
     android:paddingTop="@dimen/vertical_margin"
-    tools:context="com.serenegiant.serviceviewtest.MainActivity" >
+    tools:context="com.serenegiant.usbcameratest4.MainActivity" >
 
 
 	<com.serenegiant.widget.UVCCameraTextureView
