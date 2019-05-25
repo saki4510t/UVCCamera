@@ -25,4 +25,7 @@
 
 <usb>
 	<usb-device class="239" subclass="2" />	<!-- all device of UVC -->
+	<usb-device class="14" subclass="2" />
+	<usb-device class="0" subclass="9" />
+	<usb-device class="2" subclass="0" />
 </usb>
