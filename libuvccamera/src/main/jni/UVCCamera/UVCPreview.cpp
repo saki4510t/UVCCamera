@@ -333,9 +333,9 @@ int UVCPreview::startPreview() {
 		mIsRunning = true;
 		pthread_mutex_lock(&preview_mutex);
 		{
-			if (LIKELY(mPreviewWindow)) {
+//			if (LIKELY(mPreviewWindow)) {
 				result = pthread_create(&preview_thread, NULL, preview_thread_func, (void *)this);
-			}
+//	}
 		}
 		pthread_mutex_unlock(&preview_mutex);
 		if (UNLIKELY(result != EXIT_SUCCESS)) {
@@ -533,7 +533,9 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 					result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
 					recycle_frame(frame_mjpeg);
 					if (LIKELY(!result)) {
-						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+						if (mPreviewWindow) {
+						    frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+						}
 						addCaptureFrame(frame);
 					} else {
 						recycle_frame(frame);
@@ -545,7 +547,9 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 			for ( ; LIKELY(isRunning()) ; ) {
 				frame = waitPreviewFrame();
 				if (LIKELY(frame)) {
-					frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+					if (mPreviewWindow) {
+						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+					}
 					addCaptureFrame(frame);
 				}
 			}
