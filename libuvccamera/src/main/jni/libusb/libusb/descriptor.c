@@ -22,6 +22,19 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+#define LOCAL_DEBUG 0
+
+#if 0	// デバッグ情報を出さない時1
+	#ifndef LOG_NDEBUG
+		#define	LOG_NDEBUG		// LOGV/LOGD/MARKを出力しない時
+		#endif
+	#undef USE_LOGALL			// 指定したLOGxだけを出力
+#else
+	#define USE_LOGALL
+	#undef LOG_NDEBUG
+	#undef NDEBUG
+	#define GET_RAW_DESCRIPTOR
+#endif
 
 #include <errno.h>
 #include <stdint.h>
@@ -293,7 +306,6 @@ static int parse_interface(libusb_context *ctx,
 		size -= ifp->bLength;
 
 		begin = buffer;
-
 		/* Skip over any interface, class or vendor descriptors */
 		while (size >= LIBUSB_DT_HEADER_SIZE/*DESC_HEADER_LENGTH*/) {
 			usbi_parse_descriptor(buffer, "bb", &header, 0);

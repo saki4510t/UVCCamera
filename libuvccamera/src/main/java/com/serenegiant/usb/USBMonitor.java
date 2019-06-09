@@ -53,7 +53,7 @@ import com.serenegiant.utils.HandlerThreadHandler;
 
 public final class USBMonitor {
 
-	private static final boolean DEBUG = false;	// TODO set false on production
+	private static final boolean DEBUG = true;	// TODO set false on production
 	private static final String TAG = "USBMonitor";
 
 	private static final String ACTION_USB_PERMISSION_BASE = "com.serenegiant.USB_PERMISSION.";
@@ -982,6 +982,8 @@ public final class USBMonitor {
 			}
 			mBusNum = busnum;
 			mDevNum = devnum;
+
+			try {
 //			if (DEBUG) {
 				if (mConnection != null) {
 					final int desc = mConnection.getFileDescriptor();
@@ -991,6 +993,9 @@ public final class USBMonitor {
 					Log.e(TAG, "could not connect to device " + name);
 				}
 //			}
+			} catch (Throwable e){
+				Log.e(TAG, "UsbControlBlock Throwable:" + e.toString());
+			}
 		}
 
 		/**

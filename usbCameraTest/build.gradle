@@ -38,19 +38,22 @@ android {
 		targetSdkVersion versionTarget
 		versionCode 8
 		versionName "3.00"
-    }
+	}
 
     buildTypes {
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt'
-        }
+			debuggable = true
+			signingConfig signingConfigs.debug
+		}
     }
 }
 
 dependencies {
 	api fileTree(dir: 'libs', include: ['*.jar'])
 
+	implementation "com.android.support:appcompat-v7:${supportLibVersion}"
 	implementation "com.android.support:support-v4:${supportLibVersion}"
 	implementation "com.android.support:support-annotations:${supportLibVersion}"
 

@@ -33,21 +33,25 @@ android {
    	}
 
     defaultConfig {
-        minSdkVersion 18
+        minSdkVersion 14
         targetSdkVersion versionTarget
 
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            debuggable = true
+        }
+        debug {
+            jniDebuggable = true
         }
     }
 }
 
 dependencies {
 	api fileTree(dir: 'libs', include: ['*.jar'])
-
+	implementation "com.android.support:appcompat-v7:${supportLibVersion}"
 	implementation "com.android.support:support-v4:${supportLibVersion}"
 	implementation "com.android.support:support-annotations:${supportLibVersion}"
 
