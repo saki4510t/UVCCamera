@@ -72,6 +72,7 @@ private:
 	size_t previewBytes;
 //
 	volatile bool mIsCapturing;
+	volatile bool mHasCaptureThread;
 	ANativeWindow *mCaptureWindow;
 	pthread_t capture_thread;
 	pthread_mutex_t capture_mutex;
