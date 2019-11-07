@@ -34,7 +34,7 @@ android {
 	}
 
     defaultConfig {
-        minSdkVersion 14
+        minSdkVersion 18
 		targetSdkVersion versionTarget
     }
 
@@ -86,10 +86,6 @@ clean.dependsOn 'ndkClean'
 dependencies {
     implementation fileTree(dir: new File(buildDir, 'libs'), include: '*.jar')
 
-	implementation "com.android.support:support-v4:${supportLibVersion}"
-	implementation "com.android.support:support-annotations:${supportLibVersion}"
-
-	implementation("com.serenegiant:common:${commonLibVersion}") {
-		exclude module: 'support-v4'
-	}
+	implementation "androidx.appcompat:appcompat:${androidXVersion}"
+	implementation "com.serenegiant:common:${commonLibVersion}"
 }
