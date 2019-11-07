@@ -43,9 +43,6 @@ import android.widget.Button;
 import android.widget.CheckedTextView;
 import android.widget.Spinner;
 
-import com.serenegiant.usb.DeviceFilter;
-import com.serenegiant.usb.USBMonitor;
-
 import com.serenegiant.uvccamera.R;
 
 public class CameraDialog extends DialogFragment {
@@ -87,7 +84,6 @@ public class CameraDialog extends DialogFragment {
 		// Fragment need default constructor
 	}
 
-	@SuppressWarnings("deprecation")
 	@Override
 	public void onAttach(final Activity activity) {
 		super.onAttach(activity);
@@ -148,7 +144,7 @@ public class CameraDialog extends DialogFragment {
 	public void onResume() {
 		super.onResume();
 		updateDevices();
-	    final Button button = (Button)getDialog().findViewById(android.R.id.button3);
+	    final Button button = getDialog().findViewById(android.R.id.button3);
 	    if (button != null) {
 	    	button.setOnClickListener(mOnClickListener);
 	    }
