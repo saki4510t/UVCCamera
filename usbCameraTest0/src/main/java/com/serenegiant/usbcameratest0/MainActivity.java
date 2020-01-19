@@ -67,6 +67,8 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 	protected void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		getSupportActionBar().hide();
+
 		mCameraButton = (ImageButton)findViewById(R.id.camera_button);
 		mCameraButton.setOnClickListener(mOnClickListener);
 
@@ -90,8 +92,8 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 			public void run(){
 				while(true){
 					updateDevices();
-					if(mDeviceList.size() > 0){
-						if (mUVCCamera != null && mDeviceList.size() != 1) {
+					if (mDeviceList.size() > 0 && (mUVCCamera == null || mDeviceList.size() != 1)){
+						if (mUVCCamera != null){
 							synchronized (mSync) {
 								mUVCCamera.destroy();
 								mUVCCamera = null;
@@ -102,13 +104,17 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 						int randNum = getRandomNumberInRange(0, mDeviceList.size() - 1);
 						device = mDeviceList.get(randNum);
 						mUSBMonitor.requestPermission(device);
+						try {
+							Thread.sleep(10000);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
 					}
 					try {
-						Thread.sleep(10000);
+						Thread.sleep(10);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
-
 				}
 			}
 		};
