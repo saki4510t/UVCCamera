@@ -125,8 +125,8 @@ public class UVCCamera {
 	}
 
 	private UsbControlBlock mCtrlBlock;
-    protected long mControlSupports;			// カメラコントロールでサポートしている機能フラグ
-    protected long mProcSupports;				// プロセッシングユニットでサポートしている機能フラグ
+    protected long mControlSupports;			// 相机控件支持的功能标志
+    protected long mProcSupports;				// 处理单元支持的功能标志
     protected int mCurrentFrameFormat = FRAME_FORMAT_MJPEG;
 	protected int mCurrentWidth = DEFAULT_PREVIEW_WIDTH, mCurrentHeight = DEFAULT_PREVIEW_HEIGHT;
 	protected float mCurrentBandwidthFactor = DEFAULT_BANDWIDTH;
@@ -237,7 +237,7 @@ public class UVCCamera {
     	stopPreview();
     	if (mNativePtr != 0) {
     		nativeRelease(mNativePtr);
-//    		mNativePtr = 0;	// nativeDestroyを呼ぶのでここでクリアしちゃダメ
+//    		mNativePtr = 0;	// 致电nativeDestroy，因此请不要在此处清除
     	}
     	if (mCtrlBlock != null) {
 			mCtrlBlock.close();
