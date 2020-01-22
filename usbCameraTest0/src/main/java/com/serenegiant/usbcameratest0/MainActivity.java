@@ -93,21 +93,22 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 				while(true){
 					updateDevices();
 					if (mDeviceList.size() > 0 && (mUVCCamera == null || mDeviceList.size() != 1)){
+
+						UsbDevice device;
+						int randNum = getRandomNumberInRange(0, mDeviceList.size() - 1);
+						device = mDeviceList.get(randNum);
+						mUSBMonitor.requestPermission(device);
+						try {
+							Thread.sleep(30000);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
 						if (mUVCCamera != null){
 							synchronized (mSync) {
 								mUVCCamera.destroy();
 								mUVCCamera = null;
 								isActive = isPreview = false;
 							}
-						}
-						UsbDevice device;
-						int randNum = getRandomNumberInRange(0, mDeviceList.size() - 1);
-						device = mDeviceList.get(randNum);
-						mUSBMonitor.requestPermission(device);
-						try {
-							Thread.sleep(10000);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
 						}
 					}
 					try {
