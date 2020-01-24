@@ -87,13 +87,13 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 				mUSBMonitor.register();
 			}
 		}
+		updateDevices();
 		mThread =  new Thread(){
 			@Override
 			public void run(){
 				while(true){
-					updateDevices();
-					if (mDeviceList.size() > 0 && (mUVCCamera == null || mDeviceList.size() != 1)){
 
+					if (mDeviceList.size() > 0 && (mUVCCamera == null || mDeviceList.size() != 1)){
 						UsbDevice device;
 						int randNum = getRandomNumberInRange(0, mDeviceList.size() - 1);
 						device = mDeviceList.get(randNum);
@@ -103,13 +103,14 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
-						if (mUVCCamera != null){
-							synchronized (mSync) {
-								mUVCCamera.destroy();
-								mUVCCamera = null;
-								isActive = isPreview = false;
-							}
-						}
+						// Release current connected camera
+//						if (mUVCCamera != null){
+//							synchronized (mSync) {
+//								mUVCCamera.destroy();
+//								mUVCCamera = null;
+//								isActive = isPreview = false;
+//							}
+//						}
 					}
 					try {
 						Thread.sleep(10);
