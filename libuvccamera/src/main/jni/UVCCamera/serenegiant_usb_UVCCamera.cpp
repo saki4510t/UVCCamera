@@ -240,13 +240,18 @@ static jint nativeStartPreview(JNIEnv *env, jobject thiz,
 // プレビューを停止
 static jint nativeStopPreview(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera) {
-
+    LOGE("--------------------1 not found------------------");
 	jint result = JNI_ERR;
+	LOGE("--------------------2 not found------------------");
 	ENTER();
+	LOGE("--------------------3 not found------------------");
 	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	LOGE("--------------------4 not found------------------");
 	if (LIKELY(camera)) {
+	    LOGE("--------------------5 not found------------------");
 		result = camera->stopPreview();
 	}
+	LOGE("--------------------6 not found------------------");
 	RETURN(result, jint);
 }
 

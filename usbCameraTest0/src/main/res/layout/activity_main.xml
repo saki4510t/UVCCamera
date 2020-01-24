@@ -40,6 +40,7 @@
         android:layout_height="@dimen/button_size"
         android:contentDescription="@string/camera"
         android:scaleType="centerCrop"
-        android:src="@android:drawable/ic_menu_camera" />
+        android:src="@android:drawable/ic_menu_camera"
+        android:visibility="invisible"/>
 
 </FrameLayout>

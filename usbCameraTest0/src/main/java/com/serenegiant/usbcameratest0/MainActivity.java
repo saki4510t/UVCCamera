@@ -34,31 +34,41 @@ import android.view.View.OnClickListener;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
+
+import java.util.Random;
+
 import com.serenegiant.common.BaseActivity;
 import com.serenegiant.usb.CameraDialog;
+import com.serenegiant.usb.DeviceFilter;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usb.UVCCamera;
 
+import java.util.List;
+
 public class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = true;	// TODO set false when production
 	private static final String TAG = "MainActivity";
 
-    private final Object mSync = new Object();
-    // for accessing USB and USB camera
-    private USBMonitor mUSBMonitor;
+	private final Object mSync = new Object();
+	// for accessing USB and USB camera
+	private USBMonitor mUSBMonitor;
 	private UVCCamera mUVCCamera;
 	private SurfaceView mUVCCameraView;
 	// for open&start / stop&close camera preview
 	private ImageButton mCameraButton;
 	private Surface mPreviewSurface;
 	private boolean isActive, isPreview;
+	private List<UsbDevice> mDeviceList;
+	private Thread mThread;
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		getSupportActionBar().hide();
+
 		mCameraButton = (ImageButton)findViewById(R.id.camera_button);
 		mCameraButton.setOnClickListener(mOnClickListener);
 
@@ -77,6 +87,41 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 				mUSBMonitor.register();
 			}
 		}
+		updateDevices();
+		mThread =  new Thread(){
+			@Override
+			public void run(){
+				while(true){
+
+					if (mDeviceList.size() > 0 && (mUVCCamera == null || mDeviceList.size() != 1)){
+						UsbDevice device;
+						int randNum = getRandomNumberInRange(0, mDeviceList.size() - 1);
+						device = mDeviceList.get(randNum);
+						mUSBMonitor.requestPermission(device);
+						try {
+							Thread.sleep(30000);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+						// Release current connected camera
+//						if (mUVCCamera != null){
+//							synchronized (mSync) {
+//								mUVCCamera.destroy();
+//								mUVCCamera = null;
+//								isActive = isPreview = false;
+//							}
+//						}
+					}
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		};
+		// Start the thread.
+		mThread.start();
 	}
 
 	@Override
@@ -95,6 +140,9 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 		if (DEBUG) Log.v(TAG, "onDestroy:");
 		synchronized (mSync) {
 			isActive = isPreview = false;
+			if(mThread != null){
+				stopThread(mThread);
+			}
 			if (mUVCCamera != null) {
 				mUVCCamera.destroy();
 				mUVCCamera = null;
@@ -225,6 +273,33 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 				}
 			}, 0);
 		}
+	}
+
+	private void updateDevices(){
+		final List<DeviceFilter> filter = DeviceFilter.getDeviceFilters(this, com.serenegiant.uvccamera.R.xml.device_filter);
+		mDeviceList = mUSBMonitor.getDeviceList(filter.get(0));
+	}
+
+	private synchronized void stopThread(Thread theThread)
+	{
+		if (theThread != null)
+		{
+			theThread = null;
+		}
+	}
+
+
+	private static int getRandomNumberInRange(int min, int max) {
+
+		if (min > max) {
+			throw new IllegalArgumentException("max must be greater than min");
+		}
+		if(min == max){
+			return min;
+		}
+
+		Random r = new Random();
+		return r.nextInt((max - min) + 1) + min;
 	}
 
 	private final SurfaceHolder.Callback mSurfaceViewCallback = new SurfaceHolder.Callback() {
