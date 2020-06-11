@@ -2,7 +2,18 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/UVCCamera.iml" filepath="$PROJECT_DIR$/UVCCamera.iml" />
+      <module fileurl="file://$PROJECT_DIR$/UVCCamera.iml" filepath="$PROJECT_DIR$/UVCCamera.iml" group="UVCCamera" />
+      <module fileurl="file://$PROJECT_DIR$/libuvccamera/UVCCamera-libuvccamera.iml" filepath="$PROJECT_DIR$/libuvccamera/UVCCamera-libuvccamera.iml" group="UVCCamera/libuvccamera" />
+      <module fileurl="file://$PROJECT_DIR$/usbCameraCommon/UVCCamera-usbCameraCommon.iml" filepath="$PROJECT_DIR$/usbCameraCommon/UVCCamera-usbCameraCommon.iml" group="UVCCamera/usbCameraCommon" />
+      <module fileurl="file://$PROJECT_DIR$/usbCameraTest/UVCCamera-usbCameraTest.iml" filepath="$PROJECT_DIR$/usbCameraTest/UVCCamera-usbCameraTest.iml" group="UVCCamera/usbCameraTest" />
+      <module fileurl="file://$PROJECT_DIR$/usbCameraTest0/UVCCamera-usbCameraTest0.iml" filepath="$PROJECT_DIR$/usbCameraTest0/UVCCamera-usbCameraTest0.iml" group="UVCCamera/usbCameraTest0" />
+      <module fileurl="file://$PROJECT_DIR$/usbCameraTest2/UVCCamera-usbCameraTest2.iml" filepath="$PROJECT_DIR$/usbCameraTest2/UVCCamera-usbCameraTest2.iml" group="UVCCamera/usbCameraTest2" />
+      <module fileurl="file://$PROJECT_DIR$/usbCameraTest3/UVCCamera-usbCameraTest3.iml" filepath="$PROJECT_DIR$/usbCameraTest3/UVCCamera-usbCameraTest3.iml" group="UVCCamera/usbCameraTest3" />
+      <module fileurl="file://$PROJECT_DIR$/usbCameraTest4/UVCCamera-usbCameraTest4.iml" filepath="$PROJECT_DIR$/usbCameraTest4/UVCCamera-usbCameraTest4.iml" group="UVCCamera/usbCameraTest4" />
+      <module fileurl="file://$PROJECT_DIR$/usbCameraTest5/UVCCamera-usbCameraTest5.iml" filepath="$PROJECT_DIR$/usbCameraTest5/UVCCamera-usbCameraTest5.iml" group="UVCCamera/usbCameraTest5" />
+      <module fileurl="file://$PROJECT_DIR$/usbCameraTest6/UVCCamera-usbCameraTest6.iml" filepath="$PROJECT_DIR$/usbCameraTest6/UVCCamera-usbCameraTest6.iml" group="UVCCamera/usbCameraTest6" />
+      <module fileurl="file://$PROJECT_DIR$/usbCameraTest7/UVCCamera-usbCameraTest7.iml" filepath="$PROJECT_DIR$/usbCameraTest7/UVCCamera-usbCameraTest7.iml" group="UVCCamera/usbCameraTest7" />
+      <module fileurl="file://$PROJECT_DIR$/usbCameraTest8/UVCCamera-usbCameraTest8.iml" filepath="$PROJECT_DIR$/usbCameraTest8/UVCCamera-usbCameraTest8.iml" group="UVCCamera/usbCameraTest8" />
       <module fileurl="file://$PROJECT_DIR$/libuvccamera/libuvccamera.iml" filepath="$PROJECT_DIR$/libuvccamera/libuvccamera.iml" />
       <module fileurl="file://$PROJECT_DIR$/usbCameraCommon/usbCameraCommon.iml" filepath="$PROJECT_DIR$/usbCameraCommon/usbCameraCommon.iml" />
       <module fileurl="file://$PROJECT_DIR$/usbCameraTest/usbCameraTest.iml" filepath="$PROJECT_DIR$/usbCameraTest/usbCameraTest.iml" />
