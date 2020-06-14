@@ -623,7 +623,7 @@ typedef struct uvc_device_descriptor {
 	uint16_t bcdUVC;
 	/**
 	 * Serial number (null if unavailable)
-	 * Serial number (null if unavailable)
+	 * 序列号（如果不可用，则为空）
 	 */
 	const char *serialNumber;
 	/**
