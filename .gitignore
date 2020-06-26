@@ -72,5 +72,6 @@ libuvccamera/src/main/libs
 .idea/scopes
 .idea/caches
 .idea/codeStyles
+.idea/*
 *.iml
 .DS_Store

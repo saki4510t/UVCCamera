@@ -47,7 +47,7 @@ android {
 	sourceSets {
 		main {
 			jniLibs.srcDir 'src/main/libs'
-			jni.srcDirs = ['src/main/jni']
+			jni.srcDirs = []
 		}
 	}
 }
