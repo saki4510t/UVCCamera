@@ -57,22 +57,22 @@ public class UVCCamera {
 	public static final int PIXEL_FORMAT_RAW = 0;
 	public static final int PIXEL_FORMAT_YUV = 1;
 	public static final int PIXEL_FORMAT_RGB565 = 2;
-	public static final int PIXEL_FORMAT_RGBX = 3;
+	public static final int PIXEL_FORMAT_RGBX = 3; // RGBA8888
 	public static final int PIXEL_FORMAT_YUV420SP = 4;
 	public static final int PIXEL_FORMAT_NV21 = 5;		// = YVU420SemiPlanar
 
 	//--------------------------------------------------------------------------------
-    public static final int	CTRL_SCANNING		= 0x00000001;	// D0:  Scanning Mode
-    public static final int CTRL_AE				= 0x00000002;	// D1:  Auto-Exposure Mode
-    public static final int CTRL_AE_PRIORITY	= 0x00000004;	// D2:  Auto-Exposure Priority
-    public static final int CTRL_AE_ABS			= 0x00000008;	// D3:  Exposure Time (Absolute)
-    public static final int CTRL_AR_REL			= 0x00000010;	// D4:  Exposure Time (Relative)
-    public static final int CTRL_FOCUS_ABS		= 0x00000020;	// D5:  Focus (Absolute)
-    public static final int CTRL_FOCUS_REL		= 0x00000040;	// D6:  Focus (Relative)
-    public static final int CTRL_IRIS_ABS		= 0x00000080;	// D7:  Iris (Absolute)
-    public static final int CTRL_IRIS_REL		= 0x00000100;	// D8:  Iris (Relative)
-    public static final int CTRL_ZOOM_ABS		= 0x00000200;	// D9:  Zoom (Absolute)
-    public static final int CTRL_ZOOM_REL		= 0x00000400;	// D10: Zoom (Relative)
+    public static final int	CTRL_SCANNING		= 0x00000001;	// D0:  Scanning Mode 扫描方式
+    public static final int CTRL_AE				= 0x00000002;	// D1:  Auto-Exposure Mode 自动曝光模式
+    public static final int CTRL_AE_PRIORITY	= 0x00000004;	// D2:  Auto-Exposure Priority 自动曝光优先
+    public static final int CTRL_AE_ABS			= 0x00000008;	// D3:  Exposure Time (Absolute) 曝光时间（绝对值）
+    public static final int CTRL_AR_REL			= 0x00000010;	// D4:  Exposure Time (Relative) 曝光时间（相对）
+    public static final int CTRL_FOCUS_ABS		= 0x00000020;	// D5:  Focus (Absolute) 对焦（绝对值）
+    public static final int CTRL_FOCUS_REL		= 0x00000040;	// D6:  Focus (Relative) 对焦（相对）
+    public static final int CTRL_IRIS_ABS		= 0x00000080;	// D7:  Iris (Absolute) 虹膜（绝对值）
+    public static final int CTRL_IRIS_REL		= 0x00000100;	// D8:  Iris (Relative) 虹膜（相对）
+    public static final int CTRL_ZOOM_ABS		= 0x00000200;	// D9:  Zoom (Absolute) 缩放（绝对值）
+    public static final int CTRL_ZOOM_REL		= 0x00000400;	// D10: Zoom (Relative) 缩放（相对）
     public static final int CTRL_PANTILT_ABS	= 0x00000800;	// D11: PanTilt (Absolute)
     public static final int CTRL_PANTILT_REL	= 0x00001000;	// D12: PanTilt (Relative)
     public static final int CTRL_ROLL_ABS		= 0x00002000;	// D13: Roll (Absolute)
@@ -88,9 +88,9 @@ public class UVCCamera {
     public static final int PU_SATURATION		= 0x80000008;	// D3: Saturation
     public static final int PU_SHARPNESS		= 0x80000010;	// D4: Sharpness
     public static final int PU_GAMMA			= 0x80000020;	// D5: Gamma
-    public static final int PU_WB_TEMP			= 0x80000040;	// D6: White Balance Temperature
-    public static final int PU_WB_COMPO			= 0x80000080;	// D7: White Balance Component
-    public static final int PU_BACKLIGHT		= 0x80000100;	// D8: Backlight Compensation
+    public static final int PU_WB_TEMP			= 0x80000040;	// D6: White Balance Temperature 白平衡温度
+    public static final int PU_WB_COMPO			= 0x80000080;	// D7: White Balance Component 白平衡组件
+    public static final int PU_BACKLIGHT		= 0x80000100;	// D8: Backlight Compensation 背光补偿
     public static final int PU_GAIN				= 0x80000200;	// D9: Gain
     public static final int PU_POWER_LF			= 0x80000400;	// D10: Power Line Frequency
     public static final int PU_HUE_AUTO			= 0x80000800;	// D11: Hue, Auto
@@ -133,6 +133,7 @@ public class UVCCamera {
     protected String mSupportedSize;
     protected List<Size> mCurrentSizeList;
 	// these fields from here are accessed from native code and do not change name and remove
+	// 这些字段从本地代码访问，不会更改名称并删除
     protected long mNativePtr;
     protected int mScanningModeMin, mScanningModeMax, mScanningModeDef;
     protected int mExposureModeMin, mExposureModeMax, mExposureModeDef;
@@ -237,7 +238,7 @@ public class UVCCamera {
     	stopPreview();
     	if (mNativePtr != 0) {
     		nativeRelease(mNativePtr);
-//    		mNativePtr = 0;	// 致电nativeDestroy，因此请不要在此处清除
+//    		mNativePtr = 0;	// 调用nativeDestroy，因此请不要在此处清除
     	}
     	if (mCtrlBlock != null) {
 			mCtrlBlock.close();
@@ -443,12 +444,15 @@ public class UVCCamera {
 
     // wrong result may return when you call this just after camera open.
     // it is better to wait several hundreads millseconds.
+	// 打开相机后立即调用此错误结果可能会返回。
+	// 最好等待几百毫秒。
 	public boolean checkSupportFlag(final long flag) {
     	updateCameraParams();
-    	if ((flag & 0x80000000) == 0x80000000)
+    	if ((flag & 0x80000000) == 0x80000000) {
     		return ((mProcSupports & flag) == (flag & 0x7ffffffF));
-    	else
+		} else {
     		return (mControlSupports & flag) == flag;
+		}
     }
 
 //================================================================================
@@ -906,11 +910,15 @@ public class UVCCamera {
     	if (mNativePtr != 0) {
     		if ((mControlSupports == 0) || (mProcSupports == 0)) {
         		// サポートしている機能フラグを取得
-    			if (mControlSupports == 0)
-    				mControlSupports = nativeGetCtrlSupports(mNativePtr);
-    			if (mProcSupports == 0)
-    				mProcSupports = nativeGetProcSupports(mNativePtr);
+				// 获取支持的功能标志
+    			if (mControlSupports == 0){
+					mControlSupports = nativeGetCtrlSupports(mNativePtr);
+    			}
+    			if (mProcSupports == 0){
+					mProcSupports = nativeGetProcSupports(mNativePtr);
+    			}
     	    	// 設定値を取得
+				// 获取设定值
     	    	if ((mControlSupports != 0) && (mProcSupports != 0)) {
 	    	    	nativeUpdateBrightnessLimit(mNativePtr);
 	    	    	nativeUpdateContrastLimit(mNativePtr);
@@ -1053,8 +1061,9 @@ public class UVCCamera {
     public void startCapture(final Surface surface) {
     	if (mCtrlBlock != null && surface != null) {
     		nativeSetCaptureDisplay(mNativePtr, surface);
-    	} else
+    	} else {
     		throw new NullPointerException("startCapture");
+		}
     }
 
     /**

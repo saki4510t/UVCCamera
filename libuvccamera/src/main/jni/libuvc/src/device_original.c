@@ -216,10 +216,13 @@ uvc_error_t uvc_open(
   if (ret != UVC_SUCCESS)
     goto fail;
 
-  /* Automatically attach/detach kernel driver on supported platforms */
+  /* Automatically attach/detach kernel driver on supported platforms
+   * 在支持的平台上自动附加/分离内核驱动程序
+   */
   libusb_set_auto_detach_kernel_driver(usb_devh, 1);
 
   UVC_DEBUG("claiming control interface %d", internal_devh->info->ctrl_if.bInterfaceNumber);
+  // 声明UVC接口，必要时分离内核驱动程序。
   ret = uvc_claim_if(internal_devh, internal_devh->info->ctrl_if.bInterfaceNumber);
   if (ret != UVC_SUCCESS)
     goto fail;
@@ -253,7 +256,9 @@ uvc_error_t uvc_open(
   }
 
   if (dev->ctx->own_usb_ctx && dev->ctx->open_devices == NULL) {
-    /* Since this is our first device, we need to spawn the event handler thread */
+    /* Since this is our first device, we need to spawn the event handler thread
+     * 由于这是我们的第一台设备，因此我们需要生成事件处理程序线程
+     */
     uvc_start_handler_thread(dev->ctx);
   }
 
@@ -702,6 +707,7 @@ void uvc_unref_device(uvc_device_t *dev) {
 /** @internal
  * Claim a UVC interface, detaching the kernel driver if necessary.
  * @ingroup device
+ * 声明UVC接口，必要时分离内核驱动程序。
  *
  * @param devh UVC device handle
  * @param idx UVC interface index

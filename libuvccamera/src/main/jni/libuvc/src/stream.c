@@ -280,10 +280,13 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 	return UVC_SUCCESS;
 }
 
-/** @brief Reconfigure stream with a new stream format.
+/**
+ * @brief Reconfigure stream with a new stream format.
  * @ingroup streaming
+ * 使用新的流格式重新配置流。
  *
  * This may be executed whether or not the stream is running.
+ * 无论流是否正在运行，都可以执行此操作。
  *
  * @param[in] strmh Stream handle
  * @param[in] ctrl Control block, processed using {uvc_probe_stream_ctrl} or
@@ -309,6 +312,7 @@ uvc_error_t uvc_stream_ctrl(uvc_stream_handle_t *strmh, uvc_stream_ctrl_t *ctrl)
 
 /** @internal
  * @brief Find the descriptor for a specific frame configuration
+ * 查找特定帧配置的描述符
  * @param stream_if Stream interface
  * @param format_id Index of format class descriptor
  * @param frame_id Index of frame descriptor
@@ -506,7 +510,8 @@ found:
 	RETURN(UVC_SUCCESS, uvc_error_t);
 }
 
-/** Get a negotiated streaming control block for some common parameters.
+/**
+ * Get a negotiated streaming control block for some common parameters.
  * @ingroup streaming
  *
  * @param[in] devh Device handle
@@ -522,7 +527,8 @@ uvc_error_t uvc_get_stream_ctrl_format_size(uvc_device_handle_t *devh,
 	return uvc_get_stream_ctrl_format_size_fps(devh, ctrl, cf, width, height, fps, fps);
 }
 
-/** Get a negotiated streaming control block for some common parameters.
+/**
+ * Get a negotiated streaming control block for some common parameters.
  * @ingroup streaming
  *
  * @param[in] devh Device handle
@@ -567,6 +573,7 @@ found:
 
 /** @internal
  * Negotiate streaming parameters with the device
+ * 与设备协商流参数
  *
  * @param[in] devh UVC device
  * @param[in,out] ctrl Control block
@@ -574,7 +581,7 @@ found:
 uvc_error_t uvc_probe_stream_ctrl(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl) {
 	uvc_error_t err;
-
+	// 声明UVC接口，必要时分离内核驱动程序。
 	err = uvc_claim_if(devh, ctrl->bInterfaceNumber);
 	if (UNLIKELY(err)) {
 		LOGE("uvc_claim_if:err=%d", err);
@@ -1212,7 +1219,8 @@ uvc_error_t uvc_start_streaming(uvc_device_handle_t *devh,
 	return uvc_start_streaming_bandwidth(devh, ctrl, cb, user_ptr, 0, flags);
 }
 
-/** Begin streaming video from the camera into the callback function.
+/**
+ * Begin streaming video from the camera into the callback function.
  * @ingroup streaming
  *
  * @param devh UVC device
@@ -1222,6 +1230,14 @@ uvc_error_t uvc_start_streaming(uvc_device_handle_t *devh,
  * @param bandwidth_factor [0.0f, 1.0f]
  * @param flags Stream setup flags, currently undefined. Set this to zero. The lower bit
  * is reserved for backward compatibility.
+ *
+ * 开始将视频从摄像机传输到回调函数中。
+ *
+ * @param devh UVC设备
+ * @param ctrl 控制块，使用{uvc_probe_stream_ctrl}或{uvc_get_stream_ctrl_format_size}处理
+ * @param cb  回调方法
+ * @param bandwidth_factor [0.0f, 1.0f]
+ * @param flags 流设置标志，当前未定义。 将此设置为零。 保留低位用于向后兼容。
  */
 uvc_error_t uvc_start_streaming_bandwidth(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl, uvc_frame_callback_t *cb, void *user_ptr,
@@ -1229,11 +1245,12 @@ uvc_error_t uvc_start_streaming_bandwidth(uvc_device_handle_t *devh,
 		uint8_t flags) {
 	uvc_error_t ret;
 	uvc_stream_handle_t *strmh;
-
+	// 打开新视频流
 	ret = uvc_stream_open_ctrl(devh, &strmh, ctrl);
 	if (UNLIKELY(ret != UVC_SUCCESS))
 		return ret;
 
+    // 开始将视频从流传输到回调函数中。
 	ret = uvc_stream_start_bandwidth(strmh, cb, user_ptr, bandwidth_factor, flags);
 	if (UNLIKELY(ret != UVC_SUCCESS)) {
 		uvc_stream_close(strmh);
@@ -1243,13 +1260,16 @@ uvc_error_t uvc_start_streaming_bandwidth(uvc_device_handle_t *devh,
 	return UVC_SUCCESS;
 }
 
-/** Begin streaming video from the camera into the callback function.
+/**
+ * Begin streaming video from the camera into the callback function.
  * @ingroup streaming
+ * 开始将视频从摄像机传输到回调函数中。
  *
  * @deprecated The stream type (bulk vs. isochronous) will be determined by the
  * type of interface associated with the uvc_stream_ctrl_t parameter, regardless
  * of whether the caller requests isochronous streaming. Please switch to
  * uvc_start_streaming().
+ * @deprecated 流类型（批量vs.等时）将由与uvc_stream_ctrl_t参数关联的接口的类型确定，无论调用方是否请求等时流。 请切换到uvc_start_streaming（）。
  *
  * @param devh UVC device
  * @param ctrl Control block, processed using {uvc_probe_stream_ctrl} or
@@ -1261,10 +1281,12 @@ uvc_error_t uvc_start_iso_streaming(uvc_device_handle_t *devh,
 	return uvc_start_streaming_bandwidth(devh, ctrl, cb, user_ptr, 0.0f, 0);
 }
 
+// 通过接口获取流
 static uvc_stream_handle_t *_uvc_get_stream_by_interface(
 		uvc_device_handle_t *devh, int interface_idx) {
 	uvc_stream_handle_t *strmh;
 
+    // 循环查找流
 	DL_FOREACH(devh->streams, strmh)
 	{
 		if (strmh->stream_if->bInterfaceNumber == interface_idx)
@@ -1274,10 +1296,12 @@ static uvc_stream_handle_t *_uvc_get_stream_by_interface(
 	return NULL;
 }
 
+// 获取流
 static uvc_streaming_interface_t *_uvc_get_stream_if(uvc_device_handle_t *devh,
 		int interface_idx) {
 	uvc_streaming_interface_t *stream_if;
 
+    // 循环查找流
 	DL_FOREACH(devh->info->stream_ifs, stream_if)
 	{
 		if (stream_if->bInterfaceNumber == interface_idx)
@@ -1287,8 +1311,10 @@ static uvc_streaming_interface_t *_uvc_get_stream_if(uvc_device_handle_t *devh,
 	return NULL;
 }
 
-/** Open a new video stream.
+/**
+ * Open a new video stream.
  * @ingroup streaming
+ * 打开新视频流
  *
  * @param devh UVC device
  * @param ctrl Control block, processed using {uvc_probe_stream_ctrl} or
@@ -1296,18 +1322,22 @@ static uvc_streaming_interface_t *_uvc_get_stream_if(uvc_device_handle_t *devh,
  */
 uvc_error_t uvc_stream_open_ctrl(uvc_device_handle_t *devh,
 		uvc_stream_handle_t **strmhp, uvc_stream_ctrl_t *ctrl) {
-	/* Chosen frame and format descriptors */
+	/* Chosen frame and format descriptors
+	 * 选择帧和格式描述符
+	 */
 	uvc_stream_handle_t *strmh = NULL;
 	uvc_streaming_interface_t *stream_if;
 	uvc_error_t ret;
 
 	UVC_ENTER();
 
+    // 循通过接口环查找流
 	if (UNLIKELY(_uvc_get_stream_by_interface(devh, ctrl->bInterfaceNumber) != NULL)) {
 		ret = UVC_ERROR_BUSY; /* Stream is already opened */
 		goto fail;
 	}
 
+    // 获取流
 	stream_if = _uvc_get_stream_if(devh, ctrl->bInterfaceNumber);
 	if (UNLIKELY(!stream_if)) {
 		ret = UVC_ERROR_INVALID_PARAM;
@@ -1322,11 +1352,12 @@ uvc_error_t uvc_stream_open_ctrl(uvc_device_handle_t *devh,
 	strmh->devh = devh;
 	strmh->stream_if = stream_if;
 	strmh->frame.library_owns_data = 1;
-
+	// 声明UVC接口，必要时分离内核驱动程序。
 	ret = uvc_claim_if(strmh->devh, strmh->stream_if->bInterfaceNumber);
 	if (UNLIKELY(ret != UVC_SUCCESS))
 		goto fail;
 
+    // 使用新的流格式重新配置流。
 	ret = uvc_stream_ctrl(strmh, ctrl);
 	if (UNLIKELY(ret != UVC_SUCCESS))
 		goto fail;
@@ -1341,6 +1372,7 @@ uvc_error_t uvc_stream_open_ctrl(uvc_device_handle_t *devh,
 	pthread_mutex_init(&strmh->cb_mutex, NULL);
 	pthread_cond_init(&strmh->cb_cond, NULL);
 
+    // 添加到双向队列中
 	DL_APPEND(devh->streams, strmh);
 
 	*strmhp = strmh;
@@ -1355,20 +1387,27 @@ fail:
 	return ret;
 }
 
-/** Begin streaming video from the stream into the callback function.
+/**
+ * Begin streaming video from the stream into the callback function.
  * @ingroup streaming
  *
  * @param strmh UVC stream
  * @param cb   User callback function. See {uvc_frame_callback_t} for restrictions.
  * @param flags Stream setup flags, currently undefined. Set this to zero. The lower bit
  * is reserved for backward compatibility.
+ *
+ * 开始将视频从流传输到回调函数中。
+ * @param strmh UVC流
+ * @param cb 用户回调函数。 有关限制，请参见{uvc_frame_callback_t}。
+ * @param flags 流设置标志，当前未定义。 将此设置为零。 保留低位用于向后兼容。
  */
 uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
 		uvc_frame_callback_t *cb, void *user_ptr, uint8_t flags) {
 	return uvc_stream_start_bandwidth(strmh, cb, user_ptr, 0, flags);
 }
 
-/** Begin streaming video from the stream into the callback function.
+/**
+ * Begin streaming video from the stream into the callback function.
  * @ingroup streaming
  *
  * @param strmh UVC stream
@@ -1376,10 +1415,18 @@ uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
  * @param bandwidth_factor [0.0f, 1.0f]
  * @param flags Stream setup flags, currently undefined. Set this to zero. The lower bit
  * is reserved for backward compatibility.
+ *
+ * 开始将视频从流传输到回调函数中。
+ * @param strmh UVC流
+ * @param cb   用户回调函数。 有关限制，请参见{uvc_frame_callback_t}。
+ * @param bandwidth_factor [0.0f, 1.0f]
+ * @param flags 流设置标志，当前未定义。 将此设置为零。 保留低位用于向后兼容。
  */
 uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 		uvc_frame_callback_t *cb, void *user_ptr, float bandwidth_factor, uint8_t flags) {
-	/* USB interface we'll be using */
+	/* USB interface we'll be using
+	 * 我们将使用的USB接口
+	 */
 	const struct libusb_interface *interface;
 	int interface_id;
 	char isochronous;
@@ -1387,7 +1434,9 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 	uvc_format_desc_t *format_desc;
 	uvc_stream_ctrl_t *ctrl;
 	uvc_error_t ret;
-	/* Total amount of data per transfer */
+	/* Total amount of data per transfer
+	 * 每次传输的数据总量
+	 */
 	size_t total_transfer_size;
 	struct libusb_transfer *transfer;
 	int transfer_id;
@@ -1408,6 +1457,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 	strmh->last_scr = 0;
 	strmh->bfh_err = 0;	// XXX
 
+    // 查找特定帧配置的描述符
 	frame_desc = uvc_find_frame_desc_stream(strmh, ctrl->bFormatIndex, ctrl->bFrameIndex);
 	if (UNLIKELY(!frame_desc)) {
 		ret = UVC_ERROR_INVALID_PARAM;
@@ -1416,6 +1466,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 	}
 	format_desc = frame_desc->parent;
 
+    // 获取帧格式
 	strmh->frame_format = uvc_frame_format_for_guid(format_desc->guidFormat);
 	if (UNLIKELY(strmh->frame_format == UVC_FRAME_FORMAT_UNKNOWN)) {
 		ret = UVC_ERROR_NOT_SUPPORTED;
@@ -1426,29 +1477,45 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 		? ctrl->dwMaxVideoFrameSize : frame_desc->dwMaxVideoFrameBufferSize;
 
 	// Get the interface that provides the chosen format and frame configuration
+	// 获取提供所选格式和帧配置的界面
 	interface_id = strmh->stream_if->bInterfaceNumber;
 	interface = &strmh->devh->info->config->interface[interface_id];
 
 	/* A VS interface uses isochronous transfers if it has multiple altsettings.
-	 * (UVC 1.5: 2.4.3. VideoStreaming Interface, on page 19) */
+	 * (UVC 1.5: 2.4.3. VideoStreaming Interface, on page 19)
+	 * 如果VS接口具有多个altsettings，则使用等时传输。
+	 *（UVC 1.5：2.4.3.VideoStreaming接口，第19页）
+	 */
 	isochronous = interface->num_altsetting > 1;
 
 	if (isochronous) {
 		MARK("isochronous transfer mode:num_altsetting=%d", interface->num_altsetting);
 		/* For isochronous streaming, we choose an appropriate altsetting for the endpoint
-		 * and set up several transfers */
+		 * and set up several transfers
+		 * 为同步流，我们为端点选择一个适当的altsetting，并设置几个传输
+		 */
 		const struct libusb_interface_descriptor *altsetting;
 		const struct libusb_endpoint_descriptor *endpoint;
 		/* The greatest number of bytes that the device might provide, per packet, in this
-		 * configuration */
+		 * configuration
+		 * 在此配置中，每个数据包设备可能提供的最大字节数
+		 */
 		size_t config_bytes_per_packet;
-		/* Number of packets per transfer */
+		/* Number of packets per transfer
+		 * 每次传输的数据包数量
+		 */
 		size_t packets_per_transfer;
-		/* Total amount of data per transfer */
+		/* Total amount of data per transfer
+		 * 每次传输的数据总量
+		 */
 		size_t total_transfer_size;
-		/* Size of packet transferable from the chosen endpoint */
+		/* Size of packet transferable from the chosen endpoint
+		 * 可从所选端点传输的数据包大小
+		 */
 		size_t endpoint_bytes_per_packet;
-		/* Index of the altsetting */
+		/* Index of the altsetting
+		 * altsetting的索引
+		 */
 		int alt_idx, ep_idx;
 
 		struct libusb_transfer *transfer;
@@ -1467,7 +1534,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 //#else
 //		LOGI("config_bytes_per_packet=%ld", config_bytes_per_packet);
 //#endif
-		if (UNLIKELY(!config_bytes_per_packet)) {	// XXX added to privent zero divided exception at the following code
+		if (UNLIKELY(!config_bytes_per_packet)) {	// XXX added to privent zero divided exception at the following code 在以下代码中添加了XXX以防止零除异常
 			ret = UVC_ERROR_IO;
 			LOGE("config_bytes_per_packet is zero");
 			goto fail;
@@ -1475,13 +1542,17 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 
 		/* Go through the altsettings and find one whose packets are at least
 		 * as big as our format's maximum per-packet usage. Assume that the
-		 * packet sizes are increasing. */
+		 * packet sizes are increasing.
+		 * 通过altsettings，找到一个其数据包至少与我们格式最大的每数据包使用量一样大的数据包。 假设数据包大小正在增加。
+		 */
 		const int num_alt = interface->num_altsetting - 1;
 		for (alt_idx = 0; alt_idx <= num_alt ; alt_idx++) {
 			altsetting = interface->altsetting + alt_idx;
 			endpoint_bytes_per_packet = 0;
 
-			/* Find the endpoint with the number specified in the VS header */
+			/* Find the endpoint with the number specified in the VS header
+			 * 使用VS标头中指定的编号查找端点
+			 */
 			for (ep_idx = 0; ep_idx < altsetting->bNumEndpoints; ep_idx++) {
 				endpoint = altsetting->endpoint + ep_idx;
 				if (endpoint->bEndpointAddress == format_desc->parent->bEndpointAddress) {
@@ -1500,6 +1571,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 				}
 			}
 			// XXX config_bytes_per_packet should not be zero otherwise zero divided exception occur
+			// XXX config_bytes_per_packet不应为零，否则会发生零除异常
 			if (LIKELY(endpoint_bytes_per_packet)) {
 				if ( (endpoint_bytes_per_packet >= config_bytes_per_packet)
 					|| (alt_idx == num_alt) ) {	// XXX always match to last altsetting for buggy device
@@ -1545,7 +1617,9 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 			goto fail;
 		}
 
-		/* Set up the transfers */
+		/* Set up the transfers
+		 * 设置转移
+		 */
 		MARK("Set up the transfers");
 		for (transfer_id = 0; transfer_id < LIBUVC_NUM_TRANSFER_BUFS; ++transfer_id) {
 			transfer = libusb_alloc_transfer(packets_per_transfer);
@@ -1562,7 +1636,9 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 		}
 	} else {
 		MARK("bulk transfer mode");
-		/** prepare for bulk transfer */
+		/* prepare for bulk transfer
+		 * 准备批量转移
+		 */
 		for (transfer_id = 0; transfer_id < LIBUVC_NUM_TRANSFER_BUFS; ++transfer_id) {
 			transfer = libusb_alloc_transfer(0);
 			strmh->transfers[transfer_id] = transfer;
@@ -1580,6 +1656,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 
 	/* If the user wants it, set up a thread that calls the user's function
 	 * with the contents of each frame.
+	 * 如果用户需要，请设置一个线程，该线程使用每帧的内容来调用用户的函数。
 	 */
 	MARK("create callback thread");
 	if LIKELY(cb) {

@@ -217,10 +217,13 @@ uvc_error_t uvc_query_stream_ctrl(
   return UVC_SUCCESS;
 }
 
-/** @brief Reconfigure stream with a new stream format.
+/**
+ * @brief Reconfigure stream with a new stream format.
  * @ingroup streaming
+ * 使用新的流格式重新配置流。
  *
  * This may be executed whether or not the stream is running.
+ * 无论流是否正在运行，都可以执行此操作。
  *
  * @param[in] strmh Stream handle
  * @param[in] ctrl Control block, processed using {uvc_probe_stream_ctrl} or

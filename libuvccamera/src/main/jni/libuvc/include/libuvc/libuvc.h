@@ -1027,10 +1027,15 @@ uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_any2bgr(uvc_frame_t *in, uvc_frame_t *out);
 
 #ifdef LIBUVC_HAS_JPEG
+// 将MJPEG转为rgb
 uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out);
+// 将MJPEG转为bgr
 uvc_error_t uvc_mjpeg2bgr(uvc_frame_t *in, uvc_frame_t *out);		// XXX
+// 将MJPEG转为bgr565
 uvc_error_t uvc_mjpeg2rgb565(uvc_frame_t *in, uvc_frame_t *out);	// XXX
+// 将MJPEG转为rgbx8888
 uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
+// 将MJPEG转为YUYV
 uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out);		// XXX
 #endif
 

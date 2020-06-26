@@ -1598,6 +1598,12 @@ int API_EXPORTED libusb_set_configuration(libusb_device_handle *dev,
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns a LIBUSB_ERROR code on other failure
  * \see libusb_set_auto_detach_kernel_driver()
+ *
+ * 声明给定设备句柄上的接口。 您必须先声明要使用的接口，然后才能在其任何端点上执行I/O。
+ * 尝试声明一个已经声明的接口是合法的，在这种情况下，libusb 仅返回0而没有执行任何操作。
+ * 如果将<tt>dev</tt>的 auto_detach_kernel_driver 设置为1，则将在必要时分离内核驱动程序，如果失败，则返回分离错误。
+ * 声明接口是纯粹的逻辑操作； 它不会导致任何请求通过总线发送。 接口声明用于指示基础操作系统您的应用程序希望获得该接口的所有权。
+ * 这是一个非阻塞功能。
  */
 int API_EXPORTED libusb_claim_interface(libusb_device_handle *dev,
 		int interface_number) {
@@ -1623,6 +1629,8 @@ int API_EXPORTED libusb_claim_interface(libusb_device_handle *dev,
 		if (r == LIBUSB_ERROR_BUSY) {
 			// EBUSYが返ってきた時はたぶんカーネルドライバーがアタッチされているから
 			// デタッチ要求してから再度claimしてみる
+			// 当EBUSY回来时，也许内核驱动程序已附加
+			// 请求分队，然后回收
 			LOGV("request detach kernel driver and retry claim interface");
 			r = usbi_backend->release_interface(dev, interface_number);
 			libusb_detach_kernel_driver(dev, interface_number);

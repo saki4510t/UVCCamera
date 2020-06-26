@@ -71,6 +71,7 @@ uvc_error_t uvc_ensure_frame_size(uvc_frame_t *frame, size_t need_bytes) {
 
 /** @brief Allocate a frame structure
  * @ingroup frame
+ * 开辟帧数据内存
  *
  * @param data_bytes Number of bytes to allocate, or zero
  * @return New frame, or NULL on error
@@ -102,8 +103,10 @@ uvc_frame_t *uvc_allocate_frame(size_t data_bytes) {
 	return frame;
 }
 
-/** @brief Free a frame structure
+/**
+ * @brief Free a frame structure
  * @ingroup frame
+ * 释放帧数据内存
  *
  * @param frame Frame to destroy
  */
@@ -118,8 +121,10 @@ static inline unsigned char sat(int i) {
 	return (unsigned char) (i >= 255 ? 255 : (i < 0 ? 0 : i));
 }
 
-/** @brief Duplicate a frame, preserving color format
+/**
+ * @brief Duplicate a frame, preserving color format
  * @ingroup frame
+ * 复制帧，保留色彩格式
  *
  * @param in Original frame
  * @param out Duplicate frame
@@ -159,6 +164,7 @@ uvc_error_t uvc_duplicate_frame(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		// 压缩格式？ XXX如果只有一个帧进/出步距高，可能会导致崩溃...
 		memcpy(out->data, in->data, in->actual_bytes);
 	}
 #else
@@ -1310,8 +1316,10 @@ uvc_error_t uvc_any2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 }
 
-/** @brief Convert a frame to RGBX8888
+/**
+ * @brief Convert a frame to RGBX8888
  * @ingroup frame
+ * 将帧转换为RGBX8888
  *
  * @param in non-rgbx frame
  * @param out rgbx frame

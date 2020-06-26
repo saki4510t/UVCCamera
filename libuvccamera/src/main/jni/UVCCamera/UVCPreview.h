@@ -56,6 +56,7 @@ typedef struct {
 class UVCPreview {
 private:
 	uvc_device_handle_t *mDeviceHandle;
+	// 预览视图
 	ANativeWindow *mPreviewWindow;
 	volatile bool mIsRunning;
 	int requestWidth, requestHeight, requestMode;
@@ -67,7 +68,9 @@ private:
 	pthread_t preview_thread;
 	pthread_mutex_t preview_mutex;
 	pthread_cond_t preview_sync;
+	// 预览帧数组，获取到的摄像头数据帧都放在这里
 	ObjectArray<uvc_frame_t *> previewFrames;
+	// 预览格式
 	int previewFormat;
 	size_t previewBytes;
 //
@@ -76,10 +79,14 @@ private:
 	pthread_t capture_thread;
 	pthread_mutex_t capture_mutex;
 	pthread_cond_t capture_sync;
+	// 抓拍帧
 	uvc_frame_t *captureQueu;			// keep latest frame
+	// 帧回调Java对象
 	jobject mFrameCallbackObj;
+	// 像素格式转换方法
 	convFunc_t mFrameCallbackFunc;
 	Fields_iframecallback iframecallback_fields;
+	// 帧回调像素格式
 	int mPixelFormat;
 	size_t callbackPixelBytes;
 // improve performance by reducing memory allocation

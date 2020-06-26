@@ -341,9 +341,9 @@ typedef struct uvc_device_info {
   一个更好的方法可能是调度传输线程FIFO（如果我们有根）。
   我们可以/应该更改此设置以允许在默认情况下将其减少到5，然后允许用户根据需要更改缓冲区的数量。
  */
-#define LIBUVC_NUM_TRANSFER_BUFS 10
+#define LIBUVC_NUM_TRANSFER_BUFS 10 // LIBUVC编号转移缓冲区
 
-#define LIBUVC_XFER_BUF_SIZE	( 16 * 1024 * 1024 )
+#define LIBUVC_XFER_BUF_SIZE	( 16 * 1024 * 1024 ) // 16MB
 
 struct uvc_stream_handle {
   struct uvc_device_handle *devh;
