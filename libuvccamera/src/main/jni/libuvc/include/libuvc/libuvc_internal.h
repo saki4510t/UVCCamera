@@ -373,6 +373,7 @@ struct uvc_stream_handle {
   uint32_t last_scr, hold_last_scr;
   size_t got_bytes, hold_bytes;
   size_t size_buf;	// XXX add for boundary check 边界检查
+  // outbuf 输出缓存  holdbuf持有缓存
   uint8_t *outbuf, *holdbuf;
   pthread_mutex_t cb_mutex;
   pthread_cond_t cb_cond;
