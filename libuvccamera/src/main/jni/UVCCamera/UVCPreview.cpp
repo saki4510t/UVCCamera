@@ -127,7 +127,7 @@ uvc_frame_t *UVCPreview::get_frame(size_t data_bytes) {
 	}
 	pthread_mutex_unlock(&pool_mutex);
 	if UNLIKELY(!frame) {
-		LOGW("allocate new frame");
+		//LOGW("allocate new frame");
 		// 开辟帧数据内存
 		frame = uvc_allocate_frame(data_bytes);
 	}
@@ -303,12 +303,14 @@ void UVCPreview::callbackPixelFormatChanged() {
 		break;
 	  case PIXEL_FORMAT_YUV20SP:
 		LOGI("PIXEL_FORMAT_YUV20SP:");
-		mFrameCallbackFunc = uvc_yuyv2iyuv420SP;
+		// NV12: YYYYYYYY UVUV   => YUV420SP
+		mFrameCallbackFunc = uvc_yuyv2yuv420SP;
 		callbackPixelBytes = (sz * 3) / 2;
 		break;
 	  case PIXEL_FORMAT_NV21:
 		LOGI("PIXEL_FORMAT_NV21:");
-		mFrameCallbackFunc = uvc_yuyv2yuv420SP;
+	    // NV21: YYYYYYYY VUVU   => YUV420SP
+		mFrameCallbackFunc = uvc_yuyv2iyuv420SP;
 		callbackPixelBytes = (sz * 3) / 2;
 		break;
 	}
@@ -907,19 +909,19 @@ void UVCPreview::do_capture_surface(JNIEnv *env) {
 			// frame data is always YUYV format.
 			// 帧数据始终为YUYV格式。
 			if LIKELY(isCapturing()) {
-				if (UNLIKELY(!converted)) {
-				    // 从帧池中获取帧
-					converted = get_frame(previewBytes);
-				}
-				if (LIKELY(converted)) {
-				    // 转为RGBA8888
-					int b = uvc_any2rgbx(frame, converted);
-					if (!b) {
-						if (LIKELY(mCaptureWindow)) {
-						    // 复制到Surface
-							copyToSurface(converted, &mCaptureWindow);
-						}
-					}
+				if (LIKELY(mCaptureWindow)) {
+                    if (UNLIKELY(!converted)) {
+                        // 从帧池中获取帧
+                        converted = get_frame(previewBytes);
+                    }
+                    if (LIKELY(converted)) {
+                        // 转为RGBA8888
+                        int b = uvc_any2rgbx(frame, converted);
+                        if (!b) {
+                            // 复制到Surface
+                            copyToSurface(converted, &mCaptureWindow);
+                        }
+                    }
 				}
 			}
 			// 回调 IFrameCallback#onFrame

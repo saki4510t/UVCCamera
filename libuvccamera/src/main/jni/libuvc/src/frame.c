@@ -1155,6 +1155,9 @@ int uvc_yuyv2iyuv420P(uvc_frame_t *in, uvc_frame_t *out) {
 	RETURN(0, int);
 }
 
+// YUYV 格式，码流为`Y0 U0 Y1 V0 Y2 U2 Y3 V2`
+// NV21 格式，码流为`YYYYYYYY VUVU`
+// NV12 格式，码流为` YYYYYYYY UVUV`
 uvc_error_t uvc_yuyv2yuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
 	ENTER();
 	
@@ -1200,6 +1203,9 @@ uvc_error_t uvc_yuyv2yuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
 	RETURN(UVC_SUCCESS, uvc_error_t);
 }
 
+// YUYV 格式，码流为`Y0 U0 Y1 V0 Y2 U2 Y3 V2`
+// NV21 格式，码流为`YYYYYYYY VUVU`
+// NV12 格式，码流为` YYYYYYYY UVUV`
 uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
 	ENTER();
 	
