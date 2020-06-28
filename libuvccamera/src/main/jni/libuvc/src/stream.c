@@ -1868,9 +1868,9 @@ void _uvc_populate_frame(uvc_stream_handle_t *strmh) {
 	 */
 	if (UNLIKELY(frame->data_bytes < strmh->hold_bytes)) {
 		frame->data = realloc(frame->data, strmh->hold_bytes);	// TODO add error handling when failed realloc
-		frame->data_bytes = strmh->hold_bytes;
+		frame->actual_bytes = frame->data_bytes = strmh->hold_bytes;
 	}
-	memcpy(frame->data, strmh->holdbuf, strmh->hold_bytes/*frame->data_bytes*/);	// XXX
+	memcpy(frame->data, strmh->holdbuf, strmh->hold_bytes);	// XXX
 
 	/** @todo set the frame time */
 }

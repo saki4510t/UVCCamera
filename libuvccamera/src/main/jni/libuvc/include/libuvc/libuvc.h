@@ -651,13 +651,14 @@ typedef struct uvc_frame {
 	void *data;
 	/**
 	 * Size of image data buffer
-	 * 图像数据缓冲区的大小
+	 * 图像数据缓冲区的大小，大于等于actual_bytes
 	 */
 	size_t data_bytes;
 	/**
 	 * XXX Size of actual received data to confirm whether the received bytes is same
 	 * as expected on user function when some microframes dropped
 	 * XXX实际接收到的数据的大小，以确认当某些微帧丢失时接收到的字节是否与用户功能期望的字节相同
+	 * 实际数据长度，大小小于等于data_bytes，数据处理时，使用该值
 	 */
 	size_t actual_bytes;
 	/**

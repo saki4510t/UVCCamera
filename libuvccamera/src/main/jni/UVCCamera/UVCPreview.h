@@ -91,6 +91,7 @@ private:
 	size_t callbackPixelBytes;
 // improve performance by reducing memory allocation
 	pthread_mutex_t pool_mutex;
+	// 帧池
 	ObjectArray<uvc_frame_t *> mFramePool;
 	uvc_frame_t *get_frame(size_t data_bytes);
 	void recycle_frame(uvc_frame_t *frame);

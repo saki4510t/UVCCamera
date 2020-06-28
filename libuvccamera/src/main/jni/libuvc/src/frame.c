@@ -52,11 +52,14 @@
 #include "libuvc/libuvc_internal.h"
 
 #define USE_STRIDE 1
-/** @internal */
+/** @internal
+ * 确保帧空间大小充足
+ */
 uvc_error_t uvc_ensure_frame_size(uvc_frame_t *frame, size_t need_bytes) {
 	if LIKELY(frame->library_owns_data) {
 		if UNLIKELY(!frame->data || frame->data_bytes != need_bytes) {
 			frame->actual_bytes = frame->data_bytes = need_bytes;	// XXX
+			// 重新创建指定空间内存
 			frame->data = realloc(frame->data, frame->data_bytes);
 		}
 		if (UNLIKELY(!frame->data || !need_bytes))
@@ -90,7 +93,7 @@ uvc_frame_t *uvc_allocate_frame(size_t data_bytes) {
 //	frame->library_owns_data = 1;	// XXX moved to lower
 
 	if (LIKELY(data_bytes > 0)) {
-		frame->library_owns_data = 1;
+		frame->library_owns_data = 1; // 数据缓冲区可以被帧转换函数任意重新分配
 		frame->actual_bytes = frame->data_bytes = data_bytes;	// XXX
 		frame->data = malloc(data_bytes);
 
@@ -250,9 +253,9 @@ uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	out->source = in->source;
 
 	uint8_t *prgb = in->data;
-	const uint8_t *prgb_end = prgb + in->data_bytes - PIXEL8_RGB;
+	const uint8_t *prgb_end = prgb + in->actual_bytes - PIXEL8_RGB;
 	uint8_t *prgbx = out->data;
-	const uint8_t *prgbx_end = prgbx + out->data_bytes - PIXEL8_RGBX;
+	const uint8_t *prgbx_end = prgbx + out->actual_bytes - PIXEL8_RGBX;
 
 	// RGB888 to RGBX8888
 #if USE_STRIDE
@@ -332,9 +335,9 @@ uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	out->source = in->source;
 
 	uint8_t *prgb = in->data;
-	const uint8_t *prgb_end = prgb + in->data_bytes - PIXEL8_RGB;
+	const uint8_t *prgb_end = prgb + in->actual_bytes - PIXEL8_RGB;
 	uint8_t *prgb565 = out->data;
-	const uint8_t *prgb565_end = prgb565 + out->data_bytes - PIXEL8_RGB565;
+	const uint8_t *prgb565_end = prgb565 + out->actual_bytes - PIXEL8_RGB565;
 
 	// RGB888 to RGB565
 #if USE_STRIDE
@@ -435,9 +438,9 @@ uvc_error_t uvc_yuyv2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_YUYV;
+	const uint8_t *pyuv_end = pyuv + in->actual_bytes - PIXEL8_YUYV;
 	uint8_t *prgb = out->data;
-	const uint8_t *prgb_end = prgb + out->data_bytes - PIXEL8_RGB;
+	const uint8_t *prgb_end = prgb + out->actual_bytes - PIXEL8_RGB;
 
 #if USE_STRIDE
 	if (in->step && out->step && (in->step != out->step)) {
@@ -499,9 +502,9 @@ uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_YUYV;
+	const uint8_t *pyuv_end = pyuv + in->actual_bytes - PIXEL8_YUYV;
 	uint8_t *prgb565 = out->data;
-	const uint8_t *prgb565_end = prgb565 + out->data_bytes - PIXEL8_RGB565;
+	const uint8_t *prgb565_end = prgb565 + out->actual_bytes - PIXEL8_RGB565;
 
 	uint8_t tmp[PIXEL8_RGB];	// for temporary rgb888 data(8pixel)
 
@@ -595,9 +598,9 @@ uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_YUYV;
+	const uint8_t *pyuv_end = pyuv + in->actual_bytes - PIXEL8_YUYV;
 	uint8_t *prgbx = out->data;
-	const uint8_t *prgbx_end = prgbx + out->data_bytes - PIXEL8_RGBX;
+	const uint8_t *prgbx_end = prgbx + out->actual_bytes - PIXEL8_RGBX;
 
 	// YUYV => RGBX8888
 #if USE_STRIDE
@@ -685,9 +688,9 @@ uvc_error_t uvc_yuyv2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_YUYV;
+	uint8_t *pyuv_end = pyuv + in->actual_bytes - PIXEL8_YUYV;
 	uint8_t *pbgr = out->data;
-	uint8_t *pbgr_end = pbgr + out->data_bytes - PIXEL8_BGR;
+	uint8_t *pbgr_end = pbgr + out->actual_bytes - PIXEL8_BGR;
 
 	// YUYV => BGR888
 #if USE_STRIDE
@@ -774,9 +777,9 @@ uvc_error_t uvc_uyvy2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_UYVY;
+	const uint8_t *pyuv_end = pyuv + in->actual_bytes - PIXEL8_UYVY;
 	uint8_t *prgb = out->data;
-	const uint8_t *prgb_end = prgb + out->data_bytes - PIXEL8_RGB;
+	const uint8_t *prgb_end = prgb + out->actual_bytes - PIXEL8_RGB;
 
 	// UYVY => RGB888
 #if USE_STRIDE
@@ -838,9 +841,9 @@ uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_UYVY;
+	const uint8_t *pyuv_end = pyuv + in->actual_bytes - PIXEL8_UYVY;
 	uint8_t *prgb565 = out->data;
-	const uint8_t *prgb565_end = prgb565 + out->data_bytes - PIXEL8_RGB565;
+	const uint8_t *prgb565_end = prgb565 + out->actual_bytes - PIXEL8_RGB565;
 
 	uint8_t tmp[PIXEL8_RGB];		// for temporary rgb888 data(8pixel)
 
@@ -934,9 +937,9 @@ uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_UYVY;
+	const uint8_t *pyuv_end = pyuv + in->actual_bytes - PIXEL8_UYVY;
 	uint8_t *prgbx = out->data;
-	const uint8_t *prgbx_end = prgbx + out->data_bytes - PIXEL8_RGBX;
+	const uint8_t *prgbx_end = prgbx + out->actual_bytes - PIXEL8_RGBX;
 
 	// UYVY => RGBX8888
 #if USE_STRIDE
@@ -1023,9 +1026,9 @@ uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	out->source = in->source;
 
 	uint8_t *pyuv = in->data;
-	const uint8_t *pyuv_end = pyuv + in->data_bytes - PIXEL8_UYVY;
+	const uint8_t *pyuv_end = pyuv + in->actual_bytes - PIXEL8_UYVY;
 	uint8_t *pbgr = out->data;
-	const uint8_t *pbgr_end = pbgr + out->data_bytes - PIXEL8_BGR;
+	const uint8_t *pbgr_end = pbgr + out->actual_bytes - PIXEL8_BGR;
 
 	// UYVY => BGR888
 #if USE_STRIDE

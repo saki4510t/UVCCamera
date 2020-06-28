@@ -117,6 +117,12 @@ uvc_frame_t *UVCPreview::get_frame(size_t data_bytes) {
 	{
 		if (!mFramePool.isEmpty()) {
 			frame = mFramePool.last();
+			if(frame->data_bytes < data_bytes){
+			    mFramePool.put(frame);
+			    frame = NULL;
+			}else{
+			    frame->actual_bytes = data_bytes;
+			}
 		}
 	}
 	pthread_mutex_unlock(&pool_mutex);
@@ -415,7 +421,7 @@ int UVCPreview::stopPreview() {
 //**********************************************************************
 void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args) {
 	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
-	if UNLIKELY(!preview->isRunning() || !frame || !frame->frame_format || !frame->data || !frame->data_bytes) return;
+	if UNLIKELY(!preview->isRunning() || !frame || !frame->frame_format || !frame->data || !frame->data_bytes || !frame->actual_bytes) return;
 	if (UNLIKELY(
 		((frame->frame_format != UVC_FRAME_FORMAT_MJPEG) && (frame->actual_bytes < preview->frameBytes))
 		|| (frame->width != preview->frameWidth) || (frame->height != preview->frameHeight) )) {
@@ -429,7 +435,7 @@ void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args)
 	}
 	if (LIKELY(preview->isRunning())) {
 	    // 从帧池中获取帧
-		uvc_frame_t *copy = preview->get_frame(frame->data_bytes);
+		uvc_frame_t *copy = preview->get_frame(frame->actual_bytes);
 		if (UNLIKELY(!copy)) {
 #if LOCAL_DEBUG
 			LOGE("uvc_callback:unable to allocate duplicate frame!");
@@ -591,7 +597,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				}
 			}
 		} else {
-			// yuvyv mode
+			// yuyv mode
 			for ( ; LIKELY(isRunning()) ; ) {
 			    // 等待预览帧
 				frame = waitPreviewFrame();

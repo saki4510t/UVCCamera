@@ -41,8 +41,8 @@
 #if defined(__GNUC__)
 // the macro for branch prediction optimaization for gcc(-O2/-O3 required)
 #define		CONDITION(cond)				((__builtin_expect((cond)!=0, 0)))
-#define		LIKELY(x)					((__builtin_expect(!!(x), 1)))	// x is likely true
-#define		UNLIKELY(x)					((__builtin_expect(!!(x), 0)))	// x is likely false
+#define		LIKELY(x)					((__builtin_expect(!!(x), 1)))	// x is likely true //x很可能为真
+#define		UNLIKELY(x)					((__builtin_expect(!!(x), 0)))	// x is likely false //x很可能为假
 #else
 #define		CONDITION(cond)				((cond))
 #define		LIKELY(x)					((x))
