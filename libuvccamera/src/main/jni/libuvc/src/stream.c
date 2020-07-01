@@ -444,7 +444,7 @@ static uvc_frame_desc_t *_uvc_find_frame_desc_stream_if(
 		uvc_streaming_interface_t *stream_if, uint16_t format_id,
 		uint16_t frame_id) {
 
-	uvc_format_desc_t *format_desc = NULL;
+	uvc_format_desc_t *format = NULL;
 	uvc_frame_desc_t *frame = NULL;
 
 	DL_FOREACH(stream_if->format_descs, format)
@@ -1052,12 +1052,7 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 		pktbuf = libusb_get_iso_packet_buffer_simple(transfer, packet_id);
 		if (LIKELY(pktbuf)) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null  添加空检查，因为libusb_get_iso_packet_buffer_simple可能返回空
 //			assert(pktbuf < transfer->buffer + transfer->length - 1);	// XXX
-#ifdef __ANDROID__
-			// XXX optimaization because this flag never become true on Android devices 优化，因为此标志在Android设备上永远不会变为真
-			if (UNLIKELY(strmh->devh->is_isight))
-#else
 			if (strmh->devh->is_isight)
-#endif
 			{
 				if (pkt->actual_length < 30
 					|| (memcmp(isight_tag, pktbuf + 2, sizeof(isight_tag))
@@ -1118,16 +1113,10 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 						strmh->last_scr = 0;
 					}
 				}
-
-#ifdef __ANDROID__	// XXX optimaization because this flag never become true on Android devices 优化，因为此标志在Android设备上永远不会变为真
-				if (UNLIKELY(strmh->devh->is_isight))
-					continue; // don't look for data after an iSight header  不要在iSight标头后查找数据
-#else
 				if (strmh->devh->is_isight) {
 					MARK("is_isight");
 					continue; // don't look for data after an iSight header  不要在iSight标头后查找数据
 				}
-#endif
 			} // if LIKELY(check_header)
 
 			if (UNLIKELY(pkt->actual_length < header_len)) {
@@ -1195,19 +1184,28 @@ static void _uvc_stream_callback(struct libusb_transfer *transfer) {
 #endif
 	switch (transfer->status) {
 	case LIBUSB_TRANSFER_COMPLETED: // 传输已完成，没有错误。 请注意，这并不表示已传输了全部所需数据。
-	    if(transfer->iso_packet_desc.status == LIBUSB_TRANSFER_COMPLETED){
-            if (!transfer->num_iso_packets) {
-                /* This is a bulk mode transfer, so it just has one payload transfer
-                 * 这是批量模式传输，因此只有一个有效负载传输
-                 */
-                _uvc_process_payload(strmh, transfer->buffer, transfer->actual_length);
-            } else {
-                /* This is an isochronous mode transfer, so each packet has a payload transfer
-                 * 这是同步模式传输，因此每个数据包都有一个有效负载传输
-                 */
-                _uvc_process_payload_iso(strmh, transfer);
-            }
-	    }
+        {
+                int isOk;
+                for (int i = 0; i < transfer->num_iso_packets; i++) {
+                    isOk = transfer->iso_packet_desc[i].status != LIBUSB_TRANSFER_COMPLETED ? 0 : 1;
+                    if(0 == isOk){
+                        break;
+                    }
+                }
+                if(1 == isOk){
+                    if (!transfer->num_iso_packets) {
+                            /* This is a bulk mode transfer, so it just has one payload transfer
+                             * 这是批量模式传输，因此只有一个有效负载传输
+                             */
+                            _uvc_process_payload(strmh, transfer->buffer, transfer->actual_length);
+                    } else {
+                            /* This is an isochronous mode transfer, so each packet has a payload transfer
+                             * 这是同步模式传输，因此每个数据包都有一个有效负载传输
+                             */
+                            _uvc_process_payload_iso(strmh, transfer);
+                    }
+                }
+        }
 	    break;
 	case LIBUSB_TRANSFER_NO_DEVICE: // 传输没有设备
 		strmh->running = 0;	// this needs for unexpected disconnect of cable otherwise hangup  这需要意外断开电缆连接，否则会挂断
@@ -1302,13 +1300,7 @@ static void _uvc_iso_callback(struct libusb_transfer *transfer) {
 			pktbuf = libusb_get_iso_packet_buffer_simple(transfer, packet_id);
 			if (LIKELY(pktbuf)) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null
 //				assert(pktbuf < transfer->buffer + transfer->length - 1);	// XXX
-#ifdef __ANDROID__
-				// XXX optimaization because this flag never become true on Android devices
-				// 优化，因为此标志在Android设备上永远不会变为真
-				if (UNLIKELY(strmh->devh->is_isight))
-#else
 				if (strmh->devh->is_isight)
-#endif
 				{
 					if (pkt->actual_length < 30
 						|| (memcmp(isight_tag, pktbuf + 2, sizeof(isight_tag))
@@ -1372,15 +1364,10 @@ static void _uvc_iso_callback(struct libusb_transfer *transfer) {
 						}
 					}
 
-#ifdef __ANDROID__	// XXX optimaization because this flag never become true on Android devices
-					if (UNLIKELY(strmh->devh->is_isight))
-						continue; // don't look for data after an iSight header
-#else
 					if (strmh->devh->is_isight) {
 						MARK("is_isight");
 						continue; // don't look for data after an iSight header
 					}
-#endif
 				} // if LIKELY(check_header)
 
 				if (UNLIKELY(pkt->actual_length < header_len)) {
