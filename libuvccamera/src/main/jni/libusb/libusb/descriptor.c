@@ -858,6 +858,10 @@ int API_EXPORTED libusb_get_raw_descriptor(libusb_device *dev,
  * \param dev the device
  * \param desc output location for the descriptor data
  * \returns 0 on success or a LIBUSB_ERROR code on failure
+ *
+ * 获取给定设备的USB设备描述符。
+ * 这是一个非阻塞功能； 设备描述符缓存在内存中。
+ * 请注意，由于libusb-1.0.16，LIBUSB_API_VERSION >= 0x01000102，此功能始终成功。
  */
 int API_EXPORTED libusb_get_device_descriptor(libusb_device *dev,
 	struct libusb_device_descriptor *desc)

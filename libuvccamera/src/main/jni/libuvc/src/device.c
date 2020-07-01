@@ -261,6 +261,7 @@ uint8_t uvc_get_device_address(uvc_device_t *dev) {
 
 /** @brief Open a UVC device
  * @ingroup device
+ * 打开UVC设备
  *
  * @param dev Device to open
  * @param[out] devh Handle on opened device
@@ -292,21 +293,26 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 	pthread_mutex_init(&internal_devh->status_mutex, NULL);	// XXX saki
 
 	if (UNLIKELY(ret != UVC_SUCCESS))
-		goto fail2;	// uvc_claim_if was not called yet and we don't need to call uvc_release_if
+		goto fail2;	// uvc_claim_if was not called yet and we don't need to call uvc_release_if 尚未调用uvc_claim_if，我们不需要调用uvc_release_if
 #if !UVC_DETACH_ATTACH
-	/* enable automatic attach/detach kernel driver on supported platforms in libusb */
+	/* enable automatic attach/detach kernel driver on supported platforms in libusb
+	 * 在libusb中支持的平台上启用自动附加/分离内核驱动程序
+	 */
 	libusb_set_auto_detach_kernel_driver(usb_devh, 1);
 #endif
-	UVC_DEBUG("claiming control interface %d",
-			internal_devh->info->ctrl_if.bInterfaceNumber);
-	ret = uvc_claim_if(internal_devh,
-			internal_devh->info->ctrl_if.bInterfaceNumber);
+	UVC_DEBUG("claiming control interface %d", internal_devh->info->ctrl_if.bInterfaceNumber);
+	ret = uvc_claim_if(internal_devh, internal_devh->info->ctrl_if.bInterfaceNumber);
 	if (UNLIKELY(ret != UVC_SUCCESS))
 		goto fail;
 
+    // 获取给定设备的USB设备描述符。
 	libusb_get_device_descriptor(dev->usb_dev, &desc);
+	// TODO 需要手动适配摄像头是否为每一帧发送EOF
 	internal_devh->is_isight = (desc.idVendor == 0x05ac && desc.idProduct == 0x8501);
-
+    if (internal_devh->info->ctrl_if.bcdUVC >= 0x0110){
+        // 1.1、1.5
+        internal_devh->is_isight = 1;
+    }
 	if (internal_devh->info->ctrl_if.bEndpointAddress) {
 		UVC_DEBUG("status check transfer:bEndpointAddress=0x%02x", internal_devh->info->ctrl_if.bEndpointAddress);
 		// 为libusb传输分配指定数量的同步数据包描述符
@@ -316,11 +322,12 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 			goto fail;
 		}
 
+        // Helper函数填充中断传输所需的libusb_transfer字段。
 		libusb_fill_interrupt_transfer(internal_devh->status_xfer, usb_devh,
 				internal_devh->info->ctrl_if.bEndpointAddress,
 				internal_devh->status_buf, sizeof(internal_devh->status_buf),
 				_uvc_status_callback, internal_devh, 0);
-		// 提交传输。 此功能将触发USB传输，然后立即返回。
+		// 提交传输。 此功能将触发USB传输，然后立即返回。 发送中断
 		ret = libusb_submit_transfer(internal_devh->status_xfer);
 		UVC_DEBUG("libusb_submit_transfer() = %d", ret);
 
@@ -333,7 +340,9 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 	}
 
 	if (dev->ctx->own_usb_ctx && dev->ctx->open_devices == NULL) {
-		/* Since this is our first device, we need to spawn the event handler thread */
+		/* Since this is our first device, we need to spawn the event handler thread
+		 * 由于这是我们的第一台设备，因此我们需要生成事件处理程序线程
+		 */
 		uvc_start_handler_thread(dev->ctx);
 	}
 
@@ -348,7 +357,9 @@ fail:
 	uvc_release_if(internal_devh, internal_devh->info->ctrl_if.bInterfaceNumber);	// XXX crash, assume when uvc_get_device_info failed.
 fail2:
 #if !UVC_DETACH_ATTACH
-	/* disable automatic attach/detach kernel driver on supported platforms in libusb */
+	/* disable automatic attach/detach kernel driver on supported platforms in libusb
+	 * 在libusb中支持的平台上禁用自动附加/分离内核驱动程序
+	 */
 	libusb_set_auto_detach_kernel_driver(usb_devh, 0);
 #endif
 	libusb_close(usb_devh);
@@ -1762,6 +1773,7 @@ void uvc_process_status_xfer(uvc_device_handle_t *devh, struct libusb_transfer *
 
 /** @internal
  * @brief Process asynchronous status updates from the device.
+ * 从设备处理异步状态更新。
  */
 void _uvc_status_callback(struct libusb_transfer *transfer) {
 	UVC_ENTER();
@@ -1769,20 +1781,20 @@ void _uvc_status_callback(struct libusb_transfer *transfer) {
 	uvc_device_handle_t *devh = (uvc_device_handle_t *) transfer->user_data;
 
 	switch (transfer->status) {
-	case LIBUSB_TRANSFER_ERROR:
-	case LIBUSB_TRANSFER_CANCELLED:
-	case LIBUSB_TRANSFER_NO_DEVICE:
-		UVC_DEBUG("not processing/resubmitting, status = %d", transfer->status);
-		UVC_EXIT_VOID();
-		return;
-	case LIBUSB_TRANSFER_COMPLETED:
-		uvc_process_status_xfer(devh, transfer);
-		break;
-	case LIBUSB_TRANSFER_TIMED_OUT:
-	case LIBUSB_TRANSFER_STALL:
-	case LIBUSB_TRANSFER_OVERFLOW:
-		UVC_DEBUG("retrying transfer, status = %d", transfer->status);
-		break;
+        case LIBUSB_TRANSFER_ERROR:
+        case LIBUSB_TRANSFER_CANCELLED:
+        case LIBUSB_TRANSFER_NO_DEVICE:
+            UVC_DEBUG("not processing/resubmitting, status = %d", transfer->status);
+            UVC_EXIT_VOID();
+            return;
+        case LIBUSB_TRANSFER_COMPLETED:
+            uvc_process_status_xfer(devh, transfer);
+            break;
+        case LIBUSB_TRANSFER_TIMED_OUT:
+        case LIBUSB_TRANSFER_STALL:
+        case LIBUSB_TRANSFER_OVERFLOW:
+            UVC_DEBUG("retrying transfer, status = %d", transfer->status);
+            break;
 	}
     // 提交传输。 此功能将触发USB传输，然后立即返回。
 	uvc_error_t ret = libusb_submit_transfer(transfer);

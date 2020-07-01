@@ -1838,6 +1838,8 @@ static inline void libusb_fill_bulk_stream_transfer(
  * \param callback callback function to be invoked on transfer completion
  * \param user_data user data to pass to callback function
  * \param timeout timeout for the transfer in milliseconds
+ *
+ * Helper函数填充中断传输所需的libusb_transfer字段。
  */
 static inline void libusb_fill_interrupt_transfer(
 	struct libusb_transfer *transfer, libusb_device_handle *dev_handle,

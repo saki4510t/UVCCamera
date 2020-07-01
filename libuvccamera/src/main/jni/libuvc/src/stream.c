@@ -538,6 +538,7 @@ static uvc_error_t _prepare_stream_ctrl(uvc_device_handle_t *devh, uvc_stream_ct
 	return result;
 }
 
+// 获取流控制格式
 static uvc_error_t _uvc_get_stream_ctrl_format(uvc_device_handle_t *devh,
 	uvc_streaming_interface_t *stream_if, uvc_stream_ctrl_t *ctrl, uvc_format_desc_t *format,
 	const int width, const int height,
@@ -695,7 +696,7 @@ uvc_error_t uvc_get_stream_ctrl_format_size_fps(uvc_device_handle_t *devh,
 		{
 			if (!_uvc_frame_format_matches_guid(cf, format->guidFormat))
 				continue;
-
+            // 获取流控制格式
 			result = _uvc_get_stream_ctrl_format(devh, stream_if, ctrl, format, width, height, min_fps, max_fps);
 			if (!result) {	// UVC_SUCCESS
 				goto found;
@@ -853,14 +854,45 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 	 * iSight标头：len(1), flags(1 or 2), 0x11223344(4), 0xdeadbeefdeadface(8), ??(16)
 	*/
 
+    /*
+        UVC 1.1 增加 有效载荷标题的格式 Format of the Payload Header
+        Offset      Field           Size    Value   Description
+        0       bHeaderLength       1       Number  有效负载头的长度（以字节为单位），包括此字段。
+        1       bmHeaderInfo        1       Bitmap  提供有关标题后面的示例数据的信息，以及此标题中可选标题字段的可用性。
+                                                    D0：帧ID —— 对于基于帧的格式，每次新的视频帧开始时，此位在0和1之间切换。对于基于流的格式，在每个新的特定于编解码器的段的开头，该位在0和1之间切换。
+                                                        此行为对于基于帧的有效载荷格式（例如DV）是必需的，对于基于流的有效载荷格式（例如MPEG-2 TS）是可选的。对于基于流的格式，必须通过“视频探测和提交”控件的bmFramingInfo字段指示对此位的支持（请参见第4.3.1.1节“视频探测和提交控件”）。
+                                                    D1：帧结束 —— 如果以下有效载荷数据标记了当前视频或静止图像帧的结束（对于基于帧的格式），或者指示编解码器特定段的结束（对于基于流的帧），则该位置1格式）。对于所有有效负载格式，此行为都是可选的。对于基于流的格式，必须通过“视频探测和提交控件”的bmFramingInfo字段指示对此位的支持（请参见第4.3.1.1节“视频探测和提交控件”）。
+                                                    D2：演示时间 —— 如果dwPresentationTime字段作为标题的一部分发送，则此位置1。
+                                                    D3：源时钟参考 —— 如果dwSourceClock字段作为标题的一部分发送，则此位置1。
+                                                    D4：有效负载特定位。 请参阅各个有效负载规格以进行使用。
+                                                    D5：静止图像 —— 如果随后的数据是静止图像帧的一部分，则此位置1，仅用于静止图像捕获的方法2和3。 对于时间编码格式，该位指示随后的数据是帧内编码帧的一部分。
+                                                    D6：错误 —— 如果此有效负载的视频或静止图像传输出现错误，则此位置1。 流错误代码控件将反映错误原因。
+                                                    D7：标头结尾 —— 如果这是数据包中的最后一个标头组，则设置此位，其中标头组引用此字段以及由该字段中的位标识的任何可选字段（定义为将来扩展）。
+
+        注意 标头中可能包含以下字段，也可能不包含以下字段，具体取决于上面bmHeaderInfo字段中指定的位。 这些字段的顺序是在上面的位图标题字段中指定的顺序，即最低有效位在先。 由于标头本身可能会在将来扩展，因此dwPresentationTime的偏移量也是可变的。 设备将在特定于类的VideoStreaming描述符内的有效负载格式描述符中指示是否支持这些字段。 请参见第3.9.2.3节“有效载荷格式描述符”。
+
+        Variable dwPresentationTime 4       Number  演示时间戳（PTS）。 开始原始帧捕获时，以本机设备时钟为单位的源时钟时间。 对于包括单个视频帧的多个有效载荷传输，可以重复此字段，但要限制该值在整个视频帧中保持相同。 PTS是以与视频探针控制响应的dwClockFrequency字段中指定的单位相同。
+        Variable scrSourceClock     6       Number  两部分的源时钟参考（SCR）值
+                                                    D31..D0：源时间时钟，以本机设备时钟为单位
+                                                    D42..D32：1KHz SOF令牌计数器
+                                                    D47..D43：保留，设置为零。
+                                                    最低有效的32位（D31..D0）包含从源处的系统时间时钟（STC）采样的时钟值。时钟分辨率应根据本规范表4-75中定义的设备的探测和提交响应的dwClockFrequency字段。
+                                                    该值应符合相关的流有效载荷规范。采样STC的时间必须与USB总线时钟相关联。为此，SCR的下一个最高11位（D42..D32）包含一个1 KHz SOF计数器，该计数器表示对STC进行采样时的帧号。
+                                                    * 当视频帧的第一个视频数据为放在USB总线上。
+                                                    * 对于单个负载内的所有有效负载传输，SCR必须保持恒定视频帧。
+                                                    保留最高有效的5位（D47..D43），并且必须将其设置为零。包含SCR值的有效负载报头之间的最大间隔为100ms或视频帧间隔，以较大者为准。允许间隔更短。
+    */
+
 	if (UNLIKELY(strmh->devh->is_isight &&
 		((payload_len < 14) || memcmp(isight_tag, payload + 2, sizeof(isight_tag)) ) &&
 		((payload_len < 15) || memcmp(isight_tag, payload + 3, sizeof(isight_tag)) ) )) {
+	    // 没有载体头(Payload Header)
 		// The payload transfer doesn't have any iSight magic, so it's all image data
 		// 有效负载传输没有任何iSight魔法，因此全部为图像数据
 		header_len = 0;
 		data_len = payload_len;
 	} else {
+	    // 有载体头(Payload Header)
 		header_len = payload[0];
 
 		if (UNLIKELY(header_len > payload_len)) {
@@ -869,13 +901,15 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 			return;
 		}
 
-		if (UNLIKELY(strmh->devh->is_isight))
-			data_len = 0;
-		else
-			data_len = payload_len - header_len;
+		if (UNLIKELY(strmh->devh->is_isight)) {
+		    data_len = 0;
+		} else {
+		    data_len = payload_len - header_len;
+		}
 	}
 
 	if (UNLIKELY(header_len < 2)) {
+	    // 没有载体头(Payload Header)
 		header_info = 0;
 	} else {
 		//  @todo we should be checking the end-of-header bit 我们应该检查标题结束位
@@ -884,6 +918,7 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 		header_info = payload[1];
 
 		if (UNLIKELY(header_info & UVC_STREAM_ERR)) {
+		    // 错误 —— 如果此有效负载的视频或静止图像传输出现错误，则此位置1。 流错误代码控件将反映错误原因。
 //			strmh->bfh_err |= UVC_STREAM_ERR;
 			UVC_DEBUG("bad packet: error bit set");
 			libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
@@ -1160,17 +1195,19 @@ static void _uvc_stream_callback(struct libusb_transfer *transfer) {
 #endif
 	switch (transfer->status) {
 	case LIBUSB_TRANSFER_COMPLETED: // 传输已完成，没有错误。 请注意，这并不表示已传输了全部所需数据。
-		if (!transfer->num_iso_packets) {
-			/* This is a bulk mode transfer, so it just has one payload transfer
-			 * 这是批量模式传输，因此只有一个有效负载传输
-			 */
-			_uvc_process_payload(strmh, transfer->buffer, transfer->actual_length);
-		} else {
-			/* This is an isochronous mode transfer, so each packet has a payload transfer
-			 * 这是同步模式传输，因此每个数据包都有一个有效负载传输
-			 */
-			_uvc_process_payload_iso(strmh, transfer);
-		}
+	    if(transfer->iso_packet_desc.status == LIBUSB_TRANSFER_COMPLETED){
+            if (!transfer->num_iso_packets) {
+                /* This is a bulk mode transfer, so it just has one payload transfer
+                 * 这是批量模式传输，因此只有一个有效负载传输
+                 */
+                _uvc_process_payload(strmh, transfer->buffer, transfer->actual_length);
+            } else {
+                /* This is an isochronous mode transfer, so each packet has a payload transfer
+                 * 这是同步模式传输，因此每个数据包都有一个有效负载传输
+                 */
+                _uvc_process_payload_iso(strmh, transfer);
+            }
+	    }
 	    break;
 	case LIBUSB_TRANSFER_NO_DEVICE: // 传输没有设备
 		strmh->running = 0;	// this needs for unexpected disconnect of cable otherwise hangup  这需要意外断开电缆连接，否则会挂断
@@ -2004,15 +2041,15 @@ void _uvc_populate_frame(uvc_stream_handle_t *strmh) {
 	frame->height = frame_desc->wHeight;
 
 	switch (frame->frame_format) {
-	case UVC_FRAME_FORMAT_YUYV:
-		frame->step = frame->width * 2;
-		break;
-	case UVC_FRAME_FORMAT_MJPEG:
-		frame->step = 0;
-		break;
-	default:
-		frame->step = 0;
-		break;
+        case UVC_FRAME_FORMAT_YUYV:
+            frame->step = frame->width * 2;
+            break;
+        case UVC_FRAME_FORMAT_MJPEG:
+            frame->step = 0;
+            break;
+        default:
+            frame->step = 0;
+            break;
 	}
 
 	/* copy the image data from the hold buffer to the frame (unnecessary extra buf?)

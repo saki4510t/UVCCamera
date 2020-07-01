@@ -753,7 +753,7 @@ typedef struct uvc_stream_ctrl {
 	uint32_t dwMaxPayloadTransferSize;
 	/** XXX add UVC 1.1 parameters */
 	uint32_t dwClockFrequency;
-	uint8_t bmFramingInfo;
+	uint8_t bmFramingInfo; //
 	uint8_t bPreferedVersion;
 	uint8_t bMinVersion;
 	uint8_t bMaxVersion;

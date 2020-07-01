@@ -156,7 +156,7 @@ int UVCCamera::connect(int vid, int pid, int fd, int busnum, int devaddr, const 
 //		result = uvc_find_device2(mContext, &mDevice, vid, pid, NULL, fd);
 		result = uvc_get_device_with_fd(mContext, &mDevice, vid, pid, NULL, fd, busnum, devaddr);
 		if (LIKELY(!result)) {
-			// 相机打开处理
+			// 打开UVC设备
 			result = uvc_open(mDevice, &mDeviceHandle);
 			if (LIKELY(!result)) {
 				// 打开时
