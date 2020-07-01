@@ -231,6 +231,7 @@ uvc_error_t uvc_open(
   internal_devh->is_isight = (desc.idVendor == 0x05ac && desc.idProduct == 0x8501);
 
   if (internal_devh->info->ctrl_if.bEndpointAddress) {
+    // 为libusb传输分配指定数量的同步数据包描述符
     internal_devh->status_xfer = libusb_alloc_transfer(0);
     if (!internal_devh->status_xfer) {
       ret = UVC_ERROR_NO_MEM;
@@ -245,6 +246,7 @@ uvc_error_t uvc_open(
                                    _uvc_status_callback,
                                    internal_devh,
                                    0);
+    // 提交传输。 此功能将触发USB传输，然后立即返回。
     ret = libusb_submit_transfer(internal_devh->status_xfer);
     UVC_DEBUG("libusb_submit_transfer() = %d", ret);
 
@@ -1387,7 +1389,7 @@ void _uvc_status_callback(struct libusb_transfer *transfer) {
     UVC_DEBUG("retrying transfer, status = %d", transfer->status);
     break;
   }
-
+  // 提交传输。 此功能将触发USB传输，然后立即返回。
   uvc_error_t ret = libusb_submit_transfer(transfer);
   UVC_DEBUG("libusb_submit_transfer() = %d", ret);
 

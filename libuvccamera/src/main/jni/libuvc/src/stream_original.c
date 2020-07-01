@@ -893,15 +893,18 @@ uvc_error_t uvc_stream_start(
      * 设置转移
      */
     for (transfer_id = 0; transfer_id < ARRAYSIZE(strmh->transfers); ++transfer_id) {
+      // 为libusb传输分配指定数量的同步数据包描述符
       transfer = libusb_alloc_transfer(packets_per_transfer);
       strmh->transfers[transfer_id] = transfer;      
       strmh->transfer_bufs[transfer_id] = malloc(total_transfer_size);
 
+      // Helper函数填充同步传输所需的 libusb_transfer 字段。
       libusb_fill_iso_transfer(
         transfer, strmh->devh->usb_devh, format_desc->parent->bEndpointAddress,
         strmh->transfer_bufs[transfer_id],
         total_transfer_size, packets_per_transfer, _uvc_iso_callback, (void*) strmh, 5000);
 
+      // 便利功能可根据传输结构中的num_iso_packets字段设置同步传输中所有数据包的长度。
       libusb_set_iso_packet_lengths(transfer, endpoint_bytes_per_packet);
     }
   } else {

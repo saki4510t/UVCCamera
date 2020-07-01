@@ -791,6 +791,7 @@ void myfunc() {
 	unsigned char buffer[LIBUSB_CONTROL_SETUP_SIZE] __attribute__ ((aligned (2)));
 	int completed = 0;
 
+    // 为libusb传输分配指定数量的同步数据包描述符
 	transfer = libusb_alloc_transfer(0);
 	libusb_fill_control_setup(buffer,
 		LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT, 0x04, 0x01, 0, 0);
@@ -1197,25 +1198,26 @@ void usbi_io_exit(struct libusb_context *ctx) {
 	usbi_cond_destroy(&ctx->event_waiters_cond);
 }
 
+// 计算超时
 static int calculate_timeout(struct usbi_transfer *transfer) {
 
 	int r;
 	struct timespec current_time;
-	unsigned int timeout =
-		USBI_TRANSFER_TO_LIBUSB_TRANSFER(transfer)->timeout;
+	unsigned int timeout = USBI_TRANSFER_TO_LIBUSB_TRANSFER(transfer)->timeout;
 
-	if (!timeout)
-		return LIBUSB_SUCCESS;
+	if (!timeout) {
+	    return LIBUSB_SUCCESS;
+	}
 
 	r = usbi_backend->clock_gettime(USBI_CLOCK_MONOTONIC, &current_time);
 	if (UNLIKELY(r < 0)) {
 		usbi_err(ITRANSFER_CTX(transfer),
-			"failed to read monotonic clock, errno=%d", errno);
+			"failed to read monotonic clock, errno=%d", errno); // 未能读取单调时钟
 		return r;
 	}
 
-	current_time.tv_sec += timeout / 1000;
-	current_time.tv_nsec += (timeout % 1000) * 1000000;
+	current_time.tv_sec += timeout / 1000; // 秒
+	current_time.tv_nsec += (timeout % 1000) * 1000000; // 纳秒
 
 	while (current_time.tv_nsec >= 1000000000) {
 		current_time.tv_nsec -= 1000000000;
@@ -1230,7 +1232,11 @@ static int calculate_timeout(struct usbi_transfer *transfer) {
  * Callers of this function must hold the flying_transfers_lock.
  * This function *always* adds the transfer to the flying_transfers list,
  * it will return non 0 if it fails to update the timer, but even then the
- * transfer is added to the flying_transfers list. */
+ * transfer is added to the flying_transfers list.
+ * 将传输添加到（超时排序的）活动传输列表中。
+ * 此函数的调用者必须持有flying_transfers_lock。
+ * 该函数“总是”将转移添加到flying_transfers列表中，如果无法更新计时器，它将返回非0，但即使这样转移也被添加到flying_transfers列表中。
+ */
 static int add_to_flying_list(struct usbi_transfer *transfer) {
 
 	struct usbi_transfer *cur;
@@ -1239,22 +1245,32 @@ static int add_to_flying_list(struct usbi_transfer *transfer) {
 	int r = 0;
 	int first = 1;
 
-	/* if we have no other flying transfers, start the list with this one */
+	/* if we have no other flying transfers, start the list with this one
+	 * 如果我们没有其他正在传输，请从此列表开始
+	 */
 	if (list_empty(&ctx->flying_transfers)) {
 		list_add(&transfer->list, &ctx->flying_transfers);
 		goto out;
 	}
 
-	/* if we have infinite timeout, append to end of list */
+	/* if we have infinite timeout, append to end of list
+	 * 如果我们有无限的超时时间，请追加到列表末尾
+	 */
 	if (!timerisset(timeout)) {
 		list_add_tail(&transfer->list, &ctx->flying_transfers);
-		/* first is irrelevant in this case */
+		/* first is irrelevant in this case
+		 * 在这种情况下，第一个无关紧要
+		 */
 		goto out;
 	}
 
-	/* otherwise, find appropriate place in list */
+	/* otherwise, find appropriate place in list
+	 * 否则，在列表中找到合适的位置
+	 */
 	list_for_each_entry(cur, &ctx->flying_transfers, list, struct usbi_transfer) {
-		/* find first timeout that occurs after the transfer in question */
+		/* find first timeout that occurs after the transfer in question
+		 * 查找在相关传输之后发生的第一次超时
+		 */
 		struct timeval *cur_tv = &cur->timeout;
 
 		if (!timerisset(cur_tv) || (cur_tv->tv_sec > timeout->tv_sec) ||
@@ -1265,19 +1281,25 @@ static int add_to_flying_list(struct usbi_transfer *transfer) {
 		}
 		first = 0;
 	}
-	/* first is 0 at this stage (list not empty) */
+	/* first is 0 at this stage (list not empty)
+	 * 在此阶段，第一个为0（列表不为空）
+	 */
 
-	/* otherwise we need to be inserted at the end */
+	/* otherwise we need to be inserted at the end
+	 * 否则我们需要在最后插入
+	 */
 	list_add_tail(&transfer->list, &ctx->flying_transfers);
 out:
 #ifdef USBI_TIMERFD_AVAILABLE
 	if (first && usbi_using_timerfd(ctx) && timerisset(timeout)) {
 		/* if this transfer has the lowest timeout of all active transfers,
-		 * rearm the timerfd with this transfer's timeout */
-		const struct itimerspec it = { {0, 0},
-			{ timeout->tv_sec, timeout->tv_usec * 1000 } };
+		 * rearm the timerfd with this transfer's timeout
+		 * 如果此传输的超时是所有活动传输中最低的，则使用此传输的超时重新配置timerfd
+		 */
+		const struct itimerspec it = { {0, 0}, { timeout->tv_sec, timeout->tv_usec * 1000 } };
 		usbi_dbg("arm timerfd for timeout in %dms (first in line)",
 			USBI_TRANSFER_TO_LIBUSB_TRANSFER(transfer)->timeout);
+	    // 开启定时器
 		r = timerfd_settime(ctx->timerfd, TFD_TIMER_ABSTIME, &it, NULL);
 		if (r < 0) {
 			usbi_warn(ctx, "failed to arm first timerfd (errno %d)", errno);
@@ -1313,20 +1335,22 @@ out:
  *
  * \param iso_packets number of isochronous packet descriptors to allocate
  * \returns a newly allocated transfer, or NULL on error
+ *
+ * 为libusb传输分配指定数量的同步数据包描述符。返回的传输已为您预先初始化。当不再需要新的传输时，应使用 libusb_free_transfer() 将其释放。
+ * 打算用于非同步端点（例如，控制，批量，中断）的传输应将 iso_packets 计数指定为零。
+ * 对于用于同步端点的传输，请指定适当数量的数据包描述符，作为传输的一部分进行分配。
+ * 返回的传输没有为同步 I/O 专门初始化。您仍然需要相应地设置 libusb_transfer::num_iso_packets "num_iso_packets" 和 libusb_transfer::type "type"字段。
+ * 为传输分配一些同步数据包，然后在非同步端点上使用它是安全的。如果这样做，请确保在提交时 num_iso_packets 为0，并且已正确设置该类型。
  */
 DEFAULT_VISIBILITY
-struct libusb_transfer * LIBUSB_CALL libusb_alloc_transfer(
-	int iso_packets) {
+struct libusb_transfer * LIBUSB_CALL libusb_alloc_transfer(int iso_packets) {
 
-	size_t os_alloc_size = usbi_backend->transfer_priv_size
-		+ (usbi_backend->add_iso_packet_size * iso_packets);
-	size_t alloc_size = sizeof(struct usbi_transfer)
-		+ sizeof(struct libusb_transfer)
-		+ (sizeof(struct libusb_iso_packet_descriptor) * iso_packets)
-		+ os_alloc_size;
+	size_t os_alloc_size = usbi_backend->transfer_priv_size + (usbi_backend->add_iso_packet_size * iso_packets);
+	size_t alloc_size = sizeof(struct usbi_transfer) + sizeof(struct libusb_transfer) + (sizeof(struct libusb_iso_packet_descriptor) * iso_packets) + os_alloc_size;
 	struct usbi_transfer *itransfer = calloc(1, alloc_size);
-	if (UNLIKELY(!itransfer))
-		return NULL;
+	if (UNLIKELY(!itransfer)) {
+	    return NULL;
+	}
 
 	itransfer->num_iso_packets = iso_packets;
 	usbi_mutex_init(&itransfer->lock, NULL);
@@ -1366,12 +1390,14 @@ void API_EXPORTED libusb_free_transfer(struct libusb_transfer *transfer) {
 }
 
 #ifdef USBI_TIMERFD_AVAILABLE
+// 停止定时器
 static int disarm_timerfd(struct libusb_context *ctx) {
 
 	const struct itimerspec disarm_timer = { { 0, 0 }, { 0, 0 } };
 	int r;
 
 	usbi_dbg("");
+	// 停止定时器
 	r = timerfd_settime(ctx->timerfd, 0, &disarm_timer, NULL);
 	if (UNLIKELY(r < 0))
 		return LIBUSB_ERROR_OTHER;
@@ -1384,6 +1410,9 @@ static int disarm_timerfd(struct libusb_context *ctx) {
  * must be called with flying_list locked.
  * returns 0 if there was no timeout to arm, 1 if the next timeout was armed,
  * or a LIBUSB_ERROR code on failure.
+ * 迭代正在传输，并根据下一个即将到来的超时重新设置定时器。
+ * 必须在锁定flying_list的情况下调用。
+ * 如果没有设防超时，则返回0；如果有下一个超时设防，则返回1，否则返回LIBUSB_ERROR代码。
  */
 static int arm_timerfd_for_next_timeout(struct libusb_context *ctx) {
 
@@ -1392,28 +1421,34 @@ static int arm_timerfd_for_next_timeout(struct libusb_context *ctx) {
 	list_for_each_entry(transfer, &ctx->flying_transfers, list, struct usbi_transfer) {
 		struct timeval *cur_tv = &transfer->timeout;
 
-		/* if we've reached transfers of infinite timeout, then we have no
-		 * arming to do */
+		/* if we've reached transfers of infinite timeout, then we have no arming to do
+		 * 如果我们已经达到了无限超时的传输，那么我们就无需装载
+		 */
 		if (!timerisset(cur_tv))
 			goto disarm;
 
-		/* act on first transfer that is not already cancelled */
+		/* act on first transfer that is not already cancelled
+		 * 对尚未取消的首次传输采取行动
+		 */
 		if (!(transfer->flags & USBI_TRANSFER_TIMED_OUT)) {
 			int r;
-			const struct itimerspec it = { {0, 0},
-				{ cur_tv->tv_sec, cur_tv->tv_usec * 1000 } };
+			const struct itimerspec it = { {0, 0}, { cur_tv->tv_sec, cur_tv->tv_usec * 1000 } };
 			usbi_dbg("next timeout originally %dms", USBI_TRANSFER_TO_LIBUSB_TRANSFER(transfer)->timeout);
+			// 开启定时器
 			r = timerfd_settime(ctx->timerfd, TFD_TIMER_ABSTIME, &it, NULL);
-			if (r < 0)
-				return LIBUSB_ERROR_OTHER;
+			if (r < 0) {
+			    return LIBUSB_ERROR_OTHER;
+			}
 			return 1;
 		}
 	}
 
 disarm:
+    // 停止定时器
 	return disarm_timerfd(ctx);
 }
 #else
+// 迭代正在传输，并根据下一个即将到来的超时重新设置定时器
 static int arm_timerfd_for_next_timeout(struct libusb_context *ctx) {
 
 	(void)ctx;
@@ -1424,6 +1459,7 @@ static int arm_timerfd_for_next_timeout(struct libusb_context *ctx) {
 /** \ingroup asyncio
  * Submit a transfer. This function will fire off the USB transfer and then
  * return immediately.
+ * 提交传输。 此功能将触发USB传输，然后立即返回。
  *
  * \param transfer the transfer to submit
  * \returns 0 on success
@@ -1436,8 +1472,7 @@ static int arm_timerfd_for_next_timeout(struct libusb_context *ctx) {
 int API_EXPORTED libusb_submit_transfer(struct libusb_transfer *transfer) {
 
 	struct libusb_context *ctx = TRANSFER_CTX(transfer);
-	struct usbi_transfer *itransfer =
-		LIBUSB_TRANSFER_TO_USBI_TRANSFER(transfer);
+	struct usbi_transfer *itransfer = LIBUSB_TRANSFER_TO_USBI_TRANSFER(transfer);
 	int r;
 	int updated_fds;
 
@@ -1446,21 +1481,28 @@ int API_EXPORTED libusb_submit_transfer(struct libusb_transfer *transfer) {
 	{
 		itransfer->transferred = 0;
 		itransfer->flags = 0;
+		// 计算超时
 		r = calculate_timeout(itransfer);
 		if (UNLIKELY(r < 0)) {
 			r = LIBUSB_ERROR_OTHER;
 			goto out;
 		}
 
+        // 将传输添加到（超时排序的）活动传输列表中。
 		r = add_to_flying_list(itransfer);
 		if (LIKELY(r == LIBUSB_SUCCESS)) {
+		    // 提交传输
 			r = usbi_backend->submit_transfer(itransfer);
 		}
 		if (UNLIKELY(r != LIBUSB_SUCCESS)) {
+		    // 从双向列表移除
 			list_del(&itransfer->list);
+			// 迭代正在传输，并根据下一个即将到来的超时重新设置定时器
 			arm_timerfd_for_next_timeout(ctx);
 		} else {
-			/* keep a reference to this device */
+			/* keep a reference to this device
+			 * 保留对此设备的引用
+			 */
 			libusb_ref_device(transfer->dev_handle->dev);
 		}
 out:
@@ -1468,8 +1510,10 @@ out:
 	}
 	usbi_mutex_unlock(&itransfer->lock);
 	usbi_mutex_unlock(&ctx->flying_transfers_lock);
-	if (updated_fds)
-		usbi_fd_notification(ctx);
+	if (updated_fds) {
+	    // 中断事件处理线程的迭代，以便它获取新的fd。
+	    usbi_fd_notification(ctx);
+	}
 	return r;
 }
 
@@ -1557,38 +1601,46 @@ uint32_t API_EXPORTED libusb_transfer_get_stream_id(
  * data before calling it.
  * Do not call this function with the usbi_transfer lock held. User-specified
  * callback functions may attempt to directly resubmit the transfer, which
- * will attempt to take the lock. */
+ * will attempt to take the lock.
+ * 处理传输完成（完成可能是错误情况）。
+ * 这将调用用户提供的回调函数，最终可能会释放传输。 因此，在调用此函数后，您将无法使用传输结构，并且应在调用它之前释放所有特定于后端的数据。
+ * 不要在保持usbi_transfer锁定的情况下调用此函数。 用户指定的回调函数可能会尝试直接重新提交传输，这将尝试获取锁定。
+ */
 int usbi_handle_transfer_completion(struct usbi_transfer *itransfer,
 	enum libusb_transfer_status status) {
 
-	struct libusb_transfer *transfer =
-		USBI_TRANSFER_TO_LIBUSB_TRANSFER(itransfer);
+	struct libusb_transfer *transfer = USBI_TRANSFER_TO_LIBUSB_TRANSFER(itransfer);
 	struct libusb_context *ctx = TRANSFER_CTX(transfer);
 	struct libusb_device_handle *handle = transfer->dev_handle;
 	uint8_t flags;
 	int r = 0;
 
-	/* FIXME: could be more intelligent with the timerfd here. we don't need
+	/* FIXME: could be more intelligent with the timerfd here. we don't need  在这里使用timerfd可能会更智能。 我们不需要
 	 * to disarm the timerfd if there was no timer running, and we only need
 	 * to rearm the timerfd if the transfer that expired was the one with
-	 * the shortest timeout. */
+	 * the shortest timeout.
+	 * 如果没有计时器在运行，则可以撤消timerfd的装载，并且只有在到期的传输是最短的传输时，我们才需要重新配置timerfd。
+	 */
 
 	usbi_mutex_lock(&ctx->flying_transfers_lock);
 	{
 		list_del(&itransfer->list);
-		if (usbi_using_timerfd(ctx))
-			r = arm_timerfd_for_next_timeout(ctx);
+		if (usbi_using_timerfd(ctx)){
+		    // 迭代正在传输，并根据下一个即将到来的超时重新设置定时器
+		    r = arm_timerfd_for_next_timeout(ctx);
+		}
 	}
 	usbi_mutex_unlock(&ctx->flying_transfers_lock);
-	if (usbi_using_timerfd(ctx) && (r < 0))
-		return r;
+	if (usbi_using_timerfd(ctx) && (r < 0)) {
+	    return r;
+	}
 
-	if (status == LIBUSB_TRANSFER_COMPLETED
-			&& transfer->flags & LIBUSB_TRANSFER_SHORT_NOT_OK) {
+	if (status == LIBUSB_TRANSFER_COMPLETED && transfer->flags & LIBUSB_TRANSFER_SHORT_NOT_OK) {
 		int rqlen = transfer->length;
-		if (transfer->type == LIBUSB_TRANSFER_TYPE_CONTROL)
-			rqlen -= LIBUSB_CONTROL_SETUP_SIZE;
-		if (rqlen != itransfer->transferred) {	// XXX itransfer->transferred is almost always zero on iso transfer mode...
+		if (transfer->type == LIBUSB_TRANSFER_TYPE_CONTROL) {
+		    rqlen -= LIBUSB_CONTROL_SETUP_SIZE;
+		}
+		if (rqlen != itransfer->transferred) {	// XXX itransfer->transferred is almost always zero on iso transfer mode...   在iso传输模式下，itransfer->transferred几乎始终为零...
 			usbi_dbg("interpreting short transfer as error");
 			LOGI("interpreting short transfer as error:rqlen=%d,transferred=%d", rqlen, itransfer->transferred);
 			status = LIBUSB_TRANSFER_ERROR;
@@ -1597,19 +1649,24 @@ int usbi_handle_transfer_completion(struct usbi_transfer *itransfer,
 
 	flags = transfer->flags;
 	transfer->status = status;
-	transfer->actual_length = itransfer->transferred;	// XXX therefore transfer->actual_length is also almost always zero on iso transfer mode
+	transfer->actual_length = itransfer->transferred;	// XXX therefore transfer->actual_length is also almost always zero on iso transfer mode  因此在iso传输模式下，transfer->actual_length几乎也始终为零
 	usbi_dbg("transfer %p has callback %p", transfer, transfer->callback);
-	if LIKELY(transfer->callback)
-		transfer->callback(transfer);
-	/* transfer might have been freed by the above call, do not use from
-	 * this point. */
-	if (flags & LIBUSB_TRANSFER_FREE_TRANSFER)
-		libusb_free_transfer(transfer);
+	if LIKELY(transfer->callback) {
+	    // 回调
+	    transfer->callback(transfer);
+	}
+	/* transfer might have been freed by the above call, do not use from this point.
+	 * 传输可能已通过上面调用释放，从这一点开始不要使用。
+	 */
+	if (flags & LIBUSB_TRANSFER_FREE_TRANSFER) {
+	    libusb_free_transfer(transfer);
+	}
 	usbi_mutex_lock(&ctx->event_waiters_lock);
 	{
 		usbi_cond_broadcast(&ctx->event_waiters_cond);
 	}
 	usbi_mutex_unlock(&ctx->event_waiters_lock);
+	// 减少设备的引用计数。 如果递减操作导致参考计数达到零，则应销毁该设备。
 	libusb_unref_device(handle->dev);
 	return LIBUSB_SUCCESS;
 }
@@ -1622,13 +1679,18 @@ int usbi_handle_transfer_completion(struct usbi_transfer *itransfer,
  * will attempt to take the lock. */
 int usbi_handle_transfer_cancellation(struct usbi_transfer *transfer) {
 
-	/* if the URB was cancelled due to timeout, report timeout to the user */
+	/* if the URB was cancelled due to timeout, report timeout to the user
+	 * 如果由于超时取消了URB，请向用户报告超时
+	 */
 	if (transfer->flags & USBI_TRANSFER_TIMED_OUT) {
 		usbi_dbg("detected timeout cancellation");
+		// 处理传输完成（完成可能是错误情况）
 		return usbi_handle_transfer_completion(transfer, LIBUSB_TRANSFER_TIMED_OUT);
 	}
 
-	/* otherwise its a normal async cancel */
+	/* otherwise its a normal async cancel
+	 * 否则是正常的异步取消
+	 */
 	return usbi_handle_transfer_completion(transfer, LIBUSB_TRANSFER_CANCELLED);
 }
 
@@ -1898,6 +1960,7 @@ static void handle_timeout(struct usbi_transfer *itransfer) {
 			"async cancel failed %d errno=%d", r, errno);
 }
 
+// 处理刚刚发生的超时
 static int handle_timeouts_locked(struct libusb_context *ctx) {
 
 	int r;
@@ -1908,7 +1971,9 @@ static int handle_timeouts_locked(struct libusb_context *ctx) {
 	if (list_empty(&ctx->flying_transfers))
 		return 0;
 
-	/* get current time */
+	/* get current time
+	 * 获取当前时间
+	 */
 	r = usbi_backend->clock_gettime(USBI_CLOCK_MONOTONIC, &systime_ts);
 	if (UNLIKELY(r < 0))
 		return r;
@@ -1916,37 +1981,49 @@ static int handle_timeouts_locked(struct libusb_context *ctx) {
 	TIMESPEC_TO_TIMEVAL(&systime, &systime_ts);
 
 	/* iterate through flying transfers list, finding all transfers that
-	 * have expired timeouts */
+	 * have expired timeouts
+	 * 遍历正在传输列表，找到所有已过期的传输
+	 */
 	list_for_each_entry(transfer, &ctx->flying_transfers, list, struct usbi_transfer) {
 		struct timeval *cur_tv = &transfer->timeout;
 
-		/* if we've reached transfers of infinite timeout, we're all done */
+		/* if we've reached transfers of infinite timeout, we're all done
+		 * 如果我们已经达到无限超时的传输，那么我们就完成了
+		 */
 		assert(cur_tv);				// XXX add assert
 		if (!timerisset(cur_tv))	// XXX crash
 			return 0;
 
-		/* ignore timeouts we've already handled */
+		/* ignore timeouts we've already handled
+		 * 忽略我们已经处理的超时
+		 */
 		if (transfer->flags & (USBI_TRANSFER_TIMED_OUT | USBI_TRANSFER_OS_HANDLES_TIMEOUT))
 			continue;
 
-		/* if transfer has non-expired timeout, nothing more to do */
+		/* if transfer has non-expired timeout, nothing more to do
+		 * 如果传输具有未到期的超时，则无需执行任何操作
+		 */
 		if ((cur_tv->tv_sec > systime.tv_sec) ||
 				(cur_tv->tv_sec == systime.tv_sec &&
 					cur_tv->tv_usec > systime.tv_usec))
 			return 0;
 
-		/* otherwise, we've got an expired timeout to handle */
+		/* otherwise, we've got an expired timeout to handle
+		 * 否则，我们要处理过期的超时
+		 */
 		handle_timeout(transfer);
 	}
 	return 0;
 }
 
+// 处理超时
 static int handle_timeouts(struct libusb_context *ctx) {
 
 	int r;
 	USBI_GET_CONTEXT(ctx);
 	usbi_mutex_lock(&ctx->flying_transfers_lock);
 	{
+	    // 处理刚刚发生的超时
 		r = handle_timeouts_locked(ctx);
 	}
 	usbi_mutex_unlock(&ctx->flying_transfers_lock);
@@ -1954,18 +2031,24 @@ static int handle_timeouts(struct libusb_context *ctx) {
 }
 
 #ifdef USBI_TIMERFD_AVAILABLE
+// 处理 timerfd 触发器
 static int handle_timerfd_trigger(struct libusb_context *ctx) {
 
 	int r;
 
 	usbi_mutex_lock(&ctx->flying_transfers_lock);
 	{
-		/* process the timeout that just happened */
+		/* process the timeout that just happened
+		 * 处理刚刚发生的超时
+		 */
 		r = handle_timeouts_locked(ctx);
 		if (UNLIKELY(r < 0))
 			goto out;
 
-		/* arm for next timeout*/
+		/* arm for next timeout
+		 * 准备下一次超时
+		 */
+		// 迭代正在传输，并根据下一个即将到来的超时重新设置定时器
 		r = arm_timerfd_for_next_timeout(ctx);
 
 out:
@@ -1976,7 +2059,9 @@ out:
 #endif
 
 /* do the actual event handling. assumes that no other thread is concurrently
- * doing the same thing. */
+ * doing the same thing.
+ * 做实际的事件处理。 假定没有其他线程同时执行同一操作。
+ */
 static int handle_events(struct libusb_context *ctx, struct timeval *tv) {
 
 	int r;
@@ -1989,12 +2074,14 @@ static int handle_events(struct libusb_context *ctx, struct timeval *tv) {
 
 	usbi_mutex_lock(&ctx->pollfds_lock);
 	{
-		list_for_each_entry(ipollfd, &ctx->pollfds, list, struct usbi_pollfd)
-			nfds++;
+		list_for_each_entry(ipollfd, &ctx->pollfds, list, struct usbi_pollfd) {
+		    nfds++;
+		}
 
-		/* TODO: malloc when number of fd's changes, not on every poll */
-		if (nfds != 0)
-			fds = malloc(sizeof(*fds) * nfds);
+		/* TODO: malloc when number of fd's changes, not on every poll  当fd的更改次数发生时分配malloc，而不是在每次轮询时 */
+		if (nfds != 0) {
+		    fds = malloc(sizeof(*fds) * nfds);
+		}
 		if (UNLIKELY(!fds)) {
 			usbi_mutex_unlock(&ctx->pollfds_lock);
 			return LIBUSB_ERROR_NO_MEM;
@@ -2013,9 +2100,12 @@ static int handle_events(struct libusb_context *ctx, struct timeval *tv) {
 
 	timeout_ms = (int)(tv->tv_sec * 1000) + (tv->tv_usec / 1000);
 
-	/* round up to next millisecond */
-	if (tv->tv_usec % 1000)
-		timeout_ms++;
+	/* round up to next millisecond
+	 * 向上舍入到下一个毫秒
+	 */
+	if (tv->tv_usec % 1000) {
+	    timeout_ms++;
+	}
 
 redo_poll:
 	usbi_dbg("poll() %d fds with timeout in %dms", nfds, timeout_ms);
@@ -2035,24 +2125,33 @@ redo_poll:
 
 	special_event = 0;
 
-	/* fd[0] is always the ctrl pipe */
+	/* fd[0] is always the ctrl pipe
+	 * fd[0]始终是ctrl管道
+	 */
 	if (fds[0].revents) {
 		/* another thread wanted to interrupt event handling, and it succeeded!
 		 * handle any other events that cropped up at the same time, and
-		 * simply return */
+		 * simply return
+		 * 另一个线程想要中断事件处理，它成功了！
+		 * 处理其他同时发生的其他事件，只需返回
+		 */
 		usbi_dbg("caught a fish on the control pipe");
 
 		if (r == 1) {
 			r = 0;
 			goto handled;
 		} else {
-			/* prevent OS backend from trying to handle events on ctrl pipe */
+			/* prevent OS backend from trying to handle events on ctrl pipe
+			 * 防止OS后端尝试处理ctrl管道上的事件
+			 */
 			fds[0].revents = 0;
 			r--;
 		}
 	}
 
-	/* fd[1] is always the hotplug pipe */
+	/* fd[1] is always the hotplug pipe
+	 * fd[1]始终是热插拔管道
+	 */
 	if (libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG) && fds[1].revents) {
 		libusb_hotplug_message message;
 		ssize_t ret;
@@ -2060,7 +2159,9 @@ redo_poll:
 		usbi_dbg("caught a fish on the hotplug pipe");
 		special_event = 1;
 
-		/* read the message from the hotplug thread */
+		/* read the message from the hotplug thread
+		 * 从热插拔线程读取消息
+		 */
 		ret = usbi_read(ctx->hotplug_pipe[0], &message, sizeof (message));
 		if (ret != sizeof(message)) {
 			usbi_err(ctx, "hotplug pipe read error %d != %u",
@@ -2071,14 +2172,14 @@ redo_poll:
 
 		usbi_hotplug_match(ctx, message.device, message.event);
 
-		/* the device left. dereference the device */
+		/* the device left. dereference the device  设备已离开。 取消引用设备 */
 		if (LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT == message.event)
 			libusb_unref_device(message.device);
 
 		fds[1].revents = 0;
 		if (1 == r--)
 			goto handled;
-	} /* else there shouldn't be anything on this pipe */
+	} /* else there shouldn't be anything on this pipe  否则这个管道上不应该有任何东西 */
 
 #ifdef USBI_TIMERFD_AVAILABLE
 	/* on timerfd configurations, fds[2] is the timerfd */
@@ -2088,18 +2189,23 @@ redo_poll:
 		usbi_dbg("timerfd triggered");
 		special_event = 1;
 
+        // 处理 timerfd 触发器
 		ret = handle_timerfd_trigger(ctx);
 		if (UNLIKELY(ret < 0)) {
 			/* return error code */
 			r = ret;
 			goto handled;
 		} else if (r == 1) {
-			/* no more active file descriptors, nothing more to do */
+			/* no more active file descriptors, nothing more to do
+			 * 不再有活动的文件描述符，无所事事
+			 */
 			r = 0;
 			goto handled;
 		} else {
 			/* more events pending...
-			 * prevent OS backend from trying to handle events on timerfd */
+			 * prevent OS backend from trying to handle events on timerfd
+			 * 防止操作系统后端尝试处理timerfd上的事件
+			 */
 			fds[2].revents = 0;
 			r--;
 		}
@@ -2596,8 +2702,7 @@ void usbi_handle_disconnect(struct libusb_device_handle *handle) {
 	struct usbi_transfer *cur;
 	struct usbi_transfer *to_cancel;
 
-	usbi_dbg("device %d.%d",
-		handle->dev->bus_number, handle->dev->device_address);
+	usbi_dbg("device %d.%d", handle->dev->bus_number, handle->dev->device_address);
 
 	/* terminate all pending transfers with the LIBUSB_TRANSFER_NO_DEVICE
 	 * status code.
@@ -2632,13 +2737,14 @@ void usbi_handle_disconnect(struct libusb_device_handle *handle) {
 			}
 		usbi_mutex_unlock(&HANDLE_CTX(handle)->flying_transfers_lock);
 
-		if (!to_cancel)
-			break;
+		if (!to_cancel) {
+		    break;
+		}
 
-		usbi_dbg("cancelling transfer %p from disconnect",
-			 USBI_TRANSFER_TO_LIBUSB_TRANSFER(to_cancel));
+		usbi_dbg("cancelling transfer %p from disconnect", USBI_TRANSFER_TO_LIBUSB_TRANSFER(to_cancel));
 
 		usbi_backend->clear_transfer_priv(to_cancel);
+		// 处理传输完成（完成可能是错误情况）
 		usbi_handle_transfer_completion(to_cancel, LIBUSB_TRANSFER_NO_DEVICE);
 	}
 

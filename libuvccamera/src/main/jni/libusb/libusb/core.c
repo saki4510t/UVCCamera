@@ -1065,6 +1065,7 @@ out:
 
 /** \ingroup dev
  * Increment the reference count of a device.
+ * 增加设备的引用计数。
  * \param dev the device to reference
  * \returns the same device
  */
@@ -1085,6 +1086,7 @@ libusb_device * LIBUSB_CALL libusb_ref_device(libusb_device *dev) {
  * Decrement the reference count of a device. If the decrement operation
  * causes the reference count to reach zero, the device shall be destroyed.
  * \param dev the device to unreference
+ * 减少设备的引用计数。 如果递减操作导致参考计数达到零，则应销毁该设备。
  */
 void API_EXPORTED libusb_unref_device(libusb_device *dev) {
 
@@ -1121,6 +1123,7 @@ void API_EXPORTED libusb_unref_device(libusb_device *dev) {
 /*
  * Interrupt the iteration of the event handling thread, so that it picks
  * up the new fd.
+ * 中断事件处理线程的迭代，以便它获取新的fd。
  */
 void usbi_fd_notification(struct libusb_context *ctx) {
 
@@ -1718,23 +1721,31 @@ int API_EXPORTED libusb_release_interface(libusb_device_handle *dev,
  * requested alternate setting does not exist
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns another LIBUSB_ERROR code on other failure
+ *
+ * 激活接口的备用设置。 该接口必须先前已通过libusb_claim_interface（）声明了所有权。
+ * 您应该始终使用此功能，而不是制定自己的SET_INTERFACE控制请求。 这是因为底层操作系统需要知道何时发生此类更改。
+ * 这是一个阻塞功能。
  */
 int API_EXPORTED libusb_set_interface_alt_setting(libusb_device_handle *dev,
 		int interface_number, int alternate_setting) {
 
 	usbi_dbg("interface %d altsetting %d", interface_number, alternate_setting);
-	if (interface_number >= USB_MAXINTERFACES)
-		return LIBUSB_ERROR_INVALID_PARAM;
+	if (interface_number >= USB_MAXINTERFACES) {
+	    // 不合法参数
+	    return LIBUSB_ERROR_INVALID_PARAM;
+	}
 
 	usbi_mutex_lock(&dev->lock);
 	{
 		if (UNLIKELY(!dev->dev->attached)) {
 			usbi_mutex_unlock(&dev->lock);
+			// 没有设备
 			return LIBUSB_ERROR_NO_DEVICE;
 		}
 
 		if (UNLIKELY(!(dev->claimed_interfaces & (1 << interface_number)))) {
 			usbi_mutex_unlock(&dev->lock);
+			// 接口不存在
 			return LIBUSB_ERROR_NOT_FOUND;
 		}
 	}
@@ -2391,6 +2402,7 @@ void API_EXPORTED libusb_exit(struct libusb_context *ctx) {
  * Check at runtime if the loaded library has a given capability.
  * This call should be performed after \ref libusb_init(), to ensure the
  * backend has updated its capability set.
+ * 在运行时检查加载的库是否具有给定的功能。 此调用应在 libusb_init() 之后执行，以确保后端已更新其功能集。
  *
  * \param capability the \ref libusb_capability to check for
  * \returns nonzero if the running library has the capability, 0 otherwise

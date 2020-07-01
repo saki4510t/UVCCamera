@@ -69,6 +69,7 @@ uvc_frame_desc_t *uvc_find_frame_desc_stream(uvc_stream_handle_t *strmh,
 uvc_frame_desc_t *uvc_find_frame_desc(uvc_device_handle_t *devh,
 		uint16_t format_id, uint16_t frame_id);
 static void *_uvc_user_caller(void *arg);
+// 获取视频帧
 static void _uvc_populate_frame(uvc_stream_handle_t *strmh);
 
 struct format_table_entry {
@@ -79,6 +80,7 @@ struct format_table_entry {
 	enum uvc_frame_format *children;
 };
 
+// 获取格式实体
 struct format_table_entry *_get_format_entry(enum uvc_frame_format format) {
 #define ABS_FMT(_fmt, ...) \
     case _fmt: { \
@@ -94,33 +96,35 @@ struct format_table_entry *_get_format_entry(enum uvc_frame_format format) {
     return &_fmt##_entry; }
 
 	switch (format) {
-	/* Define new formats here
-	 * 在这里定义新格式
-	 */
-	ABS_FMT(UVC_FRAME_FORMAT_ANY, {UVC_FRAME_FORMAT_UNCOMPRESSED, UVC_FRAME_FORMAT_COMPRESSED})
+        /* Define new formats here
+         * 在这里定义新格式
+         */
+        ABS_FMT(UVC_FRAME_FORMAT_ANY, {UVC_FRAME_FORMAT_UNCOMPRESSED, UVC_FRAME_FORMAT_COMPRESSED})
 
-	ABS_FMT(UVC_FRAME_FORMAT_UNCOMPRESSED, {UVC_FRAME_FORMAT_YUYV, UVC_FRAME_FORMAT_UYVY, UVC_FRAME_FORMAT_GRAY8})
-	FMT(UVC_FRAME_FORMAT_YUYV, {'Y', 'U', 'Y', '2', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
-	FMT(UVC_FRAME_FORMAT_UYVY, {'U', 'Y', 'V', 'Y', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
-	FMT(UVC_FRAME_FORMAT_GRAY8, {'Y', '8', '0', '0', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
-    FMT(UVC_FRAME_FORMAT_BY8, {'B', 'Y', '8', ' ', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
+        ABS_FMT(UVC_FRAME_FORMAT_UNCOMPRESSED, {UVC_FRAME_FORMAT_YUYV, UVC_FRAME_FORMAT_UYVY, UVC_FRAME_FORMAT_GRAY8})
+        FMT(UVC_FRAME_FORMAT_YUYV, {'Y', 'U', 'Y', '2', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
+        FMT(UVC_FRAME_FORMAT_UYVY, {'U', 'Y', 'V', 'Y', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
+        FMT(UVC_FRAME_FORMAT_GRAY8, {'Y', '8', '0', '0', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
+        FMT(UVC_FRAME_FORMAT_BY8, {'B', 'Y', '8', ' ', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
 
-	ABS_FMT(UVC_FRAME_FORMAT_COMPRESSED, {UVC_FRAME_FORMAT_MJPEG})
-	FMT(UVC_FRAME_FORMAT_MJPEG, {'M', 'J', 'P', 'G'})
+        ABS_FMT(UVC_FRAME_FORMAT_COMPRESSED, {UVC_FRAME_FORMAT_MJPEG})
+        FMT(UVC_FRAME_FORMAT_MJPEG, {'M', 'J', 'P', 'G'})
 
-	default:
-		return NULL;
+        default:
+            return NULL;
 	}
 
 #undef ABS_FMT
 #undef FMT
 }
 
+// 获取匹配的帧格式
 static uint8_t _uvc_frame_format_matches_guid(enum uvc_frame_format fmt,
 		uint8_t guid[16]) {
 	struct format_table_entry *format;
 	int child_idx;
 
+    // 获取格式实体
 	format = _get_format_entry(fmt);
 	if (UNLIKELY(!format))
 		return 0;
@@ -136,11 +140,13 @@ static uint8_t _uvc_frame_format_matches_guid(enum uvc_frame_format fmt,
 	return 0;
 }
 
+// 获取帧格式
 static enum uvc_frame_format uvc_frame_format_for_guid(uint8_t guid[16]) {
 	struct format_table_entry *format;
 	enum uvc_frame_format fmt;
 
 	for (fmt = 0; fmt < UVC_FRAME_FORMAT_COUNT; ++fmt) {
+	     // 获取格式实体
 		format = _get_format_entry(fmt);
 		if (!format || format->abstract_fmt)
 			continue;
@@ -157,7 +163,7 @@ static enum uvc_frame_format uvc_frame_format_for_guid(uint8_t guid[16]) {
  * @param[in,out] ctrl Control block
  * @param[in] probe Whether this is a probe query or a commit query
  * @param[in] req Query type
- * 运行流控制查询
+ * 向设备发送特定请求获取流相关参数
  */
 uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 		uvc_stream_ctrl_t *ctrl, uint8_t probe, enum uvc_req_code req) {
@@ -167,20 +173,123 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 
 	memset(buf, 0, sizeof(buf));	// bzero(buf, sizeof(buf));	// bzero is deprecated
 
+    // UVC 标准版本
 	const uint16_t bcdUVC = devh->info->ctrl_if.bcdUVC;
-	if (bcdUVC >= 0x0150)
-		len = 48;
-	else if (bcdUVC >= 0x0110)
-		len = 34;
-	else
-		len = 26;
+	if (bcdUVC >= 0x0150) {
+	    // 1.5
+	    len = 48;
+	}else if (bcdUVC >= 0x0110){
+	    // 1.1
+	    len = 34;
+	}else{
+	    // 1.0
+	    len = 26;
+	}
 //	LOGI("bcdUVC:%x,req:0x%02x,probe:%d", bcdUVC, req, probe);
 	/* prepare for a SET transfer
-	 * 准备SET转移
+	 * 准备SET传输 按照UVC协议生成请求数据
+	 */
+	 /* 协议
+	   UVC 1.5  表4-75视频探测和提交控件
+	   Offset   Field           Size     Value      Description
+       0        bmHint          2       Bitmap      位域控制，向功能指示哪些字段应保持固定（仅指示性）：
+                                                       D0: dwFrameInterval
+                                                       D1: wKeyFrameRate
+                                                       D2: wPFrameRate
+                                                       D3: wCompQuality
+                                                       D4: wCompWindowSize
+                                                       D15..5: Reserved (0)
+                                                    提示位图向视频流接口指示在流参数协商期间哪些字段应保持恒定。 例如，如果选择要使帧速率胜于质量，则dwFrameInterval设为1。
+                                                    该字段由主机设置，并且仅对于视频流接口是只读的。
+       2        bFormatIndex    1      Number       来自此视频接口的格式描述符的视频格式索引。 通过将此字段设置为关联的Format描述符的基于一的索引来选择特定的视频流格式。 要选择设备定义的第一种格式，将一个（1）值写入此字段。 即使设备仅支持一种视频格式，也必须支持此字段。
+                                                    该字段由主机设置。
+       3        bFrameIndex     1      Number       来自帧描述符的视频帧索引。
+                                                    该字段从所选流支持的分辨率阵列中选择视频帧分辨率。 索引值的范围是1到特定格式描述符之后的帧描述符数。 对于基于帧的格式，即使设备仅支持一个视频帧索引，也必须支持此字段。
+                                                    对于没有定义帧描述符的视频有效载荷，该字段应设置为零（0）。
+                                                    来自帧描述符的视频帧索引。
+       4        dwFrameInterval 4      Number       帧间隔，以100ns为单位。
+                                                    该字段为选定的视频流和帧索引设置所需的视频帧间隔。 帧间隔值以100ns为单位指定。设备应支持设置在帧描述符中报告的与所选视频帧索引相对应的所有帧间隔。 对于基于帧的格式，即使设备仅支持一个视频帧间隔，也必须实现此字段。
+                                                    当与IN端点结合使用时，主机应在探测阶段指示其偏好。 该值必须在设备支持的值范围内。当与OUT端点结合使用时，主机应接受设备指示的值。
+       8        wKeyFrameRate   2      Number       每个视频帧单位的关键帧中的关键帧速率。
+                                                    该字段仅适用于能够以可调压缩参数流式传输视频的源（和格式）。该控件的使用由设备决定，并在VS输入或输出标头描述符中指示。
+                                                    “关键帧速率”字段用于指定压缩器的关键帧速率。例如，如果视频流序列中每十个编码帧中的一个是关键帧，则此控件将报告值10。值0表示仅第一帧是关键帧。
+                                                    当与IN端点结合使用时，主机应在探测阶段指示其偏好。 该值必须在设备支持的值范围内。当与OUT端点结合使用时，主机应接受设备指示的值。
+       10       wPFrameRate     2      Number       PFrame速率，以PFrame/关键帧为单位。
+                                                    该字段仅适用于能够以可调压缩参数流式传输视频的源（和格式）。该控件的使用由设备决定，并在VS输入或输出标头描述符中指示。
+                                                    P帧速率控制用于指定每个关键帧的P帧数。 作为编码帧的类型之间的关系的示例，假设关键帧每10帧出现一次，并且每个关键帧有3个P帧。 P帧将在关键帧之间均匀间隔。
+                                                    出现在关键帧和P帧之间的其他6帧将是双向（B）帧。
+                                                    当与IN端点结合使用时，主机应在探测阶段指示其偏好。 该值必须在设备支持的值范围内。当与OUT端点结合使用时，主机应接受设备指示的值。
+       12       wCompQuality    2     Number        压缩质量控制以抽象单位1（最低）到10000（最高）为单位。该字段仅适用于能够以可调压缩参数流式传输视频的源（和格式）。
+                                                    该字段的使用由设备决定，并在VS输入或输出标头描述符中指示。此字段用于指定视频压缩的质量。 此属性的值的范围是1到10000（1表示最低质量，10000表示最高质量）。 此控件报告的分辨率将确定它可以支持的离散质量设置的数量。
+                                                    当与IN端点结合使用时，主机应在探测阶段指示其偏好。 该值必须在设备支持的值范围内。当与OUT端点结合使用时，主机应接受设备指示的值。
+       14       wCompWindowSize 2     Number        用于平均比特率控制的窗口大小。
+                                                    该字段仅适用于能够以可调压缩参数流式传输视频的源（和格式）。该控件的使用由设备决定，并在VS输入或输出标头描述符中指示。
+                                                    压缩窗口大小控件用于指定平均大小不能超过指定数据速率的编码视频帧数。对于大小为n的窗口，任何连续n个帧的平均帧大小将不超过流的指定数据速率。
+                                                    各个框架可以更大或更小。例如，如果已将压缩窗口大小为10的每秒10帧（fps）的电影的数据速率设置为每秒100 KB（kbps），则各个帧可以是任何大小，只要平均大小任何10帧序列中的一帧的最大字节数小于或等于10 KB。
+                                                    当与IN端点结合使用时，主机应在探测阶段指示其偏好。该值必须在设备支持的值范围内。当与OUT端点结合使用时，主机应接受设备指示的值。
+       16       wDelay          2     Number        从视频数据捕获到USB演示，内部视频流接口延迟（毫秒）。
+                                                    与IN端点结合使用时，此字段由设备设置，并且仅从主机读取。与OUT端点结合使用时，此字段由主机设置，并且仅从设备读取。
+       18       dwMaxVideoFrameSize 4     Number    视频帧或编解码器特定的最大段大小（以字节为单位）。
+                                                    对于基于帧的格式，此字段指示单个视频帧的最大大小。 在进行流式联播时，此数字反映协商的帧描述符的最大视频帧大小。 对于基于帧的格式，必须支持此字段。
+                                                    对于基于流的格式，当通过bmFramingInfo字段（如下）启用此行为时，此字段指示单个编解码器特定段的最大大小。 发送方需要通过有效载荷报头中的FID位指示段边界。如果未启用bmFramingInfo位，则将忽略此字段（对于基于流的格式）。
+                                                    与IN端点结合使用时，此字段由设备设置，并且仅从主机读取。与OUT端点结合使用时，此字段由主机设置，并且仅从设备读取。
+       22       dwMaxPayloadTransferSize 4 Number   指定设备在一次有效负载传输中可以发送或接收的最大字节数。 必须支持该字段。
+                                                    该字段由设备设置，并且只能从主机读取。 某些主机实现会限制此字段允许的最大值。 主机应通过重新配置设备来避免单个有效载荷传输大小的过冲。（例如，通过更新比特率，分辨率等）
+       26       dwClockFrequency 4  Number          指定格式的设备时钟频率（以Hz为单位）。 这将在数据流的视频有效负载标题中指定用于时间信息字段的单位。
+                                                    该参数由设备设置，并且只能从主机读取。
+       30       bmFramingInfo   1     Bitmap        位域控件支持以下值：
+                                                    D0：如果设置为1，则在有效载荷标题中需要帧ID（FID）字段（请参见第2.4.3.3节“视频和静止图像有效载荷标题”中对D0的描述）。需要发送者至少每隔dwMaxVideoFrameSize个字节切换帧ID（请参见上文）。
+                                                    D1：如果设置为1，则表示有效载荷标题中可能存在帧末尾（EOF）字段（请参见第2.4.3.3节“视频和静止图像有效载荷标题”中对D1的描述）。在不指定D0的情况下指定该位是错误的。
+                                                    D2：如果设置为1，则表示净荷报头中可能存在分片结尾（EOS）字段。在不指定D0的情况下指定该位是错误的。
+                                                    D7..3：保留（0）
+                                                    该控件向功能指示有效载荷传输是否将在视频有效载荷报头中包含带外成帧信息（请参见第2.4.3.3节“视频和静止图像有效载荷报头”）。对于已知的基于帧的格式（例如MJPEG，未压缩，DV），此字段将被忽略。
+                                                    对于已知的基于流的格式，此字段允许发送方指示它将标识流中的段边界，从而使接收方可以进行低延迟缓冲区处理，而无需解析流本身。
+                                                    与IN端点结合使用时，此控件由设备设置，并且对主机是只读的。与OUT端点结合使用时，此参数由主机设置，并且对设备是只读的。
+       31       bPreferedVersion 1  Number          主机或设备为指定的bFormatIndex值支持的首选有效负载格式版本。
+                                                    此参数允许主机和设备协商与bFormatIndex字段关联的有效载荷格式的相互认可的版本。主机对此进行初始化，并在第一个探针集上将随后的bMinVersion和bMaxVersion字段初始化为零。获取探测信息后，设备应返回其首选版本，以及设备支持的最低和最高版本（请参见下面的bMinVersion和bMaxVersion）。
+                                                    主机可以发出后续的探针设置/获取序列以指定其首选版本（在初始探针设置/获取序列的bMinVersion和bMaxVersion返回的范围内）。不允许主机更改bMinVersion和bMaxVersion值。
+                                                    该字段将支持单个有效负载格式的多达256（1-255）个版本。版本号来自有效载荷格式规范的次要版本。例如，有效载荷格式规范的1.2版将导致此参数的值为2。
+       32       bMinVersion     1   Number          设备支持的指定bFormatIndex值的最小有效负载格式版本。
+                                                    该值由主机初始化为零，并由设备重置为1到255之间的值。 不允许主机修改该值（通过将bPreferredVersion，bMinVersion和bMaxVersion设置为零来重新开始协商）。
+       33       bMaxVersion     1   Number          设备支持的指定bFormatIndex值的最大有效负载格式版本。
+                                                    该值由主机初始化为零，并由设备重置为1到255之间的值。 不允许主机修改该值（通过将bPreferredVersion，bMinVersion和bMaxVersion设置为零来重新开始协商）。
+       34       bUsage          1   Number          当前使用情况：
+                                                    1-8：实时模式
+                                                    9-16：广播模式
+                                                    17-24：文件存储模式
+                                                    25 – 31：多视图模式
+                                                    32-255：保留
+                                                    此位图启用由视频帧描述符的bmUsages字段报告的功能。对于时间编码的视频格式，即使设备仅支持bUsage的单个值，也必须支持此字段。
+       35       bBitDepthLuma   1   Number          表示bit_depth_luma_minus8 + 8，必须与bit_depth_chroma_minus8 + 8相同。
+       36       bmSettings      1   Bitmap          标志的位图，用于发现和控制时间编码视频流的特定功能。 如果支持，则在关联的有效负载规范中定义。 此位图启用由视频帧描述符的bmCapabilities字段报告的功能。
+                                                    对于时间编码的视频格式，必须支持此字段。
+       37   bMaxNumberOfRefFramesPlus1 1 Number     主机指示存储的最大帧数，以用作参考。
+       38   bmRateControlModes  2   Number          该字段包含4个子字段，每个子字段都是4位数字。它启用了由视频格式描述符的bmSupportedRateControlModes字段报告的功能。
+                                                    每个4位数字表示编码视频流的速率控制模式。如果视频有效负载不支持速率控制，则应将整个字段设置为0。bmRateControlModes最多支持四个同时广播流。对于联播传输，从bmLayoutPerStream字段推断出流的数量。否则，流数为1。
+                                                    D3-D0：第一个联播流的速率控制模式（stream_id = 0。）
+                                                    D7-D4：第二个联播流的码率控制模式（stream_id = 1）。
+                                                    D11-D8：第三联播流的速率控制模式（stream_id = 2）。
+                                                    D15-D12：第四联播流的速率控制模式（stream_id = 3。）
+                                                    当bmRateControlModes不为零时，每个4位子字段可以采用以下值之一：
+                                                    0：不适用，因为此流不存在。
+                                                    1：允许下溢的VBR
+                                                    2：CBR
+                                                    3：恒定QP
+                                                    4：全局VBR，允许下溢
+                                                    5：VBR无下溢
+                                                    6：全局VBR，无下溢
+                                                    7-15：保留
+                                                    对于时间编码的视频格式，即使设备仅支持bmRateControlModes的单个值，也必须支持此字段。
+       40   bmLayoutPerStream   8   Number          该字段包含4个子字段，每个子字段均为2字节数字。
+                                                    对于联播传输，此字段指示每个流（最多四个联播流）的特定分层结构。 对于单个多层流，仅使用前两个字节。 对于没有增强层的单个流，该字段应设置为0。有关如何解释每个2字节子字段的信息，请参见各个有效负载规范。
+                                                    对于时间编码的视频格式，必须支持此字段。
+
+      设备将不支持的字段设置为零。 主机将流参数协商剩余的字段设置为零。 例如，在SET_CUR请求初始化FormatIndex和FrameIndex之后，设备将在检索Probe控件GET_CUR属性时返回受支持字段的新协商字段值。
+      为了避免协商循环，设备应始终以降低的数据速率要求返回流参数。 流协商接口应根据协商循环避免规则将不支持的流参数重置为支持的值。 此约定允许主机在字段的受支持值之间循环。
 	 */
 	if (req == UVC_SET_CUR) {
-		SHORT_TO_SW(ctrl->bmHint, buf);
-		buf[2] = ctrl->bFormatIndex;
+		SHORT_TO_SW(ctrl->bmHint, buf);// wLength
+		buf[2] = ctrl->bFormatIndex; // bFormatIndex
 		buf[3] = ctrl->bFrameIndex;
 		INT_TO_DW(ctrl->dwFrameInterval, buf + 4);
 		SHORT_TO_SW(ctrl->wKeyFrameRate, buf + 8);
@@ -211,7 +320,7 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 	}
 
 	/* do the transfer
-	 * 做转移
+	 * 做传输 发送请求数据
 	 */
 	err = libusb_control_transfer(devh->usb_devh,
 			req == UVC_SET_CUR ? 0x21 : 0xA1, req,
@@ -237,6 +346,7 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 	}
 	/* now decode following a GET transfer
 	 * 在GET传输后解码
+	 * 设置设备返回的结果
 	 */
 	if (req != UVC_SET_CUR) {
 		ctrl->bmHint = SW_TO_SHORT(buf);
@@ -271,6 +381,7 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 
 		/* fix up block for cameras that fail to set dwMax
 		 * 修复无法设置 dwMax 的摄像机的模块
+		 * 设备没有返回 dwMaxVideoFrameSize 值或返回值为0，则通过帧描述获取最大视频帧缓存大小
 		 */
 		if (!ctrl->dwMaxVideoFrameSize) {
 			LOGW("fix up block for cameras that fail to set dwMax");
@@ -301,16 +412,22 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 uvc_error_t uvc_stream_ctrl(uvc_stream_handle_t *strmh, uvc_stream_ctrl_t *ctrl) {
 	uvc_error_t ret;
 
-	if (UNLIKELY(strmh->stream_if->bInterfaceNumber != ctrl->bInterfaceNumber))
-		return UVC_ERROR_INVALID_PARAM;
+	if (UNLIKELY(strmh->stream_if->bInterfaceNumber != ctrl->bInterfaceNumber)) {
+	    return UVC_ERROR_INVALID_PARAM;
+	}
 
-	/* @todo Allow the stream to be modified without restarting the stream */
-	if (UNLIKELY(strmh->running))
-		return UVC_ERROR_BUSY;
+	/* @todo Allow the stream to be modified without restarting the stream
+	 * 允许修改流而不重新启动流
+	 */
+	if (UNLIKELY(strmh->running)) {
+	    return UVC_ERROR_BUSY;
+	}
 
-	ret = uvc_query_stream_ctrl(strmh->devh, ctrl, 0, UVC_SET_CUR);	// commit query
-	if (UNLIKELY(ret != UVC_SUCCESS))
-		return ret;
+    // 获取设备的流接口探测状态参数
+	ret = uvc_query_stream_ctrl(strmh->devh, ctrl, 0, UVC_SET_CUR);
+	if (UNLIKELY(ret != UVC_SUCCESS)) {
+	    return ret;
+	}
 
 	strmh->cur_ctrl = *ctrl;
 	return UVC_SUCCESS;
@@ -327,7 +444,7 @@ static uvc_frame_desc_t *_uvc_find_frame_desc_stream_if(
 		uvc_streaming_interface_t *stream_if, uint16_t format_id,
 		uint16_t frame_id) {
 
-	uvc_format_desc_t *format = NULL;
+	uvc_format_desc_t *format_desc = NULL;
 	uvc_frame_desc_t *frame = NULL;
 
 	DL_FOREACH(stream_if->format_descs, format)
@@ -353,6 +470,7 @@ uvc_error_t uvc_get_frame_desc(uvc_device_handle_t *devh,
 
 uvc_frame_desc_t *uvc_find_frame_desc_stream(uvc_stream_handle_t *strmh,
 		uint16_t format_id, uint16_t frame_id) {
+	//查找特定帧配置的描述符
 	return _uvc_find_frame_desc_stream_if(strmh->stream_if, format_id, frame_id);
 }
 
@@ -371,6 +489,7 @@ uvc_frame_desc_t *uvc_find_frame_desc(uvc_device_handle_t *devh,
 
 	DL_FOREACH(devh->info->stream_ifs, stream_if)
 	{
+	    //查找特定帧配置的描述符
 		frame = _uvc_find_frame_desc_stream_if(stream_if, format_id, frame_id);
 		if (frame)
 			return frame;
@@ -392,10 +511,13 @@ static uvc_error_t _prepare_stream_ctrl(uvc_device_handle_t *devh, uvc_stream_ct
 	// XXX some camera may need to call uvc_query_stream_ctrl with UVC_GET_CUR/UVC_GET_MAX/UVC_GET_MIN
 	// before negotiation otherwise stream stall. added by saki
 	// 一些相机可能需要在协商之前用 UVC_GET_CUR/UVC_GET_MAX/UVC_GET_MIN 调用 uvc_query_stream_ctrl，否则流停顿。
+	// 获取设备的流接口的当前状态
 	uvc_error_t result = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_CUR);	// probe query
 	if (LIKELY(!result)) {
+	    // 获取设备的协商字段的最小值
 		result = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_MIN);			// probe query
 		if (LIKELY(!result)) {
+		    // 获取设备的协商字段的最大值
 			result = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_MAX);		// probe query
 			if (UNLIKELY(result))
 				LOGE("uvc_query_stream_ctrl:UVC_GET_MAX:err=%d", result);	// XXX 最大値の方を後で取得しないとだめ 您稍后必须获得最大值
@@ -604,13 +726,15 @@ uvc_error_t uvc_probe_stream_ctrl(uvc_device_handle_t *devh,
 		return err;
 	}
 
+    // 获取设备的流接口探测状态参数
 	err = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_SET_CUR);	// probe query
 	if (UNLIKELY(err)) {
 		LOGE("uvc_query_stream_ctrl(UVC_SET_CUR):err=%d", err);
 		return err;
 	}
 
-	err = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_CUR);	// probe query ここでエラーが返ってくる
+    // 获取设备的流接口的当前状态
+	err = uvc_query_stream_ctrl(devh, ctrl, 1, UVC_GET_CUR);	// probe query ここでエラーが返ってくる 错误在这里返回
 	if (UNLIKELY(err)) {
 		LOGE("uvc_query_stream_ctrl(UVC_GET_CUR):err=%d", err);
 		return err;
@@ -640,6 +764,7 @@ static void _uvc_swap_buffers(uvc_stream_handle_t *strmh) {
 		strmh->hold_pts = strmh->pts;
 		strmh->hold_seq = strmh->seq;
 
+        // 唤醒所有等待视频帧线程
 		pthread_cond_broadcast(&strmh->cb_cond);
 	}
 	pthread_mutex_unlock(&strmh->cb_mutex);
@@ -664,6 +789,7 @@ static void _uvc_delete_transfer(struct libusb_transfer *transfer) {
 		// Mark transfer as deleted.
 		for (i = 0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
 			if (strmh->transfers[i] == transfer) {
+			    // usb取消传输数据
 				libusb_cancel_transfer(strmh->transfers[i]);	// XXX 20141112追加
 				UVC_DEBUG("Freeing transfer %d (%p)", i, transfer);
 				free(transfer->buffer);
@@ -675,7 +801,7 @@ static void _uvc_delete_transfer(struct libusb_transfer *transfer) {
 		if (UNLIKELY(i == LIBUVC_NUM_TRANSFER_BUFS)) {
 			UVC_DEBUG("transfer %p not found; not freeing!", transfer);
 		}
-
+        // 唤醒所有等待视频帧线程
 		pthread_cond_broadcast(&strmh->cb_cond);
 	}
 	pthread_mutex_unlock(&strmh->cb_mutex);
@@ -687,6 +813,7 @@ static void _uvc_delete_transfer(struct libusb_transfer *transfer) {
 /** @internal
  * @brief Process a payload transfer
  * 处理有效载荷传输
+ * 从数据中按照UVC协议解析视频帧数据
  * 
  * Processes stream, places frames into buffer, signals listeners
  * (such as user callback thread and any polling thread) on new frame
@@ -751,7 +878,7 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 	if (UNLIKELY(header_len < 2)) {
 		header_info = 0;
 	} else {
-		//  @todo we should be checking the end-of-header bit
+		//  @todo we should be checking the end-of-header bit 我们应该检查标题结束位
 		size_t variable_offset = 2;
 
 		header_info = payload[1];
@@ -789,7 +916,7 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 		}
 
 		if (header_info & UVC_STREAM_SCR) {
-			// @todo read the SOF token counter
+			// @todo read the SOF token counter 读取SOF令牌计数器
 			// XXX saki some camera may send broken packet or failed to receive all data
 			// saki某些相机可能发送了损坏的数据包或无法接收所有数据
 			if (LIKELY(variable_offset + 4 <= header_len)) {
@@ -810,7 +937,7 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 			strmh->bfh_err |= UVC_STREAM_ERR;
 		}
 
-		if (header_info & UVC_STREAM_EOF/*(1 << 1)*/) {
+		if (header_info & UVC_STREAM_EOF) {
 			// The EOF bit is set, so publish the complete frame
 			// EOF位置1，因此发布完整帧
 			_uvc_swap_buffers(strmh);
@@ -842,6 +969,9 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 	}
 }
 #else
+/**
+ * 从数据中按照UVC协议解析视频帧数据
+ */
 static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct libusb_transfer *transfer) {
 	/* per packet
 	 * 包
@@ -876,19 +1006,19 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 			continue;
 		}
 
-		if (UNLIKELY(!pkt->actual_length)) {	// why transfered byte is zero...
+		if (UNLIKELY(!pkt->actual_length)) {	// why transfered byte is zero...  传输字节为0
 //			MARK("zero packet (transfer):");
-//			strmh->bfh_err |= UVC_STREAM_ERR;	// don't set this flag here
+//			strmh->bfh_err |= UVC_STREAM_ERR;	// don't set this flag here 不要在这里设置此标志
 			continue;
 		}
 		// XXX accessing to pktbuf could lead to crash on the original implementation
 		// because the substances of pktbuf will be deleted in uvc_stream_stop.
 		// 访问pktbuf可能会导致原始实现崩溃，因为pktbuf的内容将在uvc_stream_stop中删除。
 		pktbuf = libusb_get_iso_packet_buffer_simple(transfer, packet_id);
-		if (LIKELY(pktbuf)) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null
+		if (LIKELY(pktbuf)) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null  添加空检查，因为libusb_get_iso_packet_buffer_simple可能返回空
 //			assert(pktbuf < transfer->buffer + transfer->length - 1);	// XXX
 #ifdef __ANDROID__
-			// XXX optimaization because this flag never become true on Android devices
+			// XXX optimaization because this flag never become true on Android devices 优化，因为此标志在Android设备上永远不会变为真
 			if (UNLIKELY(strmh->devh->is_isight))
 #else
 			if (strmh->devh->is_isight)
@@ -954,19 +1084,21 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 					}
 				}
 
-#ifdef __ANDROID__	// XXX optimaization because this flag never become true on Android devices
+#ifdef __ANDROID__	// XXX optimaization because this flag never become true on Android devices 优化，因为此标志在Android设备上永远不会变为真
 				if (UNLIKELY(strmh->devh->is_isight))
-					continue; // don't look for data after an iSight header
+					continue; // don't look for data after an iSight header  不要在iSight标头后查找数据
 #else
 				if (strmh->devh->is_isight) {
 					MARK("is_isight");
-					continue; // don't look for data after an iSight header
+					continue; // don't look for data after an iSight header  不要在iSight标头后查找数据
 				}
 #endif
 			} // if LIKELY(check_header)
 
 			if (UNLIKELY(pkt->actual_length < header_len)) {
-				/* Bogus packet received */
+				/* Bogus packet received
+				 * 收到假包
+				 */
 				strmh->bfh_err |= UVC_STREAM_ERR;
 				MARK("bogus packet: actual_len=%d, header_len=%zd", pkt->actual_length, header_len);
 				continue;
@@ -1005,7 +1137,7 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 
 /** @internal
  * @brief Isochronous transfer callback
- * 同步传输回调
+ * 同步传输回调 有数据回调
  * 
  * Processes stream, places frames into buffer, signals listeners
  * (such as user callback thread and any polling thread) on new frame
@@ -1027,7 +1159,7 @@ static void _uvc_stream_callback(struct libusb_transfer *transfer) {
 		MARK("cnt=%d", cnt);
 #endif
 	switch (transfer->status) {
-	case LIBUSB_TRANSFER_COMPLETED:
+	case LIBUSB_TRANSFER_COMPLETED: // 传输已完成，没有错误。 请注意，这并不表示已传输了全部所需数据。
 		if (!transfer->num_iso_packets) {
 			/* This is a bulk mode transfer, so it just has one payload transfer
 			 * 这是批量模式传输，因此只有一个有效负载传输
@@ -1040,25 +1172,26 @@ static void _uvc_stream_callback(struct libusb_transfer *transfer) {
 			_uvc_process_payload_iso(strmh, transfer);
 		}
 	    break;
-	case LIBUSB_TRANSFER_NO_DEVICE:
+	case LIBUSB_TRANSFER_NO_DEVICE: // 传输没有设备
 		strmh->running = 0;	// this needs for unexpected disconnect of cable otherwise hangup  这需要意外断开电缆连接，否则会挂断
 		// pass through to following lines 通过以下几行
-	case LIBUSB_TRANSFER_CANCELLED:
-	case LIBUSB_TRANSFER_ERROR:
+	case LIBUSB_TRANSFER_CANCELLED: // 传输被取消
+	case LIBUSB_TRANSFER_ERROR: // 传输失败
 		UVC_DEBUG("not retrying transfer, status = %d", transfer->status);
 //		MARK("not retrying transfer, status = %d", transfer->status);
 //		_uvc_delete_transfer(transfer);
 		resubmit = 0;
 		break;
-	case LIBUSB_TRANSFER_TIMED_OUT:
-	case LIBUSB_TRANSFER_STALL:
-	case LIBUSB_TRANSFER_OVERFLOW:
+	case LIBUSB_TRANSFER_TIMED_OUT: // 传输超时
+	case LIBUSB_TRANSFER_STALL: // 对于批量/中断端点：检测到停止条件（端点已停止）。 对于控制端点：不支持控制请求。
+	case LIBUSB_TRANSFER_OVERFLOW: // 设备发送的数据超出要求
 		UVC_DEBUG("retrying transfer, status = %d", transfer->status);
 //		MARK("retrying transfer, status = %d", transfer->status);
 		break;
 	}
 
 	if (LIKELY(strmh->running && resubmit)) {
+	    // 提交传输。 此功能将触发USB传输，然后立即返回。
 		libusb_submit_transfer(transfer);
 	} else {
 		// XXX delete non-reusing transfer
@@ -1268,6 +1401,7 @@ static void _uvc_iso_callback(struct libusb_transfer *transfer) {
 	}
 
 	if (LIKELY(strmh->running)) {
+	    // 提交传输。 此功能将触发USB传输，然后立即返回。
 		libusb_submit_transfer(transfer);
 	} else {
 		// XXX delete non-reusing transfer
@@ -1329,6 +1463,7 @@ uvc_error_t uvc_start_streaming_bandwidth(uvc_device_handle_t *devh,
     // 开始将视频从流传输到回调函数中。
 	ret = uvc_stream_start_bandwidth(strmh, cb, user_ptr, bandwidth_factor, flags);
 	if (UNLIKELY(ret != UVC_SUCCESS)) {
+	    // 关闭流
 		uvc_stream_close(strmh);
 		return ret;
 	}
@@ -1365,8 +1500,10 @@ static uvc_stream_handle_t *_uvc_get_stream_by_interface(
     // 循环查找流
 	DL_FOREACH(devh->streams, strmh)
 	{
-		if (strmh->stream_if->bInterfaceNumber == interface_idx)
-			return strmh;
+		if (strmh->stream_if->bInterfaceNumber == interface_idx) {
+		    // 接口编码一致，找到接口并返回
+		    return strmh;
+		}
 	}
 
 	return NULL;
@@ -1407,7 +1544,7 @@ uvc_error_t uvc_stream_open_ctrl(uvc_device_handle_t *devh,
 
 	UVC_ENTER();
 
-    // 循通过接口环查找流
+    // 循通过接口循环查找流
 	if (UNLIKELY(_uvc_get_stream_by_interface(devh, ctrl->bInterfaceNumber) != NULL)) {
 		ret = UVC_ERROR_BUSY; /* Stream is already opened */
 		goto fail;
@@ -1441,10 +1578,12 @@ uvc_error_t uvc_stream_open_ctrl(uvc_device_handle_t *devh,
 	// Set up the streaming status and data space
 	// 设置流状态和数据空间
 	strmh->running = 0;
-	/** @todo take only what we need */
+	/** @todo take only what we need  只拿我们需要的东西 */
+	// 创建接收数据缓存空间，要确保空间足够，至少能存一帧数据
+	// @todo 可以优化，根据协商的信息来创建缓存空间大小
 	strmh->outbuf = malloc(LIBUVC_XFER_BUF_SIZE);
 	strmh->holdbuf = malloc(LIBUVC_XFER_BUF_SIZE);
-	strmh->size_buf = LIBUVC_XFER_BUF_SIZE;	// xxx for boundary check
+	strmh->size_buf = LIBUVC_XFER_BUF_SIZE;	// xxx for boundary check  用于边界检查
 
 	UVC_DEBUG("LIBUVC_XFER_BUF_SIZE:"+LIBUVC_XFER_BUF_SIZE);
 
@@ -1552,6 +1691,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 		LOGE("unlnown frame format");
 		goto fail;
 	}
+	// 最大视频帧大小
 	const uint32_t dwMaxVideoFrameSize = ctrl->dwMaxVideoFrameSize <= frame_desc->dwMaxVideoFrameBufferSize
 		? ctrl->dwMaxVideoFrameSize : frame_desc->dwMaxVideoFrameBufferSize;
 
@@ -1613,7 +1753,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 //#else
 //		LOGI("config_bytes_per_packet=%ld", config_bytes_per_packet);
 //#endif
-		if (UNLIKELY(!config_bytes_per_packet)) {	// XXX added to privent zero divided exception at the following code 在以下代码中添加了XXX以防止零除异常
+		if (UNLIKELY(!config_bytes_per_packet)) {	// XXX added to privent zero divided exception at the following code 在以下代码中添加了以防止零除异常
 			ret = UVC_ERROR_IO;
 			LOGE("config_bytes_per_packet is zero");
 			goto fail;
@@ -1643,9 +1783,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 					//				01 = 1 additional (2 per microframe)
 					//				10 = 2 additional (3 per microframe)
 					//				11 = Reserved
-					endpoint_bytes_per_packet
-						= (endpoint_bytes_per_packet & 0x07ff)
-							* (((endpoint_bytes_per_packet >> 11) & 3) + 1);
+					endpoint_bytes_per_packet = (endpoint_bytes_per_packet & 0x07ff) * (((endpoint_bytes_per_packet >> 11) & 3) + 1);
 					break;
 				}
 			}
@@ -1653,7 +1791,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 			// config_bytes_per_packet不应为零，否则会发生零除异常
 			if (LIKELY(endpoint_bytes_per_packet)) {
 				if ( (endpoint_bytes_per_packet >= config_bytes_per_packet)
-					|| (alt_idx == num_alt) ) {	// XXX always match to last altsetting for buggy device
+					|| (alt_idx == num_alt) ) {	// XXX always match to last altsetting for buggy device  始终与设备的最后一个高度设置匹配
 					/* Transfers will be at most one frame long: Divide the maximum frame size
 					 * by the size of the endpoint and round up
 					 * 传输最多为一帧：将最大帧大小除以端点大小并四舍五入
@@ -1663,8 +1801,9 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 					/* But keep a reasonable limit: Otherwise we start dropping data
 					 * 但请保持合理的限制：否则我们将开始删除数据
 					 */
-					if (packets_per_transfer > 32)
-						packets_per_transfer = 32;
+					if (packets_per_transfer > 32){
+					    packets_per_transfer = 32;
+					}
 
 					total_transfer_size = packets_per_transfer * endpoint_bytes_per_packet;
 					break;
@@ -1685,7 +1824,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 		/* If we searched through all the altsettings and found nothing usable
 		 * 如果我们搜索了所有的altsettings，却发现没有可用的东西
 		 */
-/*		if (UNLIKELY(alt_idx == interface->num_altsetting)) {	// XXX never hit this condition
+/*		if (UNLIKELY(alt_idx == interface->num_altsetting)) {	// XXX never hit this condition  从未遇到过这种情况
 			UVC_DEBUG("libusb_set_interface_alt_setting failed");
 			ret = UVC_ERROR_INVALID_MODE;
 			goto fail;
@@ -1703,31 +1842,39 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 		}
 
 		/* Set up the transfers
-		 * 设置转移
+		 * 设置传输
 		 */
 		MARK("Set up the transfers");
 		for (transfer_id = 0; transfer_id < LIBUVC_NUM_TRANSFER_BUFS; ++transfer_id) {
+		    // 创建传输句柄 为libusb传输分配指定数量的同步数据包描述符 不再使用需要libusb_free_transfer(transfer)
 			transfer = libusb_alloc_transfer(packets_per_transfer);
 			strmh->transfers[transfer_id] = transfer;
 			strmh->transfer_bufs[transfer_id] = malloc(total_transfer_size);
 
+            // Helper函数填充同步传输所需的 libusb_transfer 字段。
+            // 当获得数据后回调 _uvc_stream_callback
 			libusb_fill_iso_transfer(transfer, strmh->devh->usb_devh,
 				format_desc->parent->bEndpointAddress,
 				strmh->transfer_bufs[transfer_id], total_transfer_size,
 				packets_per_transfer, _uvc_stream_callback,
 				(void*) strmh, 5000);
 
+            // 便利功能可根据传输结构中的num_iso_packets字段设置同步传输中所有数据包的长度。
 			libusb_set_iso_packet_lengths(transfer, endpoint_bytes_per_packet);
 		}
 	} else {
 		MARK("bulk transfer mode");
 		/* prepare for bulk transfer
-		 * 准备批量转移
+		 * 准备批量传输
 		 */
 		for (transfer_id = 0; transfer_id < LIBUVC_NUM_TRANSFER_BUFS; ++transfer_id) {
+		    // 为libusb传输分配指定数量的同步数据包描述符 不再使用需要libusb_free_transfer(transfer)
 			transfer = libusb_alloc_transfer(0);
 			strmh->transfers[transfer_id] = transfer;
 			strmh->transfer_bufs[transfer_id] = malloc(strmh->cur_ctrl.dwMaxPayloadTransferSize);
+
+			// Helper函数可填充批量传输所需的libusb_transfer字段。
+            // 当获得数据后回调 _uvc_stream_callback
 			libusb_fill_bulk_transfer(transfer, strmh->devh->usb_devh,
 				format_desc->parent->bEndpointAddress,
 				strmh->transfer_bufs[transfer_id],
@@ -1749,6 +1896,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 	}
 	MARK("submit transfers");
 	for (transfer_id = 0; transfer_id < LIBUVC_NUM_TRANSFER_BUFS; transfer_id++) {
+	    // 提交传输。 此功能将触发USB传输，然后立即返回。
 		ret = libusb_submit_transfer(strmh->transfers[transfer_id]);
 		if (UNLIKELY(ret != UVC_SUCCESS)) {
 			UVC_DEBUG("libusb_submit_transfer failed");
@@ -1757,7 +1905,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 	}
 
 	if (UNLIKELY(ret != UVC_SUCCESS)) {
-		/** @todo clean up transfers and memory */
+		/** @todo clean up transfers and memory 清理传输和内存 */
 		goto fail;
 	}
 
@@ -1804,22 +1952,28 @@ static void *_uvc_user_caller(void *arg) {
 		pthread_mutex_lock(&strmh->cb_mutex);
 		{
 			for (; strmh->running && (last_seq == strmh->hold_seq) ;) {
+			    // 等待
 				pthread_cond_wait(&strmh->cb_cond, &strmh->cb_mutex);
 			}
 
 			if (UNLIKELY(!strmh->running)) {
+			    // 没有运行退出
 				pthread_mutex_unlock(&strmh->cb_mutex);
 				break;
 			}
 
 			last_seq = strmh->hold_seq;
-			if (LIKELY(!strmh->hold_bfh_err))	// XXX
+			if (LIKELY(!strmh->hold_bfh_err)){	// XXX
+			    // 获取视频帧
 				_uvc_populate_frame(strmh);
+			}
 		}
 		pthread_mutex_unlock(&strmh->cb_mutex);
 
-		if (LIKELY(!strmh->hold_bfh_err))	// XXX
+		if (LIKELY(!strmh->hold_bfh_err)){	// XXX
+		    // 回调接口
 			strmh->user_cb(&strmh->frame, strmh->user_ptr);	// call user callback function
+		}
 	}
 
 	return NULL; // return value ignored
@@ -1841,15 +1995,13 @@ void _uvc_populate_frame(uvc_stream_handle_t *strmh) {
      * 在start（）中，以便只有一个线程可以命中这些数据。所有这些东西无论如何都将是reopen_on_change
 	 */
 
-	frame_desc = uvc_find_frame_desc(strmh->devh, strmh->cur_ctrl.bFormatIndex,
-			strmh->cur_ctrl.bFrameIndex);
+    // 查找特定帧配置的描述符
+	frame_desc = uvc_find_frame_desc(strmh->devh, strmh->cur_ctrl.bFormatIndex, strmh->cur_ctrl.bFrameIndex);
 
 	frame->frame_format = strmh->frame_format;
 
 	frame->width = frame_desc->wWidth;
 	frame->height = frame_desc->wHeight;
-	// XXX set actual_bytes to zero when erro bits is on
-	frame->actual_bytes = LIKELY(!strmh->hold_bfh_err) ? strmh->hold_bytes : 0;
 
 	switch (frame->frame_format) {
 	case UVC_FRAME_FORMAT_YUYV:
@@ -1867,12 +2019,16 @@ void _uvc_populate_frame(uvc_stream_handle_t *strmh) {
 	 * 将图像数据从保持缓冲区复制到帧（不必要的额外缓冲区？）
 	 */
 	if (UNLIKELY(frame->data_bytes < strmh->hold_bytes)) {
+	    // 帧空间不够重新创建
 		frame->data = realloc(frame->data, strmh->hold_bytes);	// TODO add error handling when failed realloc
-		frame->actual_bytes = frame->data_bytes = strmh->hold_bytes;
+		frame->data_bytes = strmh->hold_bytes;
 	}
+	// XXX set actual_bytes to zero when erro bits is on
+	// 当错误位打开时，将 actual_bytes 设置为零
+	frame->actual_bytes = LIKELY(!strmh->hold_bfh_err) ? strmh->hold_bytes : 0;
 	memcpy(frame->data, strmh->holdbuf, strmh->hold_bytes);	// XXX
 
-	/** @todo set the frame time */
+	/** @todo set the frame time 设置帧时间 */
 }
 
 /** Poll for a frame
@@ -1890,20 +2046,26 @@ uvc_error_t uvc_stream_get_frame(uvc_stream_handle_t *strmh,
 	struct timespec ts;
 	struct timeval tv;
 
-	if (UNLIKELY(!strmh->running))
-		return UVC_ERROR_INVALID_PARAM;
+	if (UNLIKELY(!strmh->running)) {
+	    // 没有运行
+	    return UVC_ERROR_INVALID_PARAM;
+	}
 
-	if (UNLIKELY(strmh->user_cb))
-		return UVC_ERROR_CALLBACK_EXISTS;
+	if (UNLIKELY(strmh->user_cb)) {
+	    // 没有回调接口
+	    return UVC_ERROR_CALLBACK_EXISTS;
+	}
 
 	pthread_mutex_lock(&strmh->cb_mutex);
 	{
 		if (strmh->last_polled_seq < strmh->hold_seq) {
+		    // 获取视频帧
 			_uvc_populate_frame(strmh);
 			*frame = &strmh->frame;
 			strmh->last_polled_seq = strmh->hold_seq;
 		} else if (timeout_us != -1) {
 			if (!timeout_us) {
+			    // 等待
 				pthread_cond_wait(&strmh->cb_cond, &strmh->cb_mutex);
 			} else {
 				add_secs = timeout_us / 1000000;
@@ -1921,11 +2083,12 @@ uvc_error_t uvc_stream_get_frame(uvc_stream_handle_t *strmh,
 
 				ts.tv_sec += add_secs;
 				ts.tv_nsec += add_nsecs;
-
+                // 等待到指定时间，如果在指定时间前被唤醒返回0，否则返回1
 				pthread_cond_timedwait(&strmh->cb_cond, &strmh->cb_mutex, &ts);
 			}
 
 			if (LIKELY(strmh->last_polled_seq < strmh->hold_seq)) {
+			    // 获取视频帧
 				_uvc_populate_frame(strmh);
 				*frame = &strmh->frame;
 				strmh->last_polled_seq = strmh->hold_seq;
@@ -1989,6 +2152,7 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
 	{
 		for (i = 0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
 			if (strmh->transfers[i]) {
+			    // usb取消传输数据
 				int res = libusb_cancel_transfer(strmh->transfers[i]);
 				if ((res < 0) && (res != LIBUSB_ERROR_NOT_FOUND)) {
 					UVC_DEBUG("libusb_cancel_transfer failed");
@@ -2009,11 +2173,13 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
 		 */
 		for (; 1 ;) {
 			for (i = 0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
-				if (strmh->transfers[i] != NULL)
-					break;
+				if (strmh->transfers[i] != NULL) {
+				    break;
+				}
 			}
-			if (i == LIBUVC_NUM_TRANSFER_BUFS)
-				break;
+			if (i == LIBUVC_NUM_TRANSFER_BUFS) {
+			    break;
+			}
 			pthread_cond_wait(&strmh->cb_cond, &strmh->cb_mutex);
 		}
 		// Kick the user thread awake

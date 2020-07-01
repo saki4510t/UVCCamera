@@ -533,14 +533,16 @@ netbsd_handle_events(struct libusb_context *ctx, struct pollfd *fds, nfds_t nfds
 			break;
 		}
 
-		if ((err = usbi_handle_transfer_completion(itransfer,
-		    LIBUSB_TRANSFER_COMPLETED)))
-			break;
+        // 处理传输完成（完成可能是错误情况）
+		if ((err = usbi_handle_transfer_completion(itransfer, LIBUSB_TRANSFER_COMPLETED))) {
+		    break;
+		}
 	}
 	pthread_mutex_unlock(&ctx->open_devs_lock);
 
-	if (err)
-		return _errno_to_libusb(err);
+	if (err) {
+	    return _errno_to_libusb(err);
+	}
 
 	return (LIBUSB_SUCCESS);
 }

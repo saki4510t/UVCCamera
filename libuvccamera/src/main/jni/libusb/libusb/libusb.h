@@ -345,12 +345,17 @@ enum libusb_descriptor_type {
 /** \ingroup desc
  * Endpoint direction. Values for bit 7 of the
  * \ref libusb_endpoint_descriptor::bEndpointAddress "endpoint address" scheme.
+ * 端点方向。 libusb_endpoint_descriptor::bEndpointAddress "endpoint address" 方案的位7的值。
  */
 enum libusb_endpoint_direction {
-	/** In: device-to-host */
+	/**
+	 * In: device-to-host
+	 */
 	LIBUSB_ENDPOINT_IN = 0x80,
 
-	/** Out: host-to-device */
+	/**
+	 * Out: host-to-device
+	 */
 	LIBUSB_ENDPOINT_OUT = 0x00
 };
 
@@ -359,21 +364,37 @@ enum libusb_endpoint_direction {
 /** \ingroup desc
  * Endpoint transfer type. Values for bits 0:1 of the
  * \ref libusb_endpoint_descriptor::bmAttributes "endpoint attributes" field.
+ * 端点传输类型。 libusb_endpoint_descriptor::bmAttributes "endpoint attributes" 字段的位 0:1 的值。
  */
 enum libusb_transfer_type {
-	/** Control endpoint */
+	/**
+	 * Control endpoint
+	 * 控制端点
+	 */
 	LIBUSB_TRANSFER_TYPE_CONTROL = 0,
 
-	/** Isochronous endpoint */
+	/**
+	 * Isochronous endpoint
+	 * 同步端点
+	 */
 	LIBUSB_TRANSFER_TYPE_ISOCHRONOUS = 1,
 
-	/** Bulk endpoint */
+	/**
+	 * Bulk endpoint
+	 * 批量端点
+	 */
 	LIBUSB_TRANSFER_TYPE_BULK = 2,
 
-	/** Interrupt endpoint */
+	/**
+	 * Interrupt endpoint
+	 * 中断端点
+	 */
 	LIBUSB_TRANSFER_TYPE_INTERRUPT = 3,
 
-	/** Stream endpoint */
+	/**
+	 * Stream endpoint
+	 * 流端点
+	 */
 	LIBUSB_TRANSFER_TYPE_BULK_STREAM = 4,
 };
 
@@ -691,51 +712,90 @@ struct libusb_association_descriptor {	// XXX added to support composit device
  * A structure representing the standard USB configuration descriptor. This
  * descriptor is documented in section 9.6.3 of the USB 3.0 specification.
  * All multiple-byte fields are represented in host-endian format.
+ * 表示标准USB配置描述符的结构。 USB 3.0规范的第9.6.3节记录了该描述符。
+ * 所有多字节字段均以主机字节序格式表示。
  */
 struct libusb_config_descriptor {
-	/** Size of this descriptor (in bytes) */
+	/**
+	 * Size of this descriptor (in bytes)
+	 * 该描述符的大小（以字节为单位）
+	 */
 	uint8_t  bLength;
 
-	/** Descriptor type. Will have value
+	/**
+	 * Descriptor type. Will have value
 	 * \ref libusb_descriptor_type::LIBUSB_DT_CONFIG LIBUSB_DT_CONFIG
-	 * in this context. */
+	 * in this context.
+	 * 描述符类型。 在这种情况下，将具有 libusb_descriptor_type::LIBUSB_DT_CONFIG LIBUSB_DT_CONFIG 值。
+	 */
 	uint8_t  bDescriptorType;
 
-	/** Total length of data returned for this configuration */
+	/**
+	 * Total length of data returned for this configuration
+	 * 此配置返回的数据总长度
+	 */
 	uint16_t wTotalLength;
 
-	/** Number of interfaces supported by this configuration */
+	/**
+	 * Number of interfaces supported by this configuration
+	 * 此配置支持的接口数
+	 */
 	uint8_t  bNumInterfaces;
 
-	/** Identifier value for this configuration */
+	/**
+	 * Identifier value for this configuration
+	 * 此配置的标识符值
+	 */
 	uint8_t  bConfigurationValue;
 
-	/** Index of string descriptor describing this configuration */
+	/**
+	 * Index of string descriptor describing this configuration
+	 * 描述此配置的字符串描述符的索引
+	 */
 	uint8_t  iConfiguration;
 
-	/** Configuration characteristics */
+	/**
+	 * Configuration characteristics
+	 * 配置特征
+	 */
 	uint8_t  bmAttributes;
 
-	/** Maximum power consumption of the USB device from this bus in this
+	/**
+	 * Maximum power consumption of the USB device from this bus in this
 	 * configuration when the device is fully opreation. Expressed in units
-	 * of 2 mA. */
+	 * of 2 mA.
+	 * 当设备完全使用时，在这种配置下，USB设备从该总线获得的最大功耗。 以2 mA为单位表示。
+	 */
 	uint8_t  MaxPower;
 
-	/** Array of interfaces supported by this configuration. The length of
-	 * this array is determined by the bNumInterfaces field. */
+	/**
+	 * Array of interfaces supported by this configuration. The length of
+	 * this array is determined by the bNumInterfaces field.
+	 * 此配置支持的接口数组。 该数组的长度由bNumInterfaces字段确定。
+	 */
 	const struct libusb_interface *interface;
 
-	/** Single link list of interface association descriptors related to this configuration.
-	 * The length of this list is determined by the num_associations field. */
+	/**
+	 * Single link list of interface association descriptors related to this configuration.
+	 * The length of this list is determined by the num_associations field.
+	 * 与该配置相关的接口关联描述符的单链接列表。
+     * 该列表的长度由num_associations字段确定。
+	 */
 	struct libusb_association_descriptor *association_descriptor;
 	uint8_t num_associations;
 	uint8_t selected_iad;
 
-	/** Extra descriptors. If libusb encounters unknown configuration
-	 * descriptors, it will store them here, should you wish to parse them. */
+	/**
+	 * Extra descriptors. If libusb encounters unknown configuration
+	 * descriptors, it will store them here, should you wish to parse them.
+	 * 额外的描述符。 如果libusb遇到未知的配置描述符，则将在您希望解析它们的情况下将其存储在此处。
+	 */
 	const unsigned char *extra;
 
-	/** Length of the extra descriptors, in bytes. */
+	/**
+	 * Length of the extra descriptors, in bytes.
+	 * 额外描述符的长度，以字节为单位。
+	 */
 	int extra_length;
 };
 
@@ -744,30 +804,46 @@ struct libusb_config_descriptor {
  * descriptor. This descriptor is documented in section 9.6.7 of
  * the USB 3.0 specification. All multiple-byte fields are represented in
  * host-endian format.
+ * 表示超速端点伴随描述符的结构。 USB 3.0规范的第9.6.7节记录了该描述符。 所有多字节字段均以主机字节序格式表示。
  */
 struct libusb_ss_endpoint_companion_descriptor {
 
-	/** Size of this descriptor (in bytes) */
+	/**
+	 * Size of this descriptor (in bytes)
+	 * 该描述符的大小（以字节为单位）
+	 */
 	uint8_t  bLength;
 
-	/** Descriptor type. Will have value
+	/**
+	 * Descriptor type. Will have value
 	 * \ref libusb_descriptor_type::LIBUSB_DT_SS_ENDPOINT_COMPANION in
-	 * this context. */
+	 * this context.
+	 * 描述符类型。 在这种情况下，将具有 \ref libusb_descriptor_type::LIBUSB_DT_SS_ENDPOINT_COMPANION 值。
+	 */
 	uint8_t  bDescriptorType;
 
 
-	/** The maximum number of packets the endpoint can send or
-	 *  recieve as part of a burst. */
+	/**
+	 * The maximum number of packets the endpoint can send or
+	 *  recieve as part of a burst.
+	 * 端点可以作为突发的一部分发送或接收的最大数据包数。
+	 */
 	uint8_t  bMaxBurst;
 
-	/** In bulk EP:	bits 4:0 represents the	maximum	number of
+	/**
+	 *  In bulk EP:	bits 4:0 represents the	maximum	number of
 	 *  streams the	EP supports. In	isochronous EP:	bits 1:0
 	 *  represents the Mult	- a zero based value that determines
-	 *  the	maximum	number of packets within a service interval  */
+	 *  the	maximum	number of packets within a service interval
+	 *  批量EP：位4：0表示EP支持的最大流数。 在同步EP中：位1：0表示Mult-从零开始的值，该值确定服务间隔内的最大数据包数
+	 */
 	uint8_t  bmAttributes;
 
-	/** The	total number of bytes this EP will transfer every
-	 *  service interval. valid only for periodic EPs. */
+	/**
+	 *  The	total number of bytes this EP will transfer every
+	 *  service interval. valid only for periodic EPs.
+	 * 该EP将在每个服务间隔传输的字节总数。 仅对定期EP有效。
+	 */
 	uint16_t wBytesPerInterval;
 };
 
@@ -775,17 +851,30 @@ struct libusb_ss_endpoint_companion_descriptor {
  * A generic representation of a BOS Device Capability descriptor. It is
  * advised to check bDevCapabilityType and call the matching
  * libusb_get_*_descriptor function to get a structure fully matching the type.
+ * BOS设备功能描述符的一般表示。 建议检查bDevCapabilityType并调用匹配的libusb_get _ * _ descriptor函数以获取与该类型完全匹配的结构。
  */
 struct libusb_bos_dev_capability_descriptor {
-	/** Size of this descriptor (in bytes) */
+	/**
+	 * Size of this descriptor (in bytes)
+	 * 该描述符的大小（以字节为单位）
+	 */
 	uint8_t bLength;
-	/** Descriptor type. Will have value
+	/**
+	 * Descriptor type. Will have value
 	 * \ref libusb_descriptor_type::LIBUSB_DT_DEVICE_CAPABILITY
-	 * LIBUSB_DT_DEVICE_CAPABILITY in this context. */
+	 * LIBUSB_DT_DEVICE_CAPABILITY in this context.
+	 * 描述符类型。 在这种情况下，将具有 \ref libusb_descriptor_type::LIBUSB_DT_DEVICE_CAPABILITY 值。
+	 */
 	uint8_t bDescriptorType;
-	/** Device Capability type */
+	/**
+	 * Device Capability type
+	 * 设备功能类型
+	 */
 	uint8_t bDevCapabilityType;
-	/** Device Capability data (bLength - 3 bytes) */
+	/**
+	 * Device Capability data (bLength - 3 bytes)
+	 * 设备功能数据（bLength-3个字节）
+	 */
 	uint8_t dev_capability_data
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 	[] /* valid C99 code */
@@ -1162,27 +1251,48 @@ enum libusb_error {
 /** \ingroup asyncio
  * Transfer status codes */
 enum libusb_transfer_status {
-	/** Transfer completed without error. Note that this does not indicate
-	 * that the entire amount of requested data was transferred. */
+	/**
+	 * Transfer completed without error. Note that this does not indicate
+	 * that the entire amount of requested data was transferred.
+	 * 传输已完成，没有错误。 请注意，这并不表示已传输了全部所需数据。
+	 */
 	LIBUSB_TRANSFER_COMPLETED,
 
-	/** Transfer failed */
+	/**
+	 * Transfer failed
+	 * 传输失败
+	 */
 	LIBUSB_TRANSFER_ERROR,
 
-	/** Transfer timed out */
+	/**
+	 * Transfer timed out
+	 * 传输超时
+	 */
 	LIBUSB_TRANSFER_TIMED_OUT,
 
-	/** Transfer was cancelled */
+	/**
+	 * Transfer was cancelled
+	 * 传输被取消
+	 */
 	LIBUSB_TRANSFER_CANCELLED,
 
-	/** For bulk/interrupt endpoints: halt condition detected (endpoint
-	 * stalled). For control endpoints: control request not supported. */
+	/**
+	 * For bulk/interrupt endpoints: halt condition detected (endpoint
+	 * stalled). For control endpoints: control request not supported.
+	 * 对于批量/中断端点：检测到停止条件（端点已停止）。 对于控制端点：不支持控制请求。
+	 */
 	LIBUSB_TRANSFER_STALL,
 
-	/** Device was disconnected */
+	/**
+	 * Device was disconnected
+	 * 设备断开连接
+	 */
 	LIBUSB_TRANSFER_NO_DEVICE,
 
-	/** Device sent more data than requested */
+	/**
+	 * Device sent more data than requested
+	 * 设备发送的数据超出要求
+	 */
 	LIBUSB_TRANSFER_OVERFLOW,
 
 	/* NB! Remember to update libusb_error_name()
@@ -1192,19 +1302,30 @@ enum libusb_transfer_status {
 /** \ingroup asyncio
  * libusb_transfer.flags values */
 enum libusb_transfer_flags {
-	/** Report short frames as errors */
+	/**
+	 * Report short frames as errors
+	 * 将短帧报告为错误
+	 */
 	LIBUSB_TRANSFER_SHORT_NOT_OK = 1<<0,
 
-	/** Automatically free() transfer buffer during libusb_free_transfer() */
+	/**
+	 * Automatically free() transfer buffer during libusb_free_transfer()
+	 * libusb_free_transfer()期间自动释放传输缓冲区
+	 */
 	LIBUSB_TRANSFER_FREE_BUFFER = 1<<1,
 
-	/** Automatically call libusb_free_transfer() after callback returns.
+	/**
+	 * Automatically call libusb_free_transfer() after callback returns.
 	 * If this flag is set, it is illegal to call libusb_free_transfer()
 	 * from your transfer callback, as this will result in a double-free
-	 * when this flag is acted upon. */
+	 * when this flag is acted upon.
+	 * 回调返回后自动调用libusb_free_transfer()。
+	 * 如果设置了此标志，则从您的传输回调中调用libusb_free_transfer()是非法的，因为对此标志进行操作将导致两次释放。
+	 */
 	LIBUSB_TRANSFER_FREE_TRANSFER = 1<<2,
 
-	/** Terminate transfers that are a multiple of the endpoint's
+	/**
+	 * Terminate transfers that are a multiple of the endpoint's
 	 * wMaxPacketSize with an extra zero length packet. This is useful
 	 * when a device protocol mandates that each logical request is
 	 * terminated by an incomplete packet (i.e. the logical requests are
@@ -1226,6 +1347,13 @@ enum libusb_transfer_flags {
 	 * LIBUSB_ERROR_NOT_SUPPORTED for every transfer where this flag is set.
 	 *
 	 * Available since libusb-1.0.9.
+	 *
+	 * 用额外的零长度数据包终止端点的wMaxPacketSize的倍数的传输。当设备协议要求每个逻辑请求由不完整的数据包终止时（即，逻辑请求不通过其他方式分开），这很有用。
+	 * 该标志仅影响主机到设备到批量端点和中断端点的传输。在其他情况下，它将被忽略。
+	 * 此标志仅影响长度为端点wMaxPacketSize倍数的传输。在其他长度的传输上，此标志无效。因此，如果您使用的设备在逻辑请求的末尾落在数据包边界上时都需要ZLP，则明智的做法是在每次传输时都设置该标志（您不必担心仅在传输时进行设置）在边界上结束）。
+	 * 当前仅在Linux上支持此标志。
+	 * 在其他系统上，libusb_submit_transfer()将针对设置了该标志的每次传输返回LIBUSB_ERROR_NOT_SUPPORTED。
+	 * 自libusb-1.0.9起可用。
 	 */
 	LIBUSB_TRANSFER_ADD_ZERO_PACKET = 1 << 3,
 };
@@ -1233,13 +1361,22 @@ enum libusb_transfer_flags {
 /** \ingroup asyncio
  * Isochronous packet descriptor. */
 struct libusb_iso_packet_descriptor {
-	/** Length of data to request in this packet */
+	/**
+	 * Length of data to request in this packet
+	 * 此数据包中要请求的数据长度
+	 */
 	unsigned int length;
 
-	/** Amount of data that was actually transferred */
+	/**
+	 * Amount of data that was actually transferred
+	 * 实际传输的数据量
+	 */
 	unsigned int actual_length;
 
-	/** Status code for this packet */
+	/**
+	 * Status code for this packet
+	 * 该数据包的状态码
+	 */
 	enum libusb_transfer_status status;
 };
 
@@ -1261,56 +1398,92 @@ typedef void (LIBUSB_CALL *libusb_transfer_cb_fn)(struct libusb_transfer *transf
  * then submits it in order to request a transfer. After the transfer has
  * completed, the library populates the transfer with the results and passes
  * it back to the user.
+ * 通用USB传输结构。 用户填充此结构，然后提交它以请求传输。 传输完成后，库将使用结果填充传输，并将其传递回用户。
  */
 struct libusb_transfer {
-	/** Handle of the device that this transfer will be submitted to */
+	/**
+	 * Handle of the device that this transfer will be submitted to
+	 * 传输将提交到的设备的句柄
+	 */
 	libusb_device_handle *dev_handle;
 
-	/** A bitwise OR combination of \ref libusb_transfer_flags. */
+	/**
+	 * A bitwise OR combination of \ref libusb_transfer_flags.
+	 * libusb_transfer_flags 的按位或组合。
+	 */
 	uint8_t flags;
 
-	/** Address of the endpoint where this transfer will be sent. */
+	/**
+	 * Address of the endpoint where this transfer will be sent.
+	 * 传输将发送到的端点的地址。
+	 */
 	unsigned char endpoint;
 
-	/** Type of the endpoint from \ref libusb_transfer_type */
+	/**
+	 * Type of the endpoint from \ref libusb_transfer_type
+	 * 来自libusb_transfer_type的端点类型
+	 */
 	unsigned char type;
 
-	/** Timeout for this transfer in millseconds. A value of 0 indicates no
-	 * timeout. */
+	/**
+	 * Timeout for this transfer in millseconds. A value of 0 indicates no timeout.
+	 * 传输超时（以毫秒为单位）。 值为0表示没有超时。
+	 */
 	unsigned int timeout;
 
-	/** The status of the transfer. Read-only, and only for use within
+	/**
+	 * The status of the transfer. Read-only, and only for use within
 	 * transfer callback function.
 	 *
 	 * If this is an isochronous transfer, this field may read COMPLETED even
 	 * if there were errors in the frames. Use the
 	 * \ref libusb_iso_packet_descriptor::status "status" field in each packet
-	 * to determine if errors occurred. */
+	 * to determine if errors occurred.
+	 * 传输状态。 只读，仅在传输回调函数中使用。
+     * 如果这是同步传输，则即使帧中有错误，此字段也可能显示为COMPLETED。 在每个数据包中使用 libusb_iso_packet_descriptor::status "status" 字段来确定是否发生错误。
+	 */
 	enum libusb_transfer_status status;
 
-	/** Length of the data buffer */
+	/**
+	 * Length of the data buffer
+	 * 数据缓冲区的长度
+	 */
 	int length;
 
-	/** Actual length of data that was transferred. Read-only, and only for
+	/**
+	 * Actual length of data that was transferred. Read-only, and only for
 	 * use within transfer callback function. Not valid for isochronous
-	 * endpoint transfers. */
+	 * endpoint transfers.
+	 * 实际传输的数据长度。 只读，仅在传输回调函数中使用。 对于同步端点传输无效。
+	 */
 	int actual_length;
 
-	/** Callback function. This will be invoked when the transfer completes,
-	 * fails, or is cancelled. */
+	/**
+	 * Callback function. This will be invoked when the transfer completes,
+	 * fails, or is cancelled.
+	 * 回调函数。 传输完成，失败或取消时将调用此方法。
+	 */
 	libusb_transfer_cb_fn callback;
 
-	/** User context data to pass to the callback function. */
+	/**
+	 * User context data to pass to the callback function.
+	 * 用户上下文数据传递给回调函数。
+	 */
 	void *user_data;
 
 	/** Data buffer */
 	unsigned char *buffer;
 
-	/** Number of isochronous packets. Only used for I/O with isochronous
-	 * endpoints. */
+	/**
+	 * Number of isochronous packets. Only used for I/O with isochronous endpoints.
+	 * 同步包数。 仅用于具有同步端点的I/O。
+	 */
 	int num_iso_packets;
 
-	/** Isochronous packet descriptors, for isochronous transfers only. */
+	/**
+	 * Isochronous packet descriptors, for isochronous transfers only.
+	 * 同步数据包描述符，仅用于同步传输。
+	 */
 	struct libusb_iso_packet_descriptor iso_packet_desc
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 	[] /* valid C99 code */
@@ -1598,6 +1771,7 @@ static inline void libusb_fill_control_transfer(
 /** \ingroup asyncio
  * Helper function to populate the required \ref libusb_transfer fields
  * for a bulk transfer.
+ * Helper函数可填充批量传输所需的libusb_transfer字段。
  *
  * \param transfer the transfer to populate
  * \param dev_handle handle of the device that will handle the transfer
@@ -1645,6 +1819,7 @@ static inline void libusb_fill_bulk_stream_transfer(
 	unsigned char *buffer, int length, libusb_transfer_cb_fn callback,
 	void *user_data, unsigned int timeout)
 {
+    // Helper函数可填充批量传输所需的libusb_transfer字段。
 	libusb_fill_bulk_transfer(transfer, dev_handle, endpoint, buffer,
 				  length, callback, user_data, timeout);
 	transfer->type = LIBUSB_TRANSFER_TYPE_BULK_STREAM;
@@ -1682,6 +1857,7 @@ static inline void libusb_fill_interrupt_transfer(
 /** \ingroup asyncio
  * Helper function to populate the required \ref libusb_transfer fields
  * for an isochronous transfer.
+ * Helper函数填充同步传输所需的 libusb_transfer 字段。
  *
  * \param transfer the transfer to populate
  * \param dev_handle handle of the device that will handle the transfer
@@ -1712,6 +1888,7 @@ static inline void libusb_fill_iso_transfer(struct libusb_transfer *transfer,
 /** \ingroup asyncio
  * Convenience function to set the length of all packets in an isochronous
  * transfer, based on the num_iso_packets field in the transfer structure.
+ * 便利功能可根据传输结构中的num_iso_packets字段设置同步传输中所有数据包的长度。
  *
  * \param transfer a transfer
  * \param length the length to set in each isochronous packet descriptor
@@ -1721,8 +1898,9 @@ static inline void libusb_set_iso_packet_lengths(
 	struct libusb_transfer *transfer, unsigned int length)
 {
 	int i;
-	for (i = 0; i < transfer->num_iso_packets; i++)
-		transfer->iso_packet_desc[i].length = length;
+	for (i = 0; i < transfer->num_iso_packets; i++) {
+	    transfer->iso_packet_desc[i].length = length;
+	}
 }
 
 /** \ingroup asyncio

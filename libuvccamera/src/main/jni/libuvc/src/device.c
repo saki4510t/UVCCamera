@@ -309,6 +309,7 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 
 	if (internal_devh->info->ctrl_if.bEndpointAddress) {
 		UVC_DEBUG("status check transfer:bEndpointAddress=0x%02x", internal_devh->info->ctrl_if.bEndpointAddress);
+		// 为libusb传输分配指定数量的同步数据包描述符
 		internal_devh->status_xfer = libusb_alloc_transfer(0);
 		if (UNLIKELY(!internal_devh->status_xfer)) {
 			ret = UVC_ERROR_NO_MEM;
@@ -319,6 +320,7 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 				internal_devh->info->ctrl_if.bEndpointAddress,
 				internal_devh->status_buf, sizeof(internal_devh->status_buf),
 				_uvc_status_callback, internal_devh, 0);
+		// 提交传输。 此功能将触发USB传输，然后立即返回。
 		ret = libusb_submit_transfer(internal_devh->status_xfer);
 		UVC_DEBUG("libusb_submit_transfer() = %d", ret);
 
@@ -822,6 +824,7 @@ void uvc_unref_device(uvc_device_t *dev) {
 
 /** @internal
  * Claim a UVC interface, detaching the kernel driver if necessary.
+ * 声明UVC接口，必要时分离内核驱动程序。
  * @ingroup device
  *
  * @param devh UVC device handle
@@ -833,11 +836,14 @@ uvc_error_t uvc_claim_if(uvc_device_handle_t *devh, int idx) {
 	UVC_ENTER();
 #if !UVC_DETACH_ATTACH
 	// libusb automatically attach/detach kernel driver on supported platforms
+	// libusb在支持的平台上自动附加/分离内核驱动程序
 	UVC_DEBUG("claiming interface %d", idx);
 	ret = libusb_claim_interface(devh->usb_devh, idx);
 #else
 	/* Tell libusb to detach any active kernel drivers. libusb will keep track of whether
-	 * it found a kernel driver for this interface. */
+	 * it found a kernel driver for this interface.
+	 * 告诉libusb分离所有活动的内核驱动程序。 libusb将跟踪是否为该接口找到了内核驱动程序。
+	 */
 	ret = libusb_detach_kernel_driver(devh->usb_devh, idx);
 	
 	if LIKELY(!ret || ret == LIBUSB_ERROR_NOT_FOUND || ret == LIBUSB_ERROR_NOT_SUPPORTED) {
@@ -1778,7 +1784,7 @@ void _uvc_status_callback(struct libusb_transfer *transfer) {
 		UVC_DEBUG("retrying transfer, status = %d", transfer->status);
 		break;
 	}
-
+    // 提交传输。 此功能将触发USB传输，然后立即返回。
 	uvc_error_t ret = libusb_submit_transfer(transfer);
 	UVC_DEBUG("libusb_submit_transfer() = %d", ret);
 

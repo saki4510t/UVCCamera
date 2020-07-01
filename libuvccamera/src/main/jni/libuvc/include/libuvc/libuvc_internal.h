@@ -259,7 +259,9 @@ struct uvc_device_info;
  * 视频流接口
  */
 typedef struct uvc_streaming_interface {
+  // uvc设备信息
   struct uvc_device_info *parent;
+  // uvc流接口
   struct uvc_streaming_interface *prev, *next;
   /**
    * Interface number
@@ -289,6 +291,7 @@ typedef struct uvc_streaming_interface {
  * 视频控制接口
  */
 typedef struct uvc_control_interface {
+  // uvc设备信息
   struct uvc_device_info *parent;
   struct uvc_input_terminal *input_term_descs;
   struct uvc_output_terminal *output_term_descs;
@@ -343,7 +346,7 @@ typedef struct uvc_device_info {
  */
 #define LIBUVC_NUM_TRANSFER_BUFS 10 // LIBUVC编号转移缓冲区
 
-#define LIBUVC_XFER_BUF_SIZE	( 16 * 1024 * 1024 ) // 16MB
+#define LIBUVC_XFER_BUF_SIZE	( 2 * 1024 * 1024 ) // 原值16MB
 
 struct uvc_stream_handle {
   struct uvc_device_handle *devh;

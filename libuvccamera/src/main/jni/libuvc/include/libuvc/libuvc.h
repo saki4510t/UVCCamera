@@ -176,7 +176,9 @@ struct uvc_frame_desc;
  * “帧”是在可能的几个可用帧速率中的一个的特定图像大小的流格式的配置。
  */
 typedef struct uvc_frame_desc {
+  // uvc格式描述
   struct uvc_format_desc *parent;
+  // uvc帧描述
   struct uvc_frame_desc *prev, *next;
   /**
    * Type of frame, such as JPEG frame or uncompressed frme
@@ -253,7 +255,9 @@ typedef struct uvc_frame_desc {
  * “格式”确定流的图像类型（例如原始YUYV或JPEG），并包括许多“帧”配置。
  */
 typedef struct uvc_format_desc {
+  //uvc流接口
   struct uvc_streaming_interface *parent;
+  //uvc格式描述
   struct uvc_format_desc *prev, *next;
   /**
    * Type of image stream, such as JPEG or uncompressed.
@@ -311,6 +315,17 @@ typedef struct uvc_format_desc {
  * UVC request code (A.8)
  * UVC 请求码
  */
+/*
+Attribute   Description
+GET_CUR     返回流接口的当前状态。所有支持的字段都设置为零将返回一个可接受的协商值。在初始SET_CUR操作之前，GET_CUR状态是未定义的。如果协商失败，该请求将暂停。
+GET_MIN     返回协商字段的最小值。
+GET_MAX     返回协商字段的最大值。
+GET_RES     返回探测/提交数据结构中每个受支持字段的分辨率。
+GET_DEF     返回协商字段的默认值。
+GET_LEN     返回Probe数据结构的长度。
+GET_INFO    查询控件的功能和状态。为此请求返回的值应将D0和D1位分别设置为一（1），其余位设置为零（0）（请参见第4.1.2节“获取请求”）。
+SET_CUR     设置流接口探测状态。这是用于流参数协商的属性。如果设备将处于不支持的状态或协商字段的值超出范围，则此请求将协议STALL。有关要注册的确切错误，请参见第4.2.1.2节“请求错误代码控制”。
+*/
 enum uvc_req_code {
 	UVC_RC_UNDEFINED = 0x00,
 	UVC_SET_CUR = 0x01,			// bmRequestType=0x21
@@ -678,7 +693,7 @@ typedef struct uvc_frame {
 	enum uvc_frame_format frame_format;
 	/**
 	 * Number of bytes per horizontal line (undefined for compressed format)
-	 * 每水平线的字节数（对于压缩格式未定义）
+	 * 每行的字节数（对于压缩格式未定义）
 	 */
 	size_t step;
 	/**

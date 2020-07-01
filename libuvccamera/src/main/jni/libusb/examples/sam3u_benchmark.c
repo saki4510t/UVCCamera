@@ -76,6 +76,7 @@ static void LIBUSB_CALL cb_xfr(struct libusb_transfer *xfr)
 	num_bytes += xfr->actual_length;
 	num_xfer++;
 
+    // 提交传输。 此功能将触发USB传输，然后立即返回。
 	if (libusb_submit_transfer(xfr) < 0) {
 		fprintf(stderr, "error re-submitting URB\n");
 		exit(1);
@@ -91,15 +92,19 @@ static int benchmark_in(uint8_t ep)
 	if (ep == EP_ISO_IN)
 		num_iso_pack = 16;
 
+    // 为libusb传输分配指定数量的同步数据包描述符
 	xfr = libusb_alloc_transfer(num_iso_pack);
 	if (!xfr)
 		return -ENOMEM;
 
 	if (ep == EP_ISO_IN) {
+	    // Helper函数填充同步传输所需的 libusb_transfer 字段。
 		libusb_fill_iso_transfer(xfr, devh, ep, buf,
 				sizeof(buf), num_iso_pack, cb_xfr, NULL, 0);
+		// 便利功能可根据传输结构中的num_iso_packets字段设置同步传输中所有数据包的长度。
 		libusb_set_iso_packet_lengths(xfr, sizeof(buf)/num_iso_pack);
 	} else
+	    // Helper函数可填充批量传输所需的libusb_transfer字段。
 		libusb_fill_bulk_transfer(xfr, devh, ep, buf,
 				sizeof(buf), cb_xfr, NULL, 0);
 
@@ -119,6 +124,7 @@ static int benchmark_in(uint8_t ep)
 	 * transfers which have completed on the bus.
 	 */
 
+    // 提交传输。 此功能将触发USB传输，然后立即返回。
 	return libusb_submit_transfer(xfr);
 }
 
