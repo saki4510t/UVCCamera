@@ -370,11 +370,11 @@ struct uvc_stream_handle {
    * 监听器只能在持有 cb_mutex 的锁(可能用 cb_cond 发出信号)时访问 hold*
    */
   uint8_t bfh_err, hold_bfh_err;	// XXX added to keep UVC_STREAM_ERR 保持UVC_STREAM_ERR
-  uint8_t fid;
+  uint8_t fid; // 帧id
   uint32_t seq, hold_seq;
   uint32_t pts, hold_pts;
   uint32_t last_scr, hold_last_scr;
-  size_t got_bytes, hold_bytes;
+  size_t got_bytes, hold_bytes; // 现获得的数据大小
   size_t size_buf;	// XXX add for boundary check 边界检查
   // outbuf 输出缓存  holdbuf持有缓存
   uint8_t *outbuf, *holdbuf;

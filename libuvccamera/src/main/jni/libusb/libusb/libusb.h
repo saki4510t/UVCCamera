@@ -1948,6 +1948,7 @@ static inline unsigned char *libusb_get_iso_packet_buffer(
  * Convenience function to locate the position of an isochronous packet
  * within the buffer of an isochronous transfer, for transfers where each
  * packet is of identical size.
+ * 方便的功能，用于将同步数据包的位置定位在同步传输的缓冲区内，用于每个数据包大小相同的传输。
  *
  * This function relies on the assumption that every packet within the transfer
  * is of identical size to the first packet. Calculating the location of

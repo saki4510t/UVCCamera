@@ -96,7 +96,9 @@ enum uvc_frame_format {
 	 * 任何支持的格式
 	 */
 	UVC_FRAME_FORMAT_ANY = 0,
+	// 未压缩
 	UVC_FRAME_FORMAT_UNCOMPRESSED,
+	// 压缩
 	UVC_FRAME_FORMAT_COMPRESSED,
 	/**
 	 * YUYV/YUV2/YUV422: YUV encoding with one luminance value per pixel and
