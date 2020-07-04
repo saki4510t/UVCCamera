@@ -32,6 +32,10 @@
  * 将未对齐的四字节小尾数整数转换为int32
  */
 #define DW_TO_INT(p) ((p)[0] | ((p)[1] << 8) | ((p)[2] << 16) | ((p)[3] << 24))
+
+
+#define _11bits_TO_INT(p) (((p)[0] | ((p)[1] << 8)) & 0x7ff)
+
 /**
  * Converts an unaligned four-byte little-endian integer into an signed int32
  * 将未对齐的四字节小尾数整数转换为带符号的int32
@@ -371,9 +375,10 @@ struct uvc_stream_handle {
    */
   uint8_t bfh_err, hold_bfh_err;	// XXX added to keep UVC_STREAM_ERR 保持UVC_STREAM_ERR
   uint8_t fid; // 帧id
+  uint32_t sof; // 帧计数器，同个视频帧会有不相同
   uint32_t seq, hold_seq;
-  uint32_t pts, hold_pts;
-  uint32_t last_scr, hold_last_scr;
+  uint32_t pts, hold_pts; // 图像时间戳，同个视频帧多个数据包中保持相同
+  uint32_t last_stc, hold_last_stc; // 系统时间时钟，采样的时钟值
   size_t got_bytes, hold_bytes; // 现获得的数据大小
   size_t size_buf;	// XXX add for boundary check 边界检查
   // outbuf 输出缓存  holdbuf持有缓存

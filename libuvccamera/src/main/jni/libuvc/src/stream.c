@@ -44,7 +44,9 @@
  * 用于创建，管理和使用视频流的工具
  */
 
-#define LOCAL_DEBUG 0
+#define LOCAL_DEBUG 1
+
+#define DLY_DEBUG 0
 
 #define LOG_TAG "libuvc/stream"
 #if 1	// デバッグ情報を出さない時1  不输出调试信息时1
@@ -63,6 +65,20 @@
 
 #include "libuvc/libuvc.h"
 #include "libuvc/libuvc_internal.h"
+
+
+char * uint8_to_hex(uint8_t aa, char *buffer, int *index)
+{
+    char ddl,ddh;
+    ddh = 48 + aa / 16;
+    ddl = 48 + aa % 16;
+    if (ddh > 57) ddh = ddh + 7;
+    if (ddl > 57) ddl = ddl + 7;
+    buffer[(*index)++] = ddh;
+    buffer[(*index)++] = ddl;
+    buffer[(*index)++] = ' ';
+    return buffer;
+}
 
 uvc_frame_desc_t *uvc_find_frame_desc_stream(uvc_stream_handle_t *strmh,
 		uint16_t format_id, uint16_t frame_id);
@@ -389,8 +405,7 @@ uvc_error_t uvc_query_stream_ctrl(uvc_device_handle_t *devh,
 		 */
 		if (!ctrl->dwMaxVideoFrameSize) {
 			LOGW("fix up block for cameras that fail to set dwMax");
-			uvc_frame_desc_t *frame_desc = uvc_find_frame_desc(devh,
-					ctrl->bFormatIndex, ctrl->bFrameIndex);
+			uvc_frame_desc_t *frame_desc = uvc_find_frame_desc(devh, ctrl->bFormatIndex, ctrl->bFrameIndex);
 
 			if (frame_desc) {
 				ctrl->dwMaxVideoFrameSize = frame_desc->dwMaxVideoFrameBufferSize;
@@ -456,8 +471,9 @@ static uvc_frame_desc_t *_uvc_find_frame_desc_stream_if(
 		if (format->bFormatIndex == format_id) {
 			DL_FOREACH(format->frame_descs, frame)
 			{
-				if (frame->bFrameIndex == frame_id)
-					return frame;
+				if (frame->bFrameIndex == frame_id) {
+				    return frame;
+				}
 			}
 		}
 	}
@@ -495,8 +511,9 @@ uvc_frame_desc_t *uvc_find_frame_desc(uvc_device_handle_t *devh,
 	{
 	    //查找特定帧配置的描述符
 		frame = _uvc_find_frame_desc_stream_if(stream_if, format_id, frame_id);
-		if (frame)
-			return frame;
+		if (frame) {
+		    return frame;
+		}
 	}
 
 	return NULL;
@@ -531,14 +548,6 @@ static uvc_error_t _prepare_stream_ctrl(uvc_device_handle_t *devh, uvc_stream_ct
 	} else {
 		LOGE("uvc_query_stream_ctrl:UVC_GET_CUR:err=%d", result);
 	}
-#if 0
-	if (UNLIKELY(result)) {
-		enum uvc_error_code_control error_code;
-		uvc_get_error_code(devh, &error_code, UVC_GET_CUR);
-		LOGE("uvc_query_stream_ctrl:ret=%d,err_code=%d", result, error_code);
-		uvc_print_format_desc(devh->info->stream_ifs->format_descs, NULL);
-	}
-#endif
 	return result;
 }
 
@@ -566,35 +575,6 @@ static uvc_error_t _uvc_get_stream_ctrl_format(uvc_device_handle_t *devh,
 		LOGE("_prepare_stream_ctrl:err=%d", result);
 		goto fail;
 	}
-#if 0
-	// XXX add check ctrl values
-	// 添加检查ctrl值
-	uint64_t bmaControl = stream_if->bmaControls[format->bFormatIndex - 1];
-	if (bmaControl & 0x001) {	// wKeyFrameRate
-		if (UNLIKELY(!ctrl->wKeyFrameRate)) {
-			LOGE("wKeyFrameRate should be set");
-			RETURN(UVC_ERROR_INVALID_MODE, uvc_error_t);
-		}
-	}
-	if (bmaControl & 0x002) {	// wPFrameRate
-		if (UNLIKELY(!ctrl->wPFrameRate)) {
-			LOGE("wPFrameRate should be set");
-			RETURN(UVC_ERROR_INVALID_MODE, uvc_error_t);
-		}
-	}
-	if (bmaControl & 0x004) {	// wCompQuality
-		if (UNLIKELY(!ctrl->wCompQuality)) {
-			LOGE("wCompQuality should be set");
-			RETURN(UVC_ERROR_INVALID_MODE, uvc_error_t);
-		}
-	}
-	if (bmaControl & 0x008) {	// wCompWindowSize
-		if (UNLIKELY(!ctrl->wCompWindowSize)) {
-			LOGE("wCompWindowSize should be set");
-			RETURN(UVC_ERROR_INVALID_MODE, uvc_error_t);
-		}
-	}
-#endif
 	DL_FOREACH(format->frame_descs, frame)
 	{
 		if (frame->wWidth != width || frame->wHeight != height)
@@ -768,7 +748,7 @@ static void _uvc_swap_buffers(uvc_stream_handle_t *strmh) {
 		strmh->hold_bytes = strmh->got_bytes;
 		strmh->holdbuf = strmh->outbuf;
 		strmh->outbuf = tmp_buf;
-		strmh->hold_last_scr = strmh->last_scr;
+		strmh->hold_last_stc = strmh->last_stc;
 		strmh->hold_pts = strmh->pts;
 		strmh->hold_seq = strmh->seq;
 
@@ -779,8 +759,7 @@ static void _uvc_swap_buffers(uvc_stream_handle_t *strmh) {
 
 	strmh->seq++;
 	strmh->got_bytes = 0;
-	strmh->last_scr = 0;
-	strmh->pts = 0;
+	strmh->last_stc = 0;
 	strmh->bfh_err = 0;	// XXX
 }
 
@@ -794,7 +773,7 @@ static void _uvc_delete_transfer(struct libusb_transfer *transfer) {
 
 	pthread_mutex_lock(&strmh->cb_mutex);	// XXX crash while calling uvc_stop_streaming 调用uvc_stop_streaming时崩溃
 	{
-		// Mark transfer as deleted.
+		// 将传输标记为已删除。
 		for (i = 0; i < LIBUVC_NUM_TRANSFER_BUFS; i++) {
 			if (strmh->transfers[i] == transfer) {
 			    // usb取消传输数据
@@ -816,11 +795,9 @@ static void _uvc_delete_transfer(struct libusb_transfer *transfer) {
 	EXIT();
 }
 
-#define USE_EOF
-
 /** @internal
  * @brief Process a payload transfer
- * 处理有效载荷传输
+ * 处理有效载荷传输。块模式传输，因此只有一个有效负载传输
  * 从数据中按照UVC协议解析视频帧数据
  * 
  * Processes stream, places frames into buffer, signals listeners
@@ -848,8 +825,27 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 
 	// ignore empty payload transfers
 	// 忽略空的有效载荷传输
-	if (UNLIKELY(!payload || !payload_len || !strmh->outbuf))
-		return;
+	if (UNLIKELY(!payload || !payload_len || !strmh->outbuf)) {
+	    return;
+	}
+
+	/* 添加数据打印，用于调试，测完后应删除 start */
+#if DLY_DEBUG == 1
+	char *printStr = (char *) malloc(200);
+	memset(printStr, '\0', 200);
+	const uint8_t * printPtr = payload;
+	int index = 0;
+	for(int pi = 0; pi <payload_len; pi++, printPtr++){
+	    printStr = uint8_to_hex(*printPtr, printStr, &index);
+	    if(pi >= 50){
+	        break;
+	    }
+	}
+	*(printStr + index) = '\0';
+	LOGE("_uvc_process_payload 打印每个数据包数据 %s\n", printStr);
+	free(printStr);
+#endif
+	/* 添加数据打印，用于调试，测完后应删除 end */
 
 	/* Certain iSight cameras have strange behavior: They send header
 	 * information in a packet with no image data, and then the following
@@ -919,9 +915,7 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 	    // 没有载体头(Payload Header)
 		header_info = 0;
 	} else {
-		//  @todo we should be checking the end-of-header bit 我们应该检查标题结束位
-		size_t variable_offset = 2;
-
+		//  @todo we should be checking the end-of-header bit 我们应该检查标题结束位=
 		header_info = payload[1];
 
 		if (UNLIKELY(header_info & UVC_STREAM_ERR)) {
@@ -934,41 +928,51 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 //			return;
 		}
 
-		if ((strmh->fid != (header_info & UVC_STREAM_FID)) && strmh->got_bytes) {
-			/* The frame ID bit was flipped, but we have image data sitting
-				around from prior transfers. This means the camera didn't send
-				an EOF for the last transfer of the previous frame.
-				帧ID位被翻转，但是我们有来自先前传输的图像数据，这意味着相机在上一帧的最后传输中没有发送EOF。
-			*/
-			_uvc_swap_buffers(strmh);
-		}
-
-		strmh->fid = header_info & UVC_STREAM_FID;
+        // 图像时间戳，同个视频帧多个数据包中保持相同
+        uint32_t frame_pts = 0;
+        // 系统时间时钟，采样的时钟值
+        uint32_t frame_stc = 0;
+        // 帧计数器，同个视频帧会有不相同
+        uint32_t frame_sof = 0;
 
 		if (header_info & UVC_STREAM_PTS) {
 			// XXX saki some camera may send broken packet or failed to receive all data
 			// saki某些相机可能发送了损坏的数据包或无法接收所有数据
-			if (LIKELY(variable_offset + 4 <= header_len)) {
-				strmh->pts = DW_TO_INT(payload + variable_offset);
-				variable_offset += 4;
+			if (LIKELY(header_len >= 6)) {
+				frame_pts = DW_TO_INT(payload + 2);
 			} else {
 				MARK("bogus packet: header info has UVC_STREAM_PTS, but no data");
-				strmh->pts = 0;
+				frame_pts = 0;
 			}
 		}
-
 		if (header_info & UVC_STREAM_SCR) {
-			// @todo read the SOF token counter 读取SOF令牌计数器
 			// XXX saki some camera may send broken packet or failed to receive all data
 			// saki某些相机可能发送了损坏的数据包或无法接收所有数据
-			if (LIKELY(variable_offset + 4 <= header_len)) {
-				strmh->last_scr = DW_TO_INT(payload + variable_offset);
-				variable_offset += 4;
-			} else {
-				MARK("bogus packet: header info has UVC_STREAM_SCR, but no data");
-				strmh->last_scr = 0;
+			if (LIKELY(header_len >= 10)) {
+				frame_stc = DW_TO_INT(payload + 6);
+                if (LIKELY(header_len >= 12)) {
+                    frame_sof = _11bits_TO_INT(payload + 10);
+                }
 			}
 		}
+		uint8_t frame_fid = header_info & UVC_STREAM_FID;
+		if (strmh->got_bytes > 0 && (strmh->fid != frame_fid || strmh->pts != frame_pts)) {
+			/* The frame ID bit was flipped, but we have image data sitting
+				around from prior transfers. This means the camera didn't send
+				an EOF for the last transfer of the previous frame.
+				帧ID位被翻转，但是我们有来自先前传输的图像数据，这意味着相机在上一帧的最后传输中没有发送EOF。
+				PTS不一样，这意味着相机在上一帧的最后传输中没有发送EOF。
+
+				可能出现花帧了
+			*/
+			LOGE("_uvc_process_payload some frames losted 可能出现花帧了 \n");
+			_uvc_swap_buffers(strmh);
+		}
+
+		strmh->fid = frame_fid;
+		strmh->pts = frame_pts;
+		strmh->last_stc = frame_stc;
+		strmh->sof = frame_sof;
 	}
 
 	if (LIKELY(data_len > 0)) {
@@ -987,31 +991,8 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 	}
 }
 
-#if 0
-static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct libusb_transfer *transfer) {
-	/* This is an isochronous mode transfer, so each packet has a payload transfer
-	 * 这是同步模式传输，因此每个数据包都有一个有效负载传输
-	 */
-	int packet_id;
-	for (packet_id = 0; packet_id < transfer->num_iso_packets; packet_id++) {
-		struct libusb_iso_packet_descriptor *pkt = transfer->iso_packet_desc + packet_id;
-
-		if UNLIKELY(pkt->status) {
-//			UVC_DEBUG("bad packet:status=%d,actual_length=%d", pkt->status, pkt->actual_length);
-			MARK("bad packet:status=%d,actual_length=%d", pkt->status, pkt->actual_length);
-			continue;
-		}
-		if UNLIKELY(!pkt->actual_length) {
-			MARK("zero packet (transfer):");
-			continue;
-		}
-		// libusb_get_iso_packet_buffer_simple will return NULL
-		uint8_t *pktbuf = libusb_get_iso_packet_buffer_simple(transfer, packet_id);
-		_uvc_process_payload(strmh, pktbuf, pkt->actual_length);
-	}
-}
-#else
 /**
+ * 同步模式传输，每个数据包都有一个有效负载传输
  * 从数据中按照UVC协议解析视频帧数据
  */
 static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct libusb_transfer *transfer) {
@@ -1023,6 +1004,35 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 	size_t header_len;
 	uint8_t header_info;
 	struct libusb_iso_packet_descriptor *pkt;
+
+    /*
+        UVC 1.1 增加 有效载荷标题的格式 Format of the Payload Header
+        Offset      Field           Size    Value   Description
+        0       bHeaderLength       1       Number  有效负载头的长度（以字节为单位），包括此字段。
+        1       bmHeaderInfo        1       Bitmap  提供有关标题后面的示例数据的信息，以及此标题中可选标题字段的可用性。
+                                                    D0：帧ID —— 对于基于帧的格式，每次新的视频帧开始时，此位在0和1之间切换。对于基于流的格式，在每个新的特定于编解码器的段的开头，该位在0和1之间切换。
+                                                        此行为对于基于帧的有效载荷格式（例如DV）是必需的，对于基于流的有效载荷格式（例如MPEG-2 TS）是可选的。对于基于流的格式，必须通过“视频探测和提交”控件的bmFramingInfo字段指示对此位的支持（请参见第4.3.1.1节“视频探测和提交控件”）。
+                                                    D1：帧结束 —— 如果以下有效载荷数据标记了当前视频或静止图像帧的结束（对于基于帧的格式），或者指示编解码器特定段的结束（对于基于流的帧），则该位置1格式）。对于所有有效负载格式，此行为都是可选的。对于基于流的格式，必须通过“视频探测和提交控件”的bmFramingInfo字段指示对此位的支持（请参见第4.3.1.1节“视频探测和提交控件”）。
+                                                    D2：演示时间 —— 如果dwPresentationTime字段作为标题的一部分发送，则此位置1。
+                                                    D3：源时钟参考 —— 如果dwSourceClock字段作为标题的一部分发送，则此位置1。
+                                                    D4：有效负载特定位。 请参阅各个有效负载规格以进行使用。
+                                                    D5：静止图像 —— 如果随后的数据是静止图像帧的一部分，则此位置1，仅用于静止图像捕获的方法2和3。 对于时间编码格式，该位指示随后的数据是帧内编码帧的一部分。
+                                                    D6：错误 —— 如果此有效负载的视频或静止图像传输出现错误，则此位置1。 流错误代码控件将反映错误原因。
+                                                    D7：标头结尾 —— 如果这是数据包中的最后一个标头组，则设置此位，其中标头组引用此字段以及由该字段中的位标识的任何可选字段（定义为将来扩展）。
+
+        注意 标头中可能包含以下字段，也可能不包含以下字段，具体取决于上面bmHeaderInfo字段中指定的位。 这些字段的顺序是在上面的位图标题字段中指定的顺序，即最低有效位在先。 由于标头本身可能会在将来扩展，因此dwPresentationTime的偏移量也是可变的。 设备将在特定于类的VideoStreaming描述符内的有效负载格式描述符中指示是否支持这些字段。 请参见第3.9.2.3节“有效载荷格式描述符”。
+
+        Variable dwPresentationTime 4       Number  演示时间戳（PTS）。 开始原始帧捕获时，以本机设备时钟为单位的源时钟时间。 对于包括单个视频帧的多个有效载荷传输，可以重复此字段，但要限制该值在整个视频帧中保持相同。 PTS是以与视频探针控制响应的dwClockFrequency字段中指定的单位相同。
+        Variable scrSourceClock     6       Number  两部分的源时钟参考（SCR）值
+                                                    D31..D0：源时间时钟，以本机设备时钟为单位
+                                                    D42..D32：1KHz SOF令牌计数器
+                                                    D47..D43：保留，设置为零。
+                                                    最低有效的32位（D31..D0）包含从源处的系统时间时钟（STC）采样的时钟值。时钟分辨率应根据本规范表4-75中定义的设备的探测和提交响应的dwClockFrequency字段。
+                                                    该值应符合相关的流有效载荷规范。采样STC的时间必须与USB总线时钟相关联。为此，SCR的下一个最高11位（D42..D32）包含一个1 KHz SOF计数器，该计数器表示对STC进行采样时的帧号。
+                                                    * 当视频帧的第一个视频数据为放在USB总线上。
+                                                    * 对于单个负载内的所有有效负载传输，SCR必须保持恒定视频帧。
+                                                    保留最高有效的5位（D47..D43），并且必须将其设置为零。包含SCR值的有效负载报头之间的最大间隔为100ms或视频帧间隔，以较大者为准。允许间隔更短。
+    */
 
 	/* magic numbers for identifying header packets from some iSight cameras
 	 * 魔术数字，用于识别某些iSight摄像机的标头数据包
@@ -1058,6 +1068,25 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 		// 访问pktbuf可能会导致原始实现崩溃，因为pktbuf的内容将在uvc_stream_stop中删除。
 		pktbuf = libusb_get_iso_packet_buffer_simple(transfer, packet_id);
 		if (LIKELY(pktbuf)) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null  添加空检查，因为libusb_get_iso_packet_buffer_simple可能返回空
+
+	/* 添加数据打印，用于调试，测完后应删除 start */
+#if DLY_DEBUG == 1
+            char *printStr = (char *) malloc(200);
+            memset(printStr, '\0', 200);
+            uint8_t * printPtr = pktbuf;
+            int index = 0;
+            for(int pi = 0; pi < pkt->actual_length; pi++, printPtr++){
+                printStr = uint8_to_hex(*printPtr, printStr, &index);
+                if(pi >= 50){
+                    break;
+                }
+            }
+            *(printStr + index) = '\0';
+            LOGE("_uvc_process_payload_iso 打印每个数据包数据 %s\n", printStr);
+            free(printStr);
+#endif
+	/* 添加数据打印，用于调试，测完后应删除 end */
+
 //			assert(pktbuf < transfer->buffer + transfer->length - 1);	// XXX
 			if (strmh->devh->is_isight)
 			{
@@ -1083,43 +1112,53 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 					uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
 					continue;
 				}
-#ifdef USE_EOF
-				if ((strmh->fid != (header_info & UVC_STREAM_FID)) && strmh->got_bytes) {	// got_bytesを取ると殆ど画面更新されない  拍摄了got_bytes后，屏幕几乎不会更新
+
+                // 图像时间戳，同个视频帧多个数据包中保持相同
+                uint32_t frame_pts = 0;
+                // 系统时间时钟，采样的时钟值
+                uint32_t frame_stc = 0;
+                // 帧计数器，同个视频帧会有不相同
+                uint32_t frame_sof = 0;
+
+                if (header_info & UVC_STREAM_PTS) {
+                    // XXX saki some camera may send broken packet or failed to receive all data
+                    // saki某些相机可能发送了损坏的数据包或无法接收所有数据
+                    if (LIKELY(header_len >= 6)) {
+                        frame_pts = DW_TO_INT(pktbuf + 2);
+                    } else {
+                        MARK("bogus packet: header info has UVC_STREAM_PTS, but no data");
+                        frame_pts = 0;
+                    }
+                }
+                if (header_info & UVC_STREAM_SCR) {
+                    // XXX saki some camera may send broken packet or failed to receive all data
+                    // saki某些相机可能发送了损坏的数据包或无法接收所有数据
+                    if (LIKELY(header_len >= 10)) {
+                        frame_stc = DW_TO_INT(pktbuf + 6);
+                        if (LIKELY(header_len >= 12)) {
+                            frame_sof = _11bits_TO_INT(pktbuf + 10);
+                        }
+                    }
+                }
+		        uint8_t frame_fid = header_info & UVC_STREAM_FID;
+				if (strmh->got_bytes > 0 && (strmh->fid != frame_fid || strmh->pts != frame_pts)) {
                     /* The frame ID bit was flipped, but we have image data sitting
                      around from prior transfers. This means the camera didn't send
                      an EOF for the last transfer of the previous frame or some frames losted.
                      帧ID位被翻转了，但是我们有来自先前传输的图像数据，这意味着相机没有为前一帧的最后一次传输发送EOF或丢失了一些帧。
+				     PTS不一样，这意味着相机在上一帧的最后传输中没有发送EOF。
+
+				     可能出现花帧了
                      */
+                    LOGE("_uvc_process_payload_iso some frames losted 可能出现花帧了 \n");
 					_uvc_swap_buffers(strmh);
-				}
-				strmh->fid = header_info & UVC_STREAM_FID;
-#else
-				if (strmh->fid != (header_info & UVC_STREAM_FID)) {	// when FID is toggled  切换FID时
-					_uvc_swap_buffers(strmh);
-					strmh->fid = header_info & UVC_STREAM_FID;
-				}
-#endif
-				if (header_info & UVC_STREAM_PTS) {
-					// XXX saki some camera may send broken packet or failed to receive all data
-					// saki某些相机可能发送了损坏的数据包或无法接收所有数据
-					if (LIKELY(header_len >= 6)) {
-						strmh->pts = DW_TO_INT(pktbuf + 2);
-					} else {
-						MARK("bogus packet: header info has UVC_STREAM_PTS, but no data");
-						strmh->pts = 0;
-					}
 				}
 
-				if (header_info & UVC_STREAM_SCR) {
-					// XXX saki some camera may send broken packet or failed to receive all data
-					// saki某些相机可能发送了损坏的数据包或无法接收所有数据
-					if (LIKELY(header_len >= 10)) {
-						strmh->last_scr = DW_TO_INT(pktbuf + 6);
-					} else {
-						MARK("bogus packet: header info has UVC_STREAM_SCR, but no data");
-						strmh->last_scr = 0;
-					}
-				}
+				strmh->fid = frame_fid;
+				strmh->pts = frame_pts;
+				strmh->last_stc = frame_stc;
+				strmh->sof = frame_sof;
+
 				if (strmh->devh->is_isight) {
 					MARK("is_isight");
 					continue; // don't look for data after an iSight header  不要在iSight标头后查找数据
@@ -1149,14 +1188,15 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 				memcpy(strmh->outbuf + strmh->got_bytes, pktbuf + header_len, odd_bytes);
 				strmh->got_bytes += odd_bytes;
 			}
-#ifdef USE_EOF
+
 			if ((pktbuf[1] & UVC_STREAM_EOF) && strmh->got_bytes != 0) {
 				/* The EOF bit is set, so publish the complete frame
+				 * E0F帧结束，如果有，指示视频帧的结束，并在属于帧的最后一个视频样本中设置
 				 * EOF位置1，因此发布完整帧
 				 */
 				_uvc_swap_buffers(strmh);
 			}
-#endif
+
 		} else {	// if (LIKELY(pktbuf))
 			strmh->bfh_err |= UVC_STREAM_ERR;
 			MARK("libusb_get_iso_packet_buffer_simple returned null");
@@ -1164,7 +1204,6 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 		}
 	}	// for
 }
-#endif
 
 /** @internal
  * @brief Isochronous transfer callback
@@ -1186,8 +1225,9 @@ static void _uvc_stream_callback(struct libusb_transfer *transfer) {
 
 #ifndef NDEBUG
 	static int cnt = 0;
-	if UNLIKELY((++cnt % 1000) == 0)
-		MARK("cnt=%d", cnt);
+	if UNLIKELY((++cnt % 1000) == 0) {
+	    MARK("cnt=%d", cnt);
+	}
 #endif
 	switch (transfer->status) {
         case LIBUSB_TRANSFER_COMPLETED: // 传输已完成，没有错误。 请注意，这并不表示已传输了全部所需数据。
@@ -1202,7 +1242,7 @@ static void _uvc_stream_callback(struct libusb_transfer *transfer) {
                     if(1 == isOk){
                         if (!transfer->num_iso_packets) {
                                 /* This is a bulk mode transfer, so it just has one payload transfer
-                                 * 这是批量模式传输，因此只有一个有效负载传输
+                                 * 这是块模式传输，因此只有一个有效负载传输
                                  */
                                 _uvc_process_payload(strmh, transfer->buffer, transfer->actual_length);
                         } else {
@@ -1234,6 +1274,7 @@ static void _uvc_stream_callback(struct libusb_transfer *transfer) {
 
 	if (LIKELY(strmh->running && resubmit)) {
 	    // 提交传输。 此功能将触发USB传输，然后立即返回。
+	    // 继续请求
 		libusb_submit_transfer(transfer);
 	} else {
 		// XXX delete non-reusing transfer
@@ -1243,204 +1284,6 @@ static void _uvc_stream_callback(struct libusb_transfer *transfer) {
 		_uvc_delete_transfer(transfer);
 	}
 }
-
-#if 0
-/** @internal
- * @brief Isochronous transfer callback
- * 同步传输回调
- * 
- * Processes stream, places frames into buffer, signals listeners
- * (such as user callback thread and any polling thread) on new frame
- * 处理流，将帧放入缓冲区，在新帧上向侦听器（例如用户回调线程和任何轮询线程）发出信号
- *
- * @param transfer Active transfer
- */
-static void _uvc_iso_callback(struct libusb_transfer *transfer) {
-	uvc_stream_handle_t *strmh;
-	int packet_id;
-
-	/* per packet
-	 * 包
-	 */
-	uint8_t *pktbuf;
-	uint8_t check_header;
-	size_t header_len;	// XXX unsigned int header_len
-	uint8_t header_info;
-	struct libusb_iso_packet_descriptor *pkt;
-
-	/* magic numbers for identifying header packets from some iSight cameras
-	 * 魔术数字，用于识别某些iSight摄像机的标头数据包
-	 */
-	static const uint8_t isight_tag[] = {
-		0x11, 0x22, 0x33, 0x44, 0xde, 0xad,
-		0xbe, 0xef, 0xde, 0xad, 0xfa, 0xce };
-
-	strmh = transfer->user_data;
-#ifndef NDEBUG
-	static int cnt = 0;
-	if ((++cnt % 1000) == 0)
-		MARK("cnt=%d", cnt);
-#endif
-	switch (transfer->status) {
-        case LIBUSB_TRANSFER_COMPLETED:
-            if (UNLIKELY(!transfer->num_iso_packets))
-                MARK("num_iso_packets is zero");
-            for (packet_id = 0; packet_id < transfer->num_iso_packets; ++packet_id) {
-                check_header = 1;
-
-                pkt = transfer->iso_packet_desc + packet_id;
-
-                if (UNLIKELY(pkt->status != 0)) {
-                    MARK("bad packet:status=%d,actual_length=%d", pkt->status, pkt->actual_length);
-                    strmh->bfh_err |= UVC_STREAM_ERR;
-                    continue;
-                }
-
-                if (UNLIKELY(!pkt->actual_length)) {	// why transfered byte is zero...
-    //				MARK("zero packet (transfer):");
-    //				strmh->bfh_err |= UVC_STREAM_ERR;	// don't set this flag here
-                    continue;
-                }
-                // XXX accessing to pktbuf could lead to crash on the original implementation
-                // because the substances of pktbuf will be deleted in uvc_stream_stop.
-                // XXX访问pktbuf可能会导致原始实现崩溃，因为pktbuf的内容将在uvc_stream_stop中删除。
-                pktbuf = libusb_get_iso_packet_buffer_simple(transfer, packet_id);
-                if (LIKELY(pktbuf)) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null
-    //				assert(pktbuf < transfer->buffer + transfer->length - 1);	// XXX
-                    if (strmh->devh->is_isight)
-                    {
-                        if (pkt->actual_length < 30
-                            || (memcmp(isight_tag, pktbuf + 2, sizeof(isight_tag))
-                                && memcmp(isight_tag, pktbuf + 3, sizeof(isight_tag)))) {
-                            check_header = 0;
-                            header_len = 0;
-                        } else {
-                            header_len = pktbuf[0];
-                        }
-                    } else {
-                        // Header length field of Stream Header
-                        // 流头的头长度字段
-                        header_len = pktbuf[0];
-                    }
-
-                    if (LIKELY(check_header)) {
-                        header_info = pktbuf[1];
-                        if (UNLIKELY(header_info & UVC_STREAM_ERR)) {
-                            strmh->bfh_err |= UVC_STREAM_ERR;
-                            MARK("bad packet");
-    //						libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
-                            uvc_vc_get_error_code(strmh->devh, &vc_error_code, UVC_GET_CUR);
-                            uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
-                            continue;
-                        }
-    #ifdef USE_EOF
-                        if ((strmh->fid != (header_info & UVC_STREAM_FID)) && strmh->got_bytes) {	// got_bytesを取ると殆ど画面更新されない   拍摄了got_bytes后，屏幕几乎不会更新
-                            /* The frame ID bit was flipped, but we have image data sitting
-                             around from prior transfers. This means the camera didn't send
-                             an EOF for the last transfer of the previous frame or some frames losted.
-                             * 帧ID位被翻转了，但是我们有来自先前传输的图像数据，这意味着相机没有为前一帧的最后一次传输发送EOF或丢失了一些帧。
-                             */
-                            _uvc_swap_buffers(strmh);
-                        }
-                        strmh->fid = header_info & UVC_STREAM_FID;
-    #else
-                        if (strmh->fid != (header_info & UVC_STREAM_FID)) {	// when FID is toggled  切换FID时
-                            _uvc_swap_buffers(strmh);
-                            strmh->fid = header_info & UVC_STREAM_FID;
-                        }
-    #endif
-                        if (header_info & UVC_STREAM_PTS) {
-                            // XXX saki some camera may send broken packet or failed to receive all data
-                            // XXX saki某些相机可能发送了损坏的数据包或无法接收所有数据
-                            if (LIKELY(header_len >= 6)) {
-                                strmh->pts = DW_TO_INT(pktbuf + 2);
-                            } else {
-                                MARK("bogus packet: header info has UVC_STREAM_PTS, but no data");
-                                strmh->pts = 0;
-                            }
-                        }
-
-                        if (header_info & UVC_STREAM_SCR) {
-                            // XXX saki some camera may send broken packet or failed to receive all data
-                            // XXX saki某些相机可能发送了损坏的数据包或无法接收所有数据
-                            if (LIKELY(header_len >= 10)) {
-                                strmh->last_scr = DW_TO_INT(pktbuf + 6);
-                            } else {
-                                MARK("bogus packet: header info has UVC_STREAM_SCR, but no data");
-                                strmh->last_scr = 0;
-                            }
-                        }
-
-                        if (strmh->devh->is_isight) {
-                            MARK("is_isight");
-                            continue; // don't look for data after an iSight header
-                        }
-                    } // if LIKELY(check_header)
-
-                    if (UNLIKELY(pkt->actual_length < header_len)) {
-                        /* Bogus packet received
-                         * 收到假包
-                         */
-                        strmh->bfh_err |= UVC_STREAM_ERR;
-                        MARK("bogus packet: actual_len=%d, header_len=%zd", pkt->actual_length, header_len);
-                        continue;
-                    }
-
-                    // XXX original implementation could lead to trouble because unsigned values
-                    // and there calculated value never become minus.
-                    // therefor changed to "if (pkt->actual_length > header_len)"
-                    // from "if (pkt->actual_length - header_len > 0)"
-                    // XXX的原始实现可能会导致麻烦，因为未签名的值和在那里计算出的值永远不会变为负数。
-                    // 因此从"if (pkt->actual_length - header_len > 0)"更改为"if (pkt->actual_length > header_len)"
-                    if (LIKELY(pkt->actual_length > header_len)) {
-                        const size_t odd_bytes = pkt->actual_length - header_len;
-                        assert(strmh->got_bytes + odd_bytes < strmh->size_buf);
-                        assert(strmh->outbuf);
-                        assert(pktbuf);
-                        memcpy(strmh->outbuf + strmh->got_bytes, pktbuf + header_len, odd_bytes);
-                        strmh->got_bytes += odd_bytes;
-                    }
-    #ifdef USE_EOF
-                    if ((pktbuf[1] & STREAM_HEADER_BFH_EOF) && strmh->got_bytes != 0) {
-                        /* The EOF bit is set, so publish the complete frame
-                         * EOF位置1，因此发布完整帧
-                         */
-                        _uvc_swap_buffers(strmh);
-                    }
-    #endif
-                } else {	// if (LIKELY(pktbuf))
-                    strmh->bfh_err |= UVC_STREAM_ERR;
-                    MARK("libusb_get_iso_packet_buffer_simple returned null");
-                    continue;
-                }
-            }	// for
-            break;
-        case LIBUSB_TRANSFER_NO_DEVICE:
-            strmh->running = 0;	// this needs for unexpected disconnect of cable otherwise hangup
-        case LIBUSB_TRANSFER_CANCELLED:
-        case LIBUSB_TRANSFER_ERROR:
-            UVC_DEBUG("not retrying transfer, status = %d", transfer->status);
-    //		MARK("not retrying transfer, status = %d", transfer->status);
-            _uvc_delete_transfer(transfer);
-            break;
-        case LIBUSB_TRANSFER_TIMED_OUT:
-        case LIBUSB_TRANSFER_STALL:
-        case LIBUSB_TRANSFER_OVERFLOW:
-            UVC_DEBUG("retrying transfer, status = %d", transfer->status);
-    //		MARK("retrying transfer, status = %d", transfer->status);
-            break;
-	}
-
-	if (LIKELY(strmh->running)) {
-	    // 提交传输。 此功能将触发USB传输，然后立即返回。
-		libusb_submit_transfer(transfer);
-	} else {
-		// XXX delete non-reusing transfer
-		// real implementation of deleting transfer moves to _uvc_delete_transfer
-		_uvc_delete_transfer(transfer);
-	}
-}
-#endif
 
 /**
  * Begin streaming video from the camera into the callback function.
@@ -1705,7 +1548,8 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 	strmh->seq = 0;
 	strmh->fid = 0;
 	strmh->pts = 0;
-	strmh->last_scr = 0;
+	strmh->last_stc = 0;
+	strmh->sof = 0;
 	strmh->bfh_err = 0;	// XXX
 
     // 查找特定帧配置的描述符
@@ -2053,7 +1897,7 @@ void _uvc_populate_frame(uvc_stream_handle_t *strmh) {
 	 */
 	if (UNLIKELY(frame->data_bytes < strmh->hold_bytes)) {
 	    // 帧空间不够重新创建
-		frame->data = realloc(frame->data, strmh->hold_bytes);	// TODO add error handling when failed realloc
+		frame->data = realloc(frame->data, strmh->hold_bytes);	// TODO add error handling when failed realloc  重新分配失败时添加错误处理
 		frame->data_bytes = strmh->hold_bytes;
 	}
 	// XXX set actual_bytes to zero when erro bits is on

@@ -377,8 +377,11 @@ static clockid_t find_monotonic_clock(void) {
 	struct timespec ts;
 	int r;
 
-	/* Linux 2.6.28 adds CLOCK_MONOTONIC_RAW but we don't use it
-	 * because it's not available through timerfd */
+	/* Linux 2.6.28 adds CLOCK_MONOTONIC_RAW but we don't use it because it's not available through timerfd
+	 * Linux 2.6.28添加了CLOCK_MONOTONIC_RAW，但我们不使用它，因为它不能通过timerfd使用
+	 *
+	 * CLOCK_MONOTONIC 以绝对时间为准，获取的时间为系统重启到现在的时间，更改系统时间对齐没有影响
+	 */
 	r = clock_gettime(CLOCK_MONOTONIC, &ts);
 	if (r == 0)
 		return CLOCK_MONOTONIC;
@@ -2579,7 +2582,7 @@ static int op_submit_transfer(struct usbi_transfer *itransfer) {
 	switch (transfer->type) {
         case LIBUSB_TRANSFER_TYPE_CONTROL: // 控制端点
             return submit_control_transfer(itransfer);
-        case LIBUSB_TRANSFER_TYPE_BULK: // 批量端点
+        case LIBUSB_TRANSFER_TYPE_BULK: // 块端点
         case LIBUSB_TRANSFER_TYPE_BULK_STREAM: // 流端点
             return submit_bulk_transfer(itransfer);
         case LIBUSB_TRANSFER_TYPE_INTERRUPT:// 中断端点

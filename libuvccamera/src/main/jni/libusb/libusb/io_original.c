@@ -1141,8 +1141,7 @@ int usbi_io_init(struct libusb_context *ctx)
 		goto err_close_hp_pipe;
 
 #ifdef USBI_TIMERFD_AVAILABLE
-	ctx->timerfd = timerfd_create(usbi_backend->get_timerfd_clockid(),
-		TFD_NONBLOCK);
+	ctx->timerfd = timerfd_create(usbi_backend->get_timerfd_clockid(), TFD_NONBLOCK);
 	if (ctx->timerfd >= 0) {
 		usbi_dbg("using timerfd for timeouts");
 		r = usbi_add_pollfd(ctx, ctx->timerfd, POLLIN);

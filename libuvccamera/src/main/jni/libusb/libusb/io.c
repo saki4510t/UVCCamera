@@ -1142,8 +1142,9 @@ int usbi_io_init(struct libusb_context *ctx) {
 		goto err_close_hp_pipe;
 
 #ifdef USBI_TIMERFD_AVAILABLE
-	ctx->timerfd = timerfd_create(usbi_backend->get_timerfd_clockid(),
-		TFD_NONBLOCK);
+    // TFD_NONBLOCK 非阻塞读操作
+    // TFD_CLOEXEC 新的文件描述符设置运行时关闭标志
+	ctx->timerfd = timerfd_create(usbi_backend->get_timerfd_clockid(), TFD_NONBLOCK);
 	if (UNLIKELY(ctx->timerfd >= 0)) {
 		usbi_dbg("using timerfd for timeouts");
 		r = usbi_add_pollfd(ctx, ctx->timerfd, POLLIN);

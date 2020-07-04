@@ -307,12 +307,7 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 
     // 获取给定设备的USB设备描述符。
 	libusb_get_device_descriptor(dev->usb_dev, &desc);
-	// TODO 需要手动适配摄像头是否为每一帧发送EOF
 	internal_devh->is_isight = (desc.idVendor == 0x05ac && desc.idProduct == 0x8501);
-    if (internal_devh->info->ctrl_if.bcdUVC >= 0x0110){
-        // 1.1、1.5
-        internal_devh->is_isight = 1;
-    }
 	if (internal_devh->info->ctrl_if.bEndpointAddress) {
 		UVC_DEBUG("status check transfer:bEndpointAddress=0x%02x", internal_devh->info->ctrl_if.bEndpointAddress);
 		// 为libusb传输分配指定数量的同步数据包描述符
