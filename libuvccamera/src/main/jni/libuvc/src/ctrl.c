@@ -1237,6 +1237,7 @@ uvc_error_t uvc_set_powerline_freqency(uvc_device_handle_t *devh, uint8_t freq) 
 	uvc_error_t ret;
 
 	// XXX AUTO(0x03) is only available for UVC1.5.
+	// AUTO（0x03）仅适用于UVC1.5。
 	if ( ((freq & 0xff) == 0xff)
 		|| (((freq & 0x03) == 0x03) && (devh->info->ctrl_if.bcdUVC < 0x0150)) ) {
 

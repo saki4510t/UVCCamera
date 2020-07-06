@@ -83,6 +83,17 @@
  *
  * If we also have all descriptors, we can obtain the device descriptor and
  * configuration without touching usbfs at all.
+ *
+ * sysfs vs usbfs：
+ * 打开usbfs节点会导致设备恢复，因此我们尝试在枚举期间避免这种情况。
+ * sysfs允许我们读取内核的设备描述符的内存副本等，从而无需打开设备：
+ * - 二进制“descriptors”文件包含自2.6.26起的所有配置描述符，提交217a9081d8e69026186067711131bb77f0ce219ed
+ * - 二进制“descriptors” 在2.6.23中添加文件，提交69d42a78f935d19384d1f6e4f94b65bb162b36df，但它仅包含活动的配置描述符
+ * - 在2.6.22中添加了“busnum”文件，提交83f7d958eab2fbc6b159ee92bf1493924e1d0f72
+ * - 从pre-2.6.18版本开始存在“devnum”文件。
+ * - 从pre-2.6.18版本开始存在“bConfigurationValue”文件。
+ * 如果我们具有bConfigurationValue，busnum和devnum，则可以确定活动配置，而无需在RDWR模式下打开usbfs节点。busnum文件很重要，因为我们可以将sysfs设备关联到usbfs节点的唯一方法。
+ * 如果我们还有所有描述符，则无需接触usbfs就可以获取设备描述符和配置。
  */
 
 /* endianness for multi-byte fields:
@@ -92,11 +103,17 @@
  * bus-endian. The kernel documentation says otherwise, but it is wrong.
  *
  * In sysfs all descriptors are bus-endian.
+ *
+ * 多字节字段的字节序：
+ * usbfs公开的描述符在设备描述符中将多字节字段作为主机字节序。其他描述符中的多字节字段是bus-endian。 内核文档另有说明，但这是错误的。
+ * 在sysfs中，所有描述符都是bus-endian。
  */
 
 static const char *usbfs_path = NULL;
 
-/* use usbdev*.* device names in /dev instead of the usbfs bus directories */
+/* use usbdev*.* device names in /dev instead of the usbfs bus directories
+ * 在/dev中使用 usbdev*.* 设备名称代替usbfs总线目录
+ */
 static int usbdev_names = 0;
 
 /* Linux 2.6.32 adds support for a bulk continuation URB flag. this basically
@@ -113,35 +130,60 @@ static int usbdev_names = 0;
  * transfers can't be short unless there's already some sort of error), and
  * setting this flag is disallowed (a kernel with USB debugging enabled will
  * reject such URBs).
+ *
+ * Linux 2.6.32添加了对块连续URB标志的支持。
+ * 当我们将URB提交到内核时，这基本上使我们可以将URB标记为特定逻辑传输的一部分。
+ * 然后，如果发生除取消之外的任何错误，该传输中的所有URB都会被取消，并且不再接受其他URB进行传输，这意味着无法再接收任何数据。
+ * 必须在块传输（任一方向）上的所有URB上设置BULK_CONTINUATION标志（第一个方向除外）。
+ * 对于IN传输，我们还必须在除最后一个以外的所有URB上设置SHORT_NOT_OK。这意味着内核应将简短答复视为错误。
+ * 对于OUT传输，不得设置SHORT_NOT_OK。不需要它（除非已经存在某种错误，否则OUT传输不能短），并且不允许设置此标志（启用USB调试的内核将拒绝此类URB）。
  */
 static int supports_flag_bulk_continuation = -1;
 
 /* Linux 2.6.31 fixes support for the zero length packet URB flag. This
  * allows us to mark URBs that should be followed by a zero length data
  * packet, which can be required by device- or class-specific protocols.
+ *
+ * Linux 2.6.31修复了对零长度数据包URB标志的支持。这使我们能够标记URB，后跟零长度的数据包，这可能是特定于设备或类的协议所要求的。
  */
 static int supports_flag_zero_packet = -1;
 
 /* clock ID for monotonic clock, as not all clock sources are available on all
- * systems. appropriate choice made at initialization time. */
+ * systems. appropriate choice made at initialization time.
+ * 单调时钟的时钟ID，因为并非所有系统都提供所有时钟源。 在初始化时做出适当的选择。
+ */
 static clockid_t monotonic_clkid = -1;
 
 /* Linux 2.6.22 (commit 83f7d958eab2fbc6b159ee92bf1493924e1d0f72) adds a busnum
  * to sysfs, so we can relate devices. This also implies that we can read
- * the active configuration through bConfigurationValue */
+ * the active configuration through bConfigurationValue
+ *
+ * Linux 2.6.22（commit 83f7d958eab2fbc6b159ee92bf1493924e1d0f72）向sysfs添加了一个busnum，
+ * 因此我们可以关联设备。 这也意味着我们可以通过bConfigurationValue读取活动配置
+ */
 static int sysfs_can_relate_devices = -1;
 
 /* Linux 2.6.26 (commit 217a9081d8e69026186067711131b77f0ce219ed) adds all
  * config descriptors (rather then just the active config) to the sysfs
- * descriptors file, so from then on we can use them. */
+ * descriptors file, so from then on we can use them.
+ *
+ * Linux 2.6.26（提交217a9081d8e69026186067711131bb77f0ce219ed）将所有配置描述符（而不是活动配置）添加到sysfs描述符文件中，
+ * 因此从那时起我们就可以使用它们。
+ */
 static int sysfs_has_descriptors = -1;
 
-/* how many times have we initted (and not exited) ? */
+/* how many times have we initted (and not exited) ?
+ * 我们已经开始（而不是退出）多少次？
+ */
 static int init_count = 0;
 
-/* Serialize hotplug start/stop */
+/* Serialize hotplug start/stop
+ * 序列化热插拔启动/停止
+ */
 usbi_mutex_static_t android_hotplug_startstop_lock = USBI_MUTEX_INITIALIZER;
-/* Serialize scan-devices, event-thread, and poll */
+/* Serialize scan-devices, event-thread, and poll
+ * 序列化扫描设备，事件线程和轮询
+ */
 usbi_mutex_static_t android_hotplug_lock = USBI_MUTEX_INITIALIZER;
 
 static int android_start_event_monitor(void);
@@ -158,7 +200,10 @@ struct android_device_priv {
 	char *sysfs_dir;
 	unsigned char *descriptors;
 	int descriptors_len;
-	int active_config; /* cache val for !sysfs_can_relate_devices  */
+	/* cache val for !sysfs_can_relate_devices
+	 * !sysfs_can_relate_devices的缓存值
+	 */
+	int active_config;
 	int fd;
 };
 
@@ -169,17 +214,24 @@ struct android_device_handle_priv {
 
 enum reap_action {
 	NORMAL = 0,
-	/* submission failed after the first URB, so await cancellation/completion
-	 * of all the others */
+	/* submission failed after the first URB, so await cancellation/completion of all the others
+	 * 在第一个URB之后提交失败，请等待其他所有的取消/完成
+	 */
 	SUBMIT_FAILED,
 
-	/* cancelled by user or timeout */
+	/* cancelled by user or timeout
+	 * 被用户取消或超时
+	 */
 	CANCELLED,
 
-	/* completed multi-URB transfer in non-final URB */
+	/* completed multi-URB transfer in non-final URB
+	 * 在非最终URB中完成多URB传输
+	 */
 	COMPLETED_EARLY,
 
-	/* one or more urbs encountered a low-level error */
+	/* one or more urbs encountered a low-level error
+	 * 一个或多个urb遇到低级错误
+	 */
 	ERROR,
 };
 
@@ -194,7 +246,9 @@ struct android_transfer_priv {
 	int num_retired;
 	enum libusb_transfer_status reap_status;
 
-	/* next iso packet in user-supplied transfer to be populated */
+	/* next iso packet in user-supplied transfer to be populated
+	 * 将填充用户提供的传输中的下一个iso数据包
+	 */
 	int iso_packet_offset;
 };
 
@@ -205,9 +259,9 @@ static void dump_urb(int ix, int fd, struct usbfs_urb *urb) {
 	if (UNLIKELY(ret == -1)) {
 		LOGE("Failed to get fd flags: %d", errno);
 	}
-	LOGI("ファイフディスクリプタフラグ:%x", ret);
-	LOGI("O_ACCMODE:%x", ret & O_ACCMODE);				// 0:読み込み専用, 1:書き込み専用, 2;読み書き可
-	LOGI("ノンブロッキングかどうか:%d", ret & O_NONBLOCK);	// 0:ブロッキング
+	LOGI("文件描述符标志:%x", ret);
+	LOGI("O_ACCMODE:%x", ret & O_ACCMODE);				// 0:読み込み専用, 1:書き込み専用, 2;読み書き可   0：只读； 1：只写； 2；读/写
+	LOGI("是否非阻塞:%d", ret & O_NONBLOCK);	// 0:ブロッキング   0：阻塞
 	LOGI("%d:type=%d,endpopint=0x%02x,status=%d,flag=%d", ix, urb->type, urb->endpoint, urb->status, urb->flags);
 	LOGI("%d:buffer=%p,buffer_length=%d,actual_length=%d,start_frame=%d", ix, urb->buffer, urb->buffer_length, urb->actual_length, urb->start_frame);
 	LOGI("%d:number_of_packets=%d,error_count=%d,signr=%d", ix, urb->number_of_packets, urb->error_count, urb->signr);
@@ -223,43 +277,48 @@ static int __get_usbfs_fd(struct libusb_device *dev, mode_t mode, int silent) {
 	struct libusb_context *ctx = DEVICE_CTX(dev);
 	char path[PATH_MAX];
 	int fd;
-	int delay = 10000;
+	int delay = 10000; // 10毫秒
 
-	if (usbdev_names)
-		snprintf(path, PATH_MAX, "%s/usbdev%d.%d",
-			usbfs_path, dev->bus_number, dev->device_address);
-	else
-		snprintf(path, PATH_MAX, "%s/%03d/%03d",
-			usbfs_path, dev->bus_number, dev->device_address);
+	if (usbdev_names) {
+	    snprintf(path, PATH_MAX, "%s/usbdev%d.%d", usbfs_path, dev->bus_number, dev->device_address);
+	} else{
+	    snprintf(path, PATH_MAX, "%s/%03d/%03d", usbfs_path, dev->bus_number, dev->device_address);
+	}
 
 	fd = open(path, mode);
-	if (LIKELY(fd != -1))
-		return fd; /* Success */
+	if (LIKELY(fd != -1)) {
+	    return fd; /* Success  成功 */
+	}
 
 	if (errno == ENOENT) {
-		if (!silent)
-			usbi_err(ctx, "File doesn't exist, wait %d ms and try again\n", delay / 1000);
+		if (!silent) {
+		    usbi_err(ctx, "File doesn't exist, wait %d ms and try again\n", delay / 1000);
+		}
 
-		/* Wait 10ms for USB device path creation.*/
+		/* Wait 10ms for USB device path creation.
+		 * 等待10毫秒以创建USB设备路径。
+		 */
 		usleep(delay);
 
 		fd = open(path, mode);
-		if (LIKELY(fd != -1))
-			return fd; /* Success */
+		if (LIKELY(fd != -1)) {
+		    return fd; /* Success  成功 */
+		}
 	}
 
 	if (!silent) {
-		usbi_err(ctx, "libusb couldn't open USB device %s: %s",
-			path, strerror(errno));
-		if (errno == EACCES && mode == O_RDWR)
-			usbi_err(ctx, "libusb requires write access to USB "
-					"device nodes.");
+		usbi_err(ctx, "libusb couldn't open USB device %s: %s", path, strerror(errno));
+		if (errno == EACCES && mode == O_RDWR) {
+		    usbi_err(ctx, "libusb requires write access to USB " "device nodes.");
+		}
 	}
 
-	if (errno == EACCES)
-		return LIBUSB_ERROR_ACCESS;
-	if (errno == ENOENT)
-		return LIBUSB_ERROR_NO_DEVICE;
+	if (errno == EACCES) {
+	    return LIBUSB_ERROR_ACCESS;
+	}
+	if (errno == ENOENT) {
+	    return LIBUSB_ERROR_NO_DEVICE;
+	}
 	return LIBUSB_ERROR_IO;
 }
 
@@ -273,6 +332,7 @@ static int _get_usbfs_fd(struct libusb_device *device, mode_t mode, int silent) 
 	else {
 		// fall back to original _get_usbfs_fd function
 		// but this call will fail on Android devices without root
+		// 退回到原始的_get_usbfs_fd函数，但此调用将在没有root用户的Android设备上失败
 #if !defined(__LP64__)
 		usbi_dbg("fd have not set yet. device=%x,fd=%d", (int )device, dpriv->fd);
 #else
@@ -294,19 +354,23 @@ static struct android_device_handle_priv *_device_handle_priv(
 	return (struct android_device_handle_priv *) handle->os_priv;
 }
 
-/* check dirent for a /dev/usbdev%d.%d name
- * optionally return bus/device on success */
+/* check dirent for a /dev/usbdev%d.%d name optionally return bus/device on success
+ * 检查 dirent 以获取 /dev/usbdev%d.%d 名称（可选），如果成功，则返回总线/设备
+ */
 static int _is_usbdev_entry(struct dirent *entry, int *bus_p, int *dev_p) {
 	int busnum, devnum;
 
-	if (sscanf(entry->d_name, "usbdev%d.%d", &busnum, &devnum) != 2)
-		return LIBUSB_SUCCESS;
+	if (sscanf(entry->d_name, "usbdev%d.%d", &busnum, &devnum) != 2) {
+	    return LIBUSB_SUCCESS;
+	}
 
 	usbi_dbg("found: %s", entry->d_name);
-	if (bus_p != NULL)
-		*bus_p = busnum;
-	if (dev_p != NULL)
-		*dev_p = devnum;
+	if (bus_p != NULL) {
+	    *bus_p = busnum;
+	}
+	if (dev_p != NULL) {
+	    *dev_p = devnum;
+	}
 	return 1;
 }
 
@@ -316,14 +380,18 @@ static int check_usb_vfs(const char *dirname) {
 	int found = 0;
 
 	dir = opendir(dirname);
-	if (!dir)
-		return LIBUSB_SUCCESS;
+	if (!dir) {
+	    return LIBUSB_SUCCESS;
+	}
 
 	while ((entry = readdir(dir)) != NULL ) {
-		if (entry->d_name[0] == '.')
-			continue;
+		if (entry->d_name[0] == '.') {
+		    continue;
+		}
 
-		/* We assume if we find any files that it must be the right place */
+		/* We assume if we find any files that it must be the right place
+		 * 我们假设如果找到任何文件，它必须在正确的位置
+		 */
 		found = 1;
 		break;
 	}
@@ -344,7 +412,9 @@ static const char *find_usbfs_path(void) {
 			ret = path;
 	}
 
-	/* look for /dev/usbdev*.* if the normal places fail */
+	/* look for /dev/usbdev*.* if the normal places fail
+	 * 如果正常位置失败，请查找/dev/usbdev*.*
+	 */
 	if (ret == NULL) {
 		struct dirent *entry;
 		DIR *dir;
@@ -354,7 +424,9 @@ static const char *find_usbfs_path(void) {
 		if (dir != NULL) {
 			while ((entry = readdir(dir)) != NULL ) {
 				if (_is_usbdev_entry(entry, NULL, NULL)) {
-					/* found one; that's enough */
+					/* found one; that's enough
+					 * 找到一个够了
+					 */
 					ret = path;
 					usbdev_names = 1;
 					break;
@@ -370,8 +442,9 @@ static const char *find_usbfs_path(void) {
 	return ret;
 }
 
-/* the monotonic clock is not usable on all systems (e.g. embedded ones often
- * seem to lack it). fall back to REALTIME if we have to. */
+/* the monotonic clock is not usable on all systems (e.g. embedded ones often seem to lack it). fall back to REALTIME if we have to.
+ * 单调时钟并非在所有系统上都可用（例如，嵌入式时钟通常似乎缺少它）。 如果需要，请回到实时。
+ */
 static clockid_t find_monotonic_clock(void) {
 #ifdef CLOCK_MONOTONIC
 	struct timespec ts;
@@ -395,28 +468,36 @@ static int kernel_version_ge(int major, int minor, int sublevel) {
 	struct utsname uts;
 	int atoms, kmajor, kminor, ksublevel;
 
-	if (uname(&uts) < 0)
-		return -1;
+	if (uname(&uts) < 0) {
+	    return -1;
+	}
 	atoms = sscanf(uts.release, "%d.%d.%d", &kmajor, &kminor, &ksublevel);
-	if (UNLIKELY(atoms < 1))
-		return -1;
+	if (UNLIKELY(atoms < 1)) {
+	    return -1;
+	}
 
-	if (kmajor > major)
-		return 1;
-	if (kmajor < major)
-		return 0;
+	if (kmajor > major) {
+	    return 1;
+	}
+	if (kmajor < major) {
+	    return 0;
+	}
 
 	/* kmajor == major */
-	if (atoms < 2)
-		return 0 == minor && 0 == sublevel;
-	if (kminor > minor)
-		return 1;
-	if (kminor < minor)
-		return 0;
+	if (atoms < 2) {
+	    return 0 == minor && 0 == sublevel;
+	}
+	if (kminor > minor) {
+	    return 1;
+	}
+	if (kminor < minor) {
+	    return 0;
+	}
 
 	/* kminor == minor */
-	if (atoms < 3)
-		return 0 == sublevel;
+	if (atoms < 3) {
+	    return 0 == sublevel;
+	}
 
 	return ksublevel >= sublevel;
 }
@@ -441,7 +522,9 @@ static int op_init2(struct libusb_context *ctx, const char *usbfs) {	// XXX
 		monotonic_clkid = find_monotonic_clock();
 
 	if (supports_flag_bulk_continuation == -1) {
-		/* bulk continuation URB flag available from Linux 2.6.32 */
+		/* bulk continuation URB flag available from Linux 2.6.32
+		 * Linux 2.6.32中提供了块续传URB标志
+		 */
 		supports_flag_bulk_continuation = kernel_version_ge(2, 6, 32);
 		if (supports_flag_bulk_continuation == -1) {
 			LOGE("error checking for bulk continuation support");
@@ -454,7 +537,9 @@ static int op_init2(struct libusb_context *ctx, const char *usbfs) {	// XXX
 		usbi_dbg("bulk continuation flag supported");
 
 	if (-1 == supports_flag_zero_packet) {
-		/* zero length packet URB flag fixed since Linux 2.6.31 */
+		/* zero length packet URB flag fixed since Linux 2.6.31
+		 * 自Linux 2.6.31起已修复零长度数据包URB标志
+		 */
 		supports_flag_zero_packet = kernel_version_ge(2, 6, 31);
 		if (-1 == supports_flag_zero_packet) {
 			LOGE("error checking for zero length packet support");
@@ -467,7 +552,9 @@ static int op_init2(struct libusb_context *ctx, const char *usbfs) {	// XXX
 		usbi_dbg("zero length packet flag supported");
 
 	if (-1 == sysfs_has_descriptors) {
-		/* sysfs descriptors has all descriptors since Linux 2.6.26 */
+		/* sysfs descriptors has all descriptors since Linux 2.6.26
+		 * sysfs描述符具有Linux 2.6.26以来的所有描述符
+		 */
 		sysfs_has_descriptors = kernel_version_ge(2, 6, 26);
 		if (UNLIKELY(-1 == sysfs_has_descriptors)) {
 			LOGE("error checking for sysfs descriptors");
@@ -477,7 +564,9 @@ static int op_init2(struct libusb_context *ctx, const char *usbfs) {	// XXX
 	}
 
 	if (-1 == sysfs_can_relate_devices) {
-		/* sysfs has busnum since Linux 2.6.22 */
+		/* sysfs has busnum since Linux 2.6.22
+		 * 自Linux 2.6.22起sysfs具有busnum
+		 */
 		sysfs_can_relate_devices = kernel_version_ge(2, 6, 22);
 		if (UNLIKELY(-1 == sysfs_can_relate_devices)) {
 			LOGE("error checking for sysfs busnum");
@@ -543,7 +632,9 @@ static int op_init(struct libusb_context *ctx) {
 		monotonic_clkid = find_monotonic_clock();
 
 	if (supports_flag_bulk_continuation == -1) {
-		/* bulk continuation URB flag available from Linux 2.6.32 */
+		/* bulk continuation URB flag available from Linux 2.6.32
+		 * Linux 2.6.32中提供了块续传URB标志
+		 */
 		supports_flag_bulk_continuation = kernel_version_ge(2, 6, 32);
 		if (supports_flag_bulk_continuation == -1) {
 			usbi_err(ctx, "error checking for bulk continuation support");
@@ -555,7 +646,9 @@ static int op_init(struct libusb_context *ctx) {
 		usbi_dbg("bulk continuation flag supported");
 
 	if (-1 == supports_flag_zero_packet) {
-		/* zero length packet URB flag fixed since Linux 2.6.31 */
+		/* zero length packet URB flag fixed since Linux 2.6.31
+		 * 自Linux 2.6.31起已修复零长度数据包URB标志
+		 */
 		supports_flag_zero_packet = kernel_version_ge(2, 6, 31);
 		if (-1 == supports_flag_zero_packet) {
 			usbi_err(ctx, "error checking for zero length packet support");
@@ -567,7 +660,9 @@ static int op_init(struct libusb_context *ctx) {
 		usbi_dbg("zero length packet flag supported");
 
 	if (-1 == sysfs_has_descriptors) {
-		/* sysfs descriptors has all descriptors since Linux 2.6.26 */
+		/* sysfs descriptors has all descriptors since Linux 2.6.26
+		 * sysfs描述符具有Linux 2.6.26以来的所有描述符
+		 */
 		sysfs_has_descriptors = kernel_version_ge(2, 6, 26);
 		if (UNLIKELY(-1 == sysfs_has_descriptors)) {
 			usbi_err(ctx, "error checking for sysfs descriptors");
@@ -576,7 +671,9 @@ static int op_init(struct libusb_context *ctx) {
 	}
 
 	if (-1 == sysfs_can_relate_devices) {
-		/* sysfs has busnum since Linux 2.6.22 */
+		/* sysfs has busnum since Linux 2.6.22
+		 * 自Linux 2.6.22起sysfs具有busnum
+		 */
 		sysfs_can_relate_devices = kernel_version_ge(2, 6, 22);
 		if (UNLIKELY(-1 == sysfs_can_relate_devices)) {
 			usbi_err(ctx, "error checking for sysfs busnum");
@@ -626,7 +723,9 @@ static void op_exit(void) {
 	usbi_mutex_static_lock(&android_hotplug_startstop_lock);
 	assert(init_count != 0);
 	if (!--init_count) {
-		/* tear down event handler */
+		/* tear down event handler
+		 * 拆除事件处理程序
+		 */
 		(void) android_stop_event_monitor();
 	}
 	usbi_mutex_static_unlock(&android_hotplug_startstop_lock);
@@ -712,7 +811,9 @@ static int _open_sysfs_attr(struct libusb_device *dev, const char *attr) {
 	return fd;
 }
 
-/* Note only suitable for attributes which always read >= 0, < 0 is error */
+/* Note only suitable for attributes which always read >= 0, < 0 is error
+ * 注意仅适用于始终读取>= 0，< 0 为错误的属性
+ */
 static int __read_sysfs_attr(struct libusb_context *ctx, const char *devname,
 		const char *attr) {
 	char filename[PATH_MAX];
@@ -723,8 +824,9 @@ static int __read_sysfs_attr(struct libusb_context *ctx, const char *devname,
 	f = fopen(filename, "r");
 	if (UNLIKELY(f == NULL)) {
 		if (errno == ENOENT) {
-			/* File doesn't exist. Assume the device has been
-			 disconnected (see trac ticket #70). */
+			/* File doesn't exist. Assume the device has been disconnected (see trac ticket #70).
+			 * 文件不存在。 假定设备已断开连接（请参阅故障单编号70）。
+			 */
 			return LIBUSB_ERROR_NO_DEVICE;
 		}
 		usbi_err(ctx, "open %s failed errno=%d", filename, errno);
@@ -735,7 +837,7 @@ static int __read_sysfs_attr(struct libusb_context *ctx, const char *devname,
 	fclose(f);
 	if (UNLIKELY(r != 1)) {
 		usbi_err(ctx, "fscanf %s returned %d, errno=%d", attr, r, errno);
-		return LIBUSB_ERROR_NO_DEVICE; /* For unplug race (trac #70) */
+		return LIBUSB_ERROR_NO_DEVICE; /* For unplug race (trac #70)  拔插类型（TRACC＃70） */
 	}
 	if (UNLIKELY(value < 0)) {
 		usbi_err(ctx, "%s contains a negative value", filename);
@@ -772,7 +874,9 @@ static int op_get_device_descriptor(struct libusb_device *dev,
 	return LIBUSB_SUCCESS;
 }
 
-/* read the bConfigurationValue for a device */
+/* read the bConfigurationValue for a device
+ * 读取设备的bConfigurationValue
+ */
 static int sysfs_get_active_config(struct libusb_device *dev, int *config) {
 	char *endptr;
 	char tmp[5] = { 0, 0, 0, 0, 0 };
@@ -820,14 +924,17 @@ int android_get_device_address(struct libusb_context *ctx, int detached,
 	int sysfs_attr;
 
 	usbi_dbg("getting address for device: %s detached: %d", sys_name, detached);
-	/* can't use sysfs to read the bus and device number if the
-	 * device has been detached */
+	/* can't use sysfs to read the bus and device number if the device has been detached
+	 * 如果设备已分离，则无法使用sysfs读取总线和设备号
+	 */
 	if (!sysfs_can_relate_devices || detached || NULL == sys_name) {
 		if (NULL == dev_node) {
 			return LIBUSB_ERROR_OTHER;
 		}
 
-		/* will this work with all supported kernel versions? */
+		/* will this work with all supported kernel versions?
+		 * 可以与所有受支持的内核版本一起使用吗？
+		 */
 		if (!strncmp(dev_node, "/dev/bus/usb", 12)) {
 			sscanf(dev_node, "/dev/bus/usb/%hhd/%hhd", busnum, devaddr);
 		} else if (!strncmp(dev_node, "/proc/bus/usb", 13)) {
@@ -863,6 +970,8 @@ int android_get_device_address(struct libusb_context *ctx, int detached,
  * Return offset of the first descriptor with the given type
  * return 0 if the buffer is already placed at the specific descriptor.
  * this is the difference from seek_to_next_descriptor
+ *
+ * 如果缓冲区已放置在特定描述符中，则给定类型的第一个描述符的返回偏移量将返回0。 这是与seek_to_next_descriptor的不同
  */
 static int seek_to_first_descriptor(struct libusb_context *ctx,
 		uint8_t descriptor_type, unsigned char *buffer, int size) {
@@ -870,8 +979,9 @@ static int seek_to_first_descriptor(struct libusb_context *ctx,
 	int i;
 
 	for (i = 0; size >= 0; i += header.bLength, size -= header.bLength) {
-		if (size == 0)
-			return LIBUSB_ERROR_NOT_FOUND;
+		if (size == 0) {
+		    return LIBUSB_ERROR_NOT_FOUND;
+		}
 
 		if (size < LIBUSB_DT_HEADER_SIZE) {
 			usbi_err(ctx, "short descriptor read %d/2", size);
@@ -887,7 +997,9 @@ static int seek_to_first_descriptor(struct libusb_context *ctx,
 }
 
 
-/* Return offset of the next descriptor with the given type */
+/* Return offset of the next descriptor with the given type
+ * 返回给定类型的下一个描述符的偏移量
+ */
 static int seek_to_next_descriptor(struct libusb_context *ctx,
 		uint8_t descriptor_type, unsigned char *buffer, int size) {
 	struct usb_descriptor_header header;
@@ -910,7 +1022,9 @@ static int seek_to_next_descriptor(struct libusb_context *ctx,
 	return LIBUSB_ERROR_IO;
 }
 
-/* Return offset to next config */
+/* Return offset to next config
+ * 返回偏移量到下一个配置
+ */
 static int seek_to_next_config(struct libusb_context *ctx,
 		unsigned char *buffer, int size) {
 	struct libusb_config_descriptor config;
@@ -944,6 +1058,9 @@ static int seek_to_next_config(struct libusb_context *ctx,
 	 * In sysfs wTotalLength is ignored, instead the kernel returns a
 	 * config descriptor with verified bLength fields, with descriptors
 	 * with an invalid bLength removed.
+	 *
+	 * 在usbfs中，配置描述符相距config.wTotalLength个字节，从设备进行的任何短读取都显示为文件中的空洞。
+	 * 在sysfs中，将忽略wTotalLength，内核将返回带有已验证bLength字段的配置描述符，并删除具有无效bLength的描述符。
 	 */
 	if (sysfs_has_descriptors) {
 		int next = seek_to_next_descriptor(ctx, LIBUSB_DT_CONFIG, buffer, size);
@@ -979,18 +1096,25 @@ static int op_get_config_descriptor_by_value(struct libusb_device *dev,
 	struct libusb_config_descriptor *config;
 
 	*buffer = NULL;
-	/* Unlike the device desc. config descs. are always in raw format */
+	/* Unlike the device desc. config descs. are always in raw format
+	 * 与设备描述不同。 配置说明。 总是原始格式
+	 */
 	*host_endian = 0;
 
-	/* Skip device header */
+	/* Skip device header
+	 * 跳过设备头
+	 */
 	descriptors += DEVICE_DESC_LENGTH;
 	size -= DEVICE_DESC_LENGTH;
 	// XXX at this point, we skipped device descriptor only and the next one
 	// will not be a config descriptor. It may be a qualifer descriptor
 	// or other speed config descriptor on some device.
 	// Therefor we need to find the first config descriptor.
-	// FIXME On current implementation, any descriptor other than config descriptor
-	// are skipped if they placed before config descriptor.
+	// 至此，我们仅跳过了设备描述符，下一个将不再是配置描述符。
+	// 它可能是某个设备上的限定符描述符或其他速度配置描述符。
+	// 因此，我们需要找到第一个配置描述符。
+	// FIXME On current implementation, any descriptor other than config descriptor are skipped if they placed before config descriptor.
+	// FIXME 在当前实现中，如果将除配置描述符之外的任何其他描述符放在配置描述符之前，则将其跳过。
 	r = seek_to_first_descriptor(ctx, LIBUSB_DT_CONFIG, descriptors, size);
 	if UNLIKELY(r < 0) {
 		LOGE("could not find config descriptor:r=%d", r);
@@ -998,7 +1122,9 @@ static int op_get_config_descriptor_by_value(struct libusb_device *dev,
 	}
 	descriptors += r;
 	size -= r;
-	/* Seek till the config is found, or till "EOF" */
+	/* Seek till the config is found, or till "EOF"
+	 * 寻求直到找到配置，或直到“ EOF”
+	 */
 	for (; ;) {
 		register int next = seek_to_next_config(ctx, descriptors, size);
 		if UNLIKELY(next < 0)
@@ -1023,7 +1149,9 @@ static int op_get_active_config_descriptor(struct libusb_device *dev,
 		if (UNLIKELY(r < 0))
 			return r;
 	} else {
-		/* Use cached bConfigurationValue */
+		/* Use cached bConfigurationValue
+		 * 使用缓存的bConfigurationValue
+		 */
 		struct android_device_priv *priv = _device_priv(dev);
 		config = priv->active_config;
 	}
@@ -1048,18 +1176,25 @@ static int op_get_config_descriptor(struct libusb_device *dev,
 	unsigned char *descriptors = priv->descriptors;
 	int i, r, size = priv->descriptors_len;
 
-	/* Unlike the device desc. config descs. are always in raw format */
+	/* Unlike the device desc. config descs. are always in raw format
+	 * 与设备描述不同。 配置说明。 总是原始格式
+	 */
 	*host_endian = 0;
 
-	/* Skip device header (device descriptor) */
+	/* Skip device header (device descriptor)
+	 * 跳过设备头（设备描述符）
+	 */
 	descriptors += DEVICE_DESC_LENGTH;
 	size -= DEVICE_DESC_LENGTH;
 	// XXX at this point, we skipped device descriptor only and the next one
 	// will not be a config descriptor. It may be a qualifer descriptor
 	// or other speed config descriptor on some device.
 	// Therefor we need to find the first config descriptor.
-	// FIXME On current implementation, any descriptor other than config descriptor
-	// are skipped if they placed before config descriptor.
+	// 至此，我们仅跳过了设备描述符，下一个将不再是配置描述符。
+	// 它可能是某个设备上的限定符描述符或其他速度配置描述符。
+	// 因此，我们需要找到第一个配置描述符。
+	// FIXME On current implementation, any descriptor other than config descriptor are skipped if they placed before config descriptor.
+	// FIXME 在当前实现中，如果将除配置描述符之外的任何其他描述符放在配置描述符之前，则将其跳过。
 	r = seek_to_first_descriptor(ctx, LIBUSB_DT_CONFIG, descriptors, size);
 	if UNLIKELY(r < 0) {
 		LOGE("could not find config descriptor:r=%d", r);
@@ -1067,7 +1202,9 @@ static int op_get_config_descriptor(struct libusb_device *dev,
 	}
 	descriptors += r;
 	size -= r;
-	/* Seek till the config is found, or till "EOF" */
+	/* Seek till the config is found, or till "EOF"
+	 * 寻求直到找到配置，或直到“ EOF”
+	 */
 	for (i = 0; ; i++) {
 		r = seek_to_next_config(ctx, descriptors, size);
 		if (UNLIKELY(r < 0))	// if error
@@ -1083,7 +1220,9 @@ static int op_get_config_descriptor(struct libusb_device *dev,
 	return len;
 }
 
-/* send a control message to retrieve active configuration */
+/* send a control message to retrieve active configuration
+ * 发送控制消息以检索活动配置
+ */
 static int usbfs_get_active_config(struct libusb_device *dev, int fd) {
 	unsigned char active_config = 0;
 	int r;
@@ -1103,9 +1242,10 @@ static int usbfs_get_active_config(struct libusb_device *dev, int fd) {
 		if (errno == ENODEV)
 			return LIBUSB_ERROR_NO_DEVICE;
 
-		/* we hit this error path frequently with buggy devices :( */
-		usbi_warn(DEVICE_CTX(dev),
-			"get_configuration failed ret=%d errno=%d", r, errno);
+		/* we hit this error path frequently with buggy devices :(
+		 * 我们经常在有故障的设备上遇到此错误路径 :(
+		 */
+		usbi_warn(DEVICE_CTX(dev), "get_configuration failed ret=%d errno=%d", r, errno);
 		return LIBUSB_ERROR_IO;
 	}
 
@@ -1130,8 +1270,9 @@ static int initialize_device(struct libusb_device *dev, uint8_t busnum,
 			return LIBUSB_ERROR_NO_MEM;
 		strcpy(priv->sysfs_dir, sysfs_dir);
 
-		/* Note speed can contain 1.5, in this case __read_sysfs_attr
-		 will stop parsing at the '.' and return 1 */
+		/* Note speed can contain 1.5, in this case __read_sysfs_attr will stop parsing at the '.' and return 1
+		 * 注意speed可以包含1.5，在这种情况下 __read_sysfs_attr 将在'.'处停止解析。 并返回1
+		 */
 		speed = __read_sysfs_attr(DEVICE_CTX(dev), sysfs_dir, "speed");
 		if (speed >= 0) {
 			switch (speed) {
@@ -1145,7 +1286,9 @@ static int initialize_device(struct libusb_device *dev, uint8_t busnum,
 		}
 	}
 
-	/* cache descriptors in memory */
+	/* cache descriptors in memory
+	 * 在内存中缓存描述符
+	 */
 	if (sysfs_has_descriptors) {
 		fd = _open_sysfs_attr(dev, "descriptors");
 	} else {
@@ -1161,13 +1304,13 @@ static int initialize_device(struct libusb_device *dev, uint8_t busnum,
 			close(fd);
 			return LIBUSB_ERROR_NO_MEM;
 		}
-		/* usbfs has holes in the file */
+		/* usbfs has holes in the file
+		 * usbfs文件中有孔
+		 */
 		if (!sysfs_has_descriptors) {
-			memset(priv->descriptors + priv->descriptors_len, 0,
-					descriptors_size - priv->descriptors_len);
+			memset(priv->descriptors + priv->descriptors_len, 0, descriptors_size - priv->descriptors_len);
 		}
-		r = read(fd, priv->descriptors + priv->descriptors_len,
-				descriptors_size - priv->descriptors_len);
+		r = read(fd, priv->descriptors + priv->descriptors_len, descriptors_size - priv->descriptors_len);
 		if (UNLIKELY(r < 0)) {
 			usbi_err(ctx, "read descriptor failed ret=%d errno=%d", fd, errno);
 			close(fd);
@@ -1183,28 +1326,33 @@ static int initialize_device(struct libusb_device *dev, uint8_t busnum,
 		return LIBUSB_ERROR_IO;
 	}
 
-	if (sysfs_can_relate_devices)
-		return LIBUSB_SUCCESS;
+	if (sysfs_can_relate_devices) {
+	    return LIBUSB_SUCCESS;
+	}
 
-	/* cache active config */
+	/* cache active config
+	 * 缓存活动配置
+	 */
 	fd = _get_usbfs_fd(dev, O_RDWR, 1);
-	if (fd < 0) {	// if could not get fd of usbfs with read/write access
-		/* cannot send a control message to determine the active
-		 * config. just assume the first one is active. */
-		usbi_warn(ctx, "Missing rw usbfs access; cannot determine "
-				"active configuration descriptor");
-		if (priv->descriptors_len
-				>= (DEVICE_DESC_LENGTH + LIBUSB_DT_CONFIG_SIZE)) {
+	if (fd < 0) {	// if could not get fd of usbfs with read/write access  如果无法通过读/写访问获得usbfs的fd
+		/* cannot send a control message to determine the active config. just assume the first one is active.
+		 * 无法发送控制消息来确定活动配置。 假设第一个处于活动状态。
+		 */
+		usbi_warn(ctx, "Missing rw usbfs access; cannot determine active configuration descriptor");
+		if (priv->descriptors_len >= (DEVICE_DESC_LENGTH + LIBUSB_DT_CONFIG_SIZE)) {
 			struct libusb_config_descriptor config;
 			usbi_parse_descriptor(priv->descriptors + DEVICE_DESC_LENGTH,
 				"bbwbbbbb", &config, 0);
 			priv->active_config = config.bConfigurationValue;
-		} else
-			priv->active_config = -1; /* No config dt */
+		} else {
+		    /* No config dt 没有配置dt */
+		    priv->active_config = -1;
+		}
 
 		return LIBUSB_SUCCESS;
 	}
 	// if we could get fd of usbfs with read/write access
+	// 如果我们可以通过读/写访问获得usbfs的fd
 	r = usbfs_get_active_config(dev, fd);
 	if (r > 0) {
 		priv->active_config = r;
@@ -1214,18 +1362,22 @@ static int initialize_device(struct libusb_device *dev, uint8_t busnum,
 		 * reaching into the corner of a corner case here, so let's
 		 * not support buggy devices in these circumstances.
 		 * stick to the specs: a configuration value of 0 means
-		 * unconfigured. */
+		 * unconfigured.
+		 * 某些有问题的设备的配置为0，但是我们这里遇到的是极端情况，因此在这种情况下，我们不支持有问题的设备。 遵守规格：配置值为0表示未配置。
+		 */
 		usbi_dbg("active cfg 0? assuming unconfigured device");
 		priv->active_config = -1;
 		r = LIBUSB_SUCCESS;
 	} else if (r == LIBUSB_ERROR_IO) {
 		/* buggy devices sometimes fail to report their active config.
-		 * assume unconfigured and continue the probing */
+		 * assume unconfigured and continue the probing
+		 * 有问题的设备有时无法报告其活动配置。 假设未配置并继续进行探测
+		 */
 		usbi_warn(ctx, "couldn't query active configuration, assuming"
 					" unconfigured");
 		priv->active_config = -1;
 		r = LIBUSB_SUCCESS;
-	} /* else r < 0, just return the error code */
+	} /* else r < 0, just return the error code  只需返回错误代码 */
 
 	close(fd);
 	return r;
@@ -1238,25 +1390,29 @@ static int android_get_parent_info(struct libusb_device *dev,
 	char *parent_sysfs_dir, *tmp;
 	int ret, add_parent = 1;
 
-	/* XXX -- can we figure out the topology when using usbfs? */
+	/* XXX -- can we figure out the topology when using usbfs?
+	 * 使用usbfs时可以弄清楚拓扑吗？
+	 */
 	if (NULL == sysfs_dir || 0 == strncmp(sysfs_dir, "usb", 3)) {
-		/* either using usbfs or finding the parent of a root hub */
+		/* either using usbfs or finding the parent of a root hub
+		 * 使用usbfs或找到根集线器的父级
+		 */
 		return LIBUSB_SUCCESS;
 	}
 
 	parent_sysfs_dir = strdup(sysfs_dir);
-	if (NULL != (tmp = strrchr(parent_sysfs_dir, '.')) ||
-	NULL != (tmp = strrchr(parent_sysfs_dir, '-'))) {
+	if (NULL != (tmp = strrchr(parent_sysfs_dir, '.')) || NULL != (tmp = strrchr(parent_sysfs_dir, '-'))) {
 		dev->port_number = atoi(tmp + 1);
 		*tmp = '\0';
 	} else {
-		usbi_warn(ctx, "Can not parse sysfs_dir: %s, no parent info",
-			parent_sysfs_dir);
+		usbi_warn(ctx, "Can not parse sysfs_dir: %s, no parent info", parent_sysfs_dir);
 		free(parent_sysfs_dir);
 		return LIBUSB_SUCCESS;
 	}
 
-	/* is the parent a root hub? */
+	/* is the parent a root hub?
+	 * 父母是根集线器吗？
+	 */
 	if (NULL == strchr(parent_sysfs_dir, '-')) {
 		tmp = parent_sysfs_dir;
 		ret = asprintf(&parent_sysfs_dir, "usb%s", tmp);
@@ -1267,7 +1423,9 @@ static int android_get_parent_info(struct libusb_device *dev,
 	}
 
 retry:
-	/* find the parent in the context */
+	/* find the parent in the context
+	 * 在上下文中找到父级
+	 */
 	usbi_mutex_lock(&ctx->usb_devs_lock);
 	list_for_each_entry(it, &ctx->usb_devs, list, struct libusb_device)
 	{
@@ -1280,15 +1438,13 @@ retry:
 	usbi_mutex_unlock(&ctx->usb_devs_lock);
 
 	if (!dev->parent_dev && add_parent) {
-		usbi_dbg("parent_dev %s not enumerated yet, enumerating now",
-			parent_sysfs_dir);
+		usbi_dbg("parent_dev %s not enumerated yet, enumerating now", parent_sysfs_dir);
 		sysfs_scan_device(ctx, parent_sysfs_dir);
 		add_parent = 0;
 		goto retry;
 	}
 
-	usbi_dbg("Dev %p (%s) has parent %p (%s) port %d", dev, sysfs_dir,
-		dev->parent_dev, parent_sysfs_dir, dev->port_number);
+	usbi_dbg("Dev %p (%s) has parent %p (%s) port %d", dev, sysfs_dir, dev->parent_dev, parent_sysfs_dir, dev->port_number);
 
 	free(parent_sysfs_dir);
 
@@ -1302,7 +1458,7 @@ static int android_initialize_device(struct libusb_device *dev,
 
 	struct android_device_priv *priv = _device_priv(dev);
 	struct libusb_context *ctx = DEVICE_CTX(dev);
-	uint8_t desc[4096]; // max descriptor size is 4096 bytes
+	uint8_t desc[4096]; // max descriptor size is 4096 bytes  最大描述符大小为4096字节
 	int speed;
 	ssize_t r;
 
@@ -1316,6 +1472,7 @@ static int android_initialize_device(struct libusb_device *dev,
 	memset(desc, 0, sizeof(desc));
     if (!lseek(fd, 0, SEEK_SET)) {
         // ディスクリプタを読み込んでローカルキャッシュする
+        // 读取描述符并本地缓存
         int length = read(fd, desc, sizeof(desc));
         LOGD("Device::init read returned %d errno %d\n", length, errno);
 		if (length > 0) {
@@ -1335,23 +1492,24 @@ static int android_initialize_device(struct libusb_device *dev,
 		RETURN(LIBUSB_ERROR_IO, int);
 	}
 
-	if (fd < 0) {	// if could not get fd of usbfs with read/write access
-		/* cannot send a control message to determine the active
-		 * config. just assume the first one is active. */
-		usbi_warn(ctx, "Missing rw usbfs access; cannot determine "
-				"active configuration descriptor");
-		if (priv->descriptors_len
-				>= (DEVICE_DESC_LENGTH + LIBUSB_DT_CONFIG_SIZE)) {
+	if (fd < 0) {	// if could not get fd of usbfs with read/write access  如果无法通过读/写访问获得usbfs的fd
+		/* cannot send a control message to determine the active config. just assume the first one is active.
+		 * 无法发送控制消息来确定活动配置。 假设第一个处于活动状态。
+		 */
+		usbi_warn(ctx, "Missing rw usbfs access; cannot determine active configuration descriptor");
+		if (priv->descriptors_len >= (DEVICE_DESC_LENGTH + LIBUSB_DT_CONFIG_SIZE)) {
 			struct libusb_config_descriptor config;
-			usbi_parse_descriptor(priv->descriptors + DEVICE_DESC_LENGTH,
-				"bbwbbbbb", &config, 0);
+			usbi_parse_descriptor(priv->descriptors + DEVICE_DESC_LENGTH, "bbwbbbbb", &config, 0);
 			priv->active_config = config.bConfigurationValue;
-		} else
-			priv->active_config = -1; /* No config dt */
+		} else {
+		    /* No config dt 没有配置dt */
+		    priv->active_config = -1;
+		}
 
 		RETURN(LIBUSB_SUCCESS, int);
 	}
 	// if we could get fd of usbfs with read/write access
+	// 如果我们可以通过读/写访问获得usbfs的fd
 	r = usbfs_get_active_config(dev, fd);
 	if (r > 0) {
 		priv->active_config = r;
@@ -1361,18 +1519,21 @@ static int android_initialize_device(struct libusb_device *dev,
 		 * reaching into the corner of a corner case here, so let's
 		 * not support buggy devices in these circumstances.
 		 * stick to the specs: a configuration value of 0 means
-		 * unconfigured. */
+		 * unconfigured.
+		 * 某些有问题的设备的配置为0，但是我们这里遇到的是极端情况，因此在这种情况下，我们不支持有问题的设备。 遵守规格：配置值为0表示未配置。
+		 */
 		usbi_dbg("active cfg 0? assuming unconfigured device");
 		priv->active_config = -1;
 		r = LIBUSB_SUCCESS;
 	} else if (r == LIBUSB_ERROR_IO) {
 		/* buggy devices sometimes fail to report their active config.
-		 * assume unconfigured and continue the probing */
-		usbi_warn(ctx, "couldn't query active configuration, assuming"
-					" unconfigured");
+		 * assume unconfigured and continue the probing
+		 * 有问题的设备有时无法报告其活动配置。 假设未配置并继续进行探测
+		 */
+		usbi_warn(ctx, "couldn't query active configuration, assuming unconfigured");
 		priv->active_config = -1;
 		r = LIBUSB_SUCCESS;
-	} /* else r < 0, just return the error code */
+	} /* else r < 0, just return the error code  只需返回错误代码 */
 
 	RETURN(r, int);
 }
@@ -1388,10 +1549,12 @@ int android_generate_device(struct libusb_context *ctx, struct libusb_device **d
 	*dev = NULL;
  	/* FIXME: session ID is not guaranteed unique as addresses can wrap and
  	 * will be reused. instead we should add a simple sysfs attribute with
- 	 * a session ID. */
+ 	 * a session ID.
+ 	 * FIXME 会话ID不能保证唯一，因为地址可以包装并且将被重用。相反，我们应该添加一个带有会话ID的简单sysfs属性。
+ 	 */
 	session_id = busnum << 8 | devaddr;
  	LOGD("allocating new device for %d/%d (session %ld)", busnum, devaddr, session_id);
- 	*dev = usbi_alloc_device(ctx, session_id);	// この時点で参照カウンタ=1
+ 	*dev = usbi_alloc_device(ctx, session_id);	// この時点で参照カウンタ=1  此时参考计数器= 1
  	if (UNLIKELY(!dev)) {
  		RETURN(LIBUSB_ERROR_NO_MEM, int);
  	}
@@ -1409,7 +1572,7 @@ int android_generate_device(struct libusb_context *ctx, struct libusb_device **d
 
 out:
  	if (UNLIKELY(r < 0)) {
- 		libusb_unref_device(*dev);	// ここで参照カウンタが0になって破棄される
+ 		libusb_unref_device(*dev);	// ここで参照カウンタが0になって破棄される  此处参考计数器变为0并被丢弃
  		*dev = NULL;
  	} else {
  		usbi_connect_device(*dev);
@@ -1426,26 +1589,29 @@ int android_enumerate_device(struct libusb_context *ctx, uint8_t busnum,
 	struct libusb_device *dev;
 	int r = 0;
 
-	/* FIXME: session ID is not guaranteed unique as addresses can wrap and
-	 * will be reused. instead we should add a simple sysfs attribute with
-	 * a session ID. */
+ 	/* FIXME: session ID is not guaranteed unique as addresses can wrap and
+ 	 * will be reused. instead we should add a simple sysfs attribute with
+ 	 * a session ID.
+ 	 * FIXME 会话ID不能保证唯一，因为地址可以包装并且将被重用。相反，我们应该添加一个带有会话ID的简单sysfs属性。
+ 	 */
 	session_id = busnum << 8 | devaddr;
-	usbi_dbg("busnum %d devaddr %d session_id %ld",
-		busnum, devaddr, session_id);
+	usbi_dbg("busnum %d devaddr %d session_id %ld", busnum, devaddr, session_id);
 
 	dev = usbi_get_device_by_session_id(ctx, session_id);
 	if (dev) {
-		/* device already exists in the context */
+		/* device already exists in the context
+		 * 设备已存在于上下文中
+		 */
 		usbi_dbg("session_id %ld already exists", session_id);
 		libusb_unref_device(dev);
 		return LIBUSB_SUCCESS;
 	}
 
-	usbi_dbg("allocating new device for %d/%d (session %ld)",
-		busnum, devaddr, session_id);
+	usbi_dbg("allocating new device for %d/%d (session %ld)", busnum, devaddr, session_id);
 	dev = usbi_alloc_device(ctx, session_id);
-	if (UNLIKELY(!dev))
-		return LIBUSB_ERROR_NO_MEM;
+	if (UNLIKELY(!dev)) {
+	    return LIBUSB_ERROR_NO_MEM;
+	}
 
 	r = initialize_device(dev, busnum, devaddr, sysfs_dir);
 	if (UNLIKELY(r < 0))
@@ -1499,7 +1665,9 @@ void android_device_disconnected(uint8_t busnum, uint8_t devaddr,
 }
 
 #if !defined(USE_UDEV)
-/* open a bus directory and adds all discovered devices to the context */
+/* open a bus directory and adds all discovered devices to the context
+ * 打开总线目录，并将所有发现的设备添加到上下文中
+ */
 static int usbfs_scan_busdir(struct libusb_context *ctx, uint8_t busnum) {
 	DIR *dir;
 	char dirpath[PATH_MAX];
@@ -1512,7 +1680,9 @@ static int usbfs_scan_busdir(struct libusb_context *ctx, uint8_t busnum) {
 	if (UNLIKELY(!dir)) {
 		usbi_err(ctx, "opendir '%s' failed, errno=%d", dirpath, errno);
 		/* FIXME: should handle valid race conditions like hub unplugged
-		 * during directory iteration - this is not an error */
+		 * during directory iteration - this is not an error
+		 * FIXME 应该处理有效的竞争条件，例如在目录迭代期间拔出集线器-这不是错误
+		 */
 		return r;
 	}
 
@@ -1637,8 +1807,11 @@ static int android_default_scan_devices(struct libusb_context *ctx) {
 	 * relate sysfs devices to usbfs nodes.  op_init() determines the
 	 * adequacy of sysfs and sets sysfs_can_relate_devices.
 	 *
-	 * 我们可以从 sysfs 或 usbfs 检索设备列表和描述符。 最好使用 sysfs，因为如果使用 usbfs，我们最终将恢复所有自动挂起的USB设备。 但是，sysfs并非在任何地方都可用，因此我们也需要usbfs后备。
-	 * 如该文件顶部的"sysfs vs usbfs"注释中所述，有时我们拥有sysfs，但信息不足，无法将sysfs设备与usbfs节点相关联。 op_init()确定sysfs的适当性并设置sysfs_can_relate_devices。
+	 * 我们可以从 sysfs 或 usbfs 检索设备列表和描述符。
+	 * 最好使用 sysfs，因为如果使用 usbfs，我们最终将恢复所有自动挂起的USB设备。
+	 * 但是，sysfs并非在任何地方都可用，因此我们也需要usbfs后备。
+	 * 如该文件顶部的"sysfs vs usbfs"注释中所述，有时我们拥有sysfs，但信息不足，无法将sysfs设备与usbfs节点相关联。
+	 * op_init()确定sysfs的适当性并设置sysfs_can_relate_devices。
 	 */
 	if (sysfs_can_relate_devices != 0)
 		return sysfs_get_device_list(ctx);
@@ -1650,6 +1823,7 @@ static int android_default_scan_devices(struct libusb_context *ctx) {
 // this function is mainly for Android
 // because native code can not open USB device on Android when without root
 // so we need to defer real open/close operation to Java code
+// 此功能主要用于Android，因为在没有root的情况下本机代码无法打开Android上的USB设备，因此我们需要将实际打开/关闭操作放在Java代码
 static int op_set_device_fd(struct libusb_device *device, int fd) {
 	struct android_device_priv *dpriv = _device_priv(device);
 	dpriv->fd = fd;
@@ -1701,6 +1875,7 @@ static void op_close(struct libusb_device_handle *dev_handle) {
 #ifndef __ANDROID__
 	// We can not (re)open USB device in the native code on no-rooted Android devices
 	// so keep open and defer real open/close operation on Java side
+	// 我们无法在没有根目录的Android设备上以本机代码（重新）打开USB设备，因此请保持打开状态并在Java端的实际打开/关闭操作
 	close(fd);
 #endif
 }
@@ -1743,7 +1918,9 @@ static int op_set_configuration(struct libusb_device_handle *handle, int config)
 		return LIBUSB_ERROR_OTHER;
 	}
 
-	/* update our cached active config descriptor */
+	/* update our cached active config descriptor
+	 * 更新我们的缓存活动配置描述符
+	 */
 	priv->active_config = config;
 
 	return LIBUSB_SUCCESS;
@@ -1845,7 +2022,11 @@ static int op_reset_device(struct libusb_device_handle *handle) {
 	   from any interfaces it is bound to. By voluntarily unbinding
 	   the usbfs driver ourself, we stop the kernel from rebinding
 	   the interface after reset (which would end up with the interface
-	   getting bound to the in kernel driver if any). */
+	   getting bound to the in kernel driver if any).
+
+	   进行设备重置将导致usbfs驱动程序从与其绑定的任何接口解除绑定。
+	   通过自愿解除自身对usbfs驱动程序的绑定，我们阻止了内核在重置后重新绑定接口（如果接口被绑定到内核驱动程序中，接口将最终被绑定）。
+	  */
 	for (i = 0; i < USB_MAXINTERFACES; i++) {
 		if (handle->claimed_interfaces & (1L << i)) {
 			release_interface(handle, i);
@@ -1867,19 +2048,20 @@ static int op_reset_device(struct libusb_device_handle *handle) {
 		goto out;
 	}
 
-	/* And re-claim any interfaces which were claimed before the reset */
+	/* And re-claim any interfaces which were claimed before the reset
+	 * 并重新声明在重置之前声明的所有接口
+	 */
 	for (i = 0; i < USB_MAXINTERFACES; i++) {
 		if (handle->claimed_interfaces & (1L << i)) {
 			/*
 			 * A driver may have completed modprobing during
 			 * IOCTL_USBFS_RESET, and bound itself as soon as
 			 * IOCTL_USBFS_RESET released the device lock
+			 * 驱动程序可能在 IOCTL_USBFS_RESET 期间已完成modprobing，并在 IOCTL_USBFS_RESET 释放设备锁定后立即绑定自身
 			 */
 			r = detach_kernel_driver_and_claim(handle, i);
 			if (UNLIKELY(r)) {
-				usbi_warn(HANDLE_CTX(handle),
-					"failed to re-claim interface %d after reset: %s",
-					i, libusb_error_name(r));
+				usbi_warn(HANDLE_CTX(handle), "failed to re-claim interface %d after reset: %s", i, libusb_error_name(r));
 				handle->claimed_interfaces &= ~(1L << i);
 				ret = LIBUSB_ERROR_NOT_FOUND;
 			}
@@ -1896,12 +2078,13 @@ static int do_streams_ioctl(struct libusb_device_handle *handle, long req,
 	int r;
 	struct usbfs_streams *streams;
 
-	if (num_endpoints > 30) /* Max 15 in + 15 out eps */
+	if (num_endpoints > 30) /* Max 15 in + 15 out eps 最大15进 + 15出 eps */
 		return LIBUSB_ERROR_INVALID_PARAM;
 
 	streams = malloc(sizeof(struct usbfs_streams) + num_endpoints);
-	if (!streams)
-		return LIBUSB_ERROR_NO_MEM;
+	if (!streams) {
+	    return LIBUSB_ERROR_NO_MEM;
+	}
 
 	streams->num_streams = num_streams;
 	streams->num_eps = num_endpoints;
@@ -2056,8 +2239,9 @@ static int detach_kernel_driver_and_claim(struct libusb_device_handle *handle, i
 		RETURN(LIBUSB_ERROR_OTHER, int);
 	}
 
-	/* Fallback code for kernels which don't support the
-	   disconnect-and-claim ioctl */
+	/* Fallback code for kernels which don't support the disconnect-and-claim ioctl
+	 * 不支持断开并声明ioctl的内核的后备代码
+	 */
 	r = op_detach_kernel_driver(handle, interface);
 	if (r != 0 && r != LIBUSB_ERROR_NOT_FOUND) {
 		RETURN(r, int);
@@ -2508,6 +2692,7 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer) {
 			 * so, in this case we discard all the previous URBs BUT we report
 			 * that the transfer was submitted successfully. then later when
 			 * the final discard completes we can report error to the user.
+			 *
 			 * 如果这不是第一个失败的URB，则情况有些棘手。 我们必须丢弃所有以前的URB。 有并发症：
              * -丢弃是异步的-丢弃的URB将在以后收割。 用户在收获丢弃的URB时一定不能释放传输，否则libusb将使用释放的内存。
              * -较早的URB可能已成功完成，我们不想丢弃任何数据。
@@ -2629,7 +2814,9 @@ static void op_clear_transfer_priv(struct usbi_transfer *itransfer) {
 	struct libusb_transfer *transfer = USBI_TRANSFER_TO_LIBUSB_TRANSFER(itransfer);
 	struct android_transfer_priv *tpriv = usbi_transfer_get_os_priv(itransfer);
 
-	/* urbs can be freed also in submit_transfer so lock mutex first */
+	/* urbs can be freed also in submit_transfer so lock mutex first
+	 * urbs也可以在submit_transfer中释放，因此请先锁定互斥锁
+	 */
 	switch (transfer->type) {
 	case LIBUSB_TRANSFER_TYPE_CONTROL:
 	case LIBUSB_TRANSFER_TYPE_BULK:
@@ -2648,8 +2835,7 @@ static void op_clear_transfer_priv(struct usbi_transfer *itransfer) {
 		usbi_mutex_unlock(&itransfer->lock);
 		break;
 	default:
-		usbi_err(TRANSFER_CTX(transfer),
-			"unknown endpoint type %d", transfer->type);
+		usbi_err(TRANSFER_CTX(transfer), "unknown endpoint type %d", transfer->type);
 	}
 }
 
@@ -2666,7 +2852,9 @@ static int handle_bulk_completion(struct libusb_device_handle *handle,	// XXX ad
 	tpriv->num_retired++;
 
 	if (UNLIKELY(tpriv->reap_action != NORMAL)) {
-		/* cancelled, submit_fail, or completed early 取消，提交失败或提早完成 */
+		/* cancelled, submit_fail, or completed early
+		 * 取消，提交失败或提早完成
+		 */
 		usbi_dbg("abnormal reap: urb status %d", urb->status);
 
 		/* even though we're in the process of cancelling, it's possible that
@@ -2684,7 +2872,8 @@ static int handle_bulk_completion(struct libusb_device_handle *handle,	// XXX ad
 		 * and also to stick it at the end of the previously-received data
 		 * (closing any holes), so that libusb reports the total amount of
 		 * transferred data and presents it in a contiguous chunk.
-		 * 即使我们正在取消交易，也可能会在这些URB中收到一些我们不想丢失的数据。
+		 *
+		 * 即使我们正在取消传输，也可能会在这些URB中收到一些我们不想丢失的数据。
          * 例子：
          * 1.当内核取消组成URB的所有数据包时，其中一些可能会完成。 因此我们成功取消了订单并获得了一些数据。
          * 2.我们收到标有提前完成条件的简短URB，因此我们开始取消剩余的URB。 但是，我们太慢了，另一个URB完成了（或至少部分完成了）。
@@ -2738,7 +2927,9 @@ static int handle_bulk_completion(struct libusb_device_handle *handle,	// XXX ad
             op_clear_halt(handle, urb->endpoint);	// XXX added saki
             goto cancel_remaining;
         case -EOVERFLOW:
-            /* overflow can only ever occur in the last urb  溢出只能发生在最后一个urb */
+            /* overflow can only ever occur in the last urb
+             * 溢出只能发生在最后一个urb
+             */
             usbi_dbg("overflow, actual_length=%d", urb->actual_length);
             if (tpriv->reap_status == LIBUSB_TRANSFER_COMPLETED)
                 tpriv->reap_status = LIBUSB_TRANSFER_OVERFLOW;
@@ -3133,7 +3324,7 @@ const struct usbi_os_backend android_usbfs_backend = {
 	.get_active_config_descriptor = op_get_active_config_descriptor,
 	.get_config_descriptor = op_get_config_descriptor,
 	.get_config_descriptor_by_value = op_get_config_descriptor_by_value,
-	.set_device_fd = op_set_device_fd,	// XXX add for no-rooted Android devices
+	.set_device_fd = op_set_device_fd,	// XXX add for no-rooted Android devices  为无root权限的Android设备添加
 	.open = op_open,
 	.close = op_close,
 	.get_configuration = op_get_configuration,

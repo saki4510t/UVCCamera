@@ -74,13 +74,16 @@ uvc_error_t uvc_ensure_frame_size(uvc_frame_t *frame, size_t need_bytes) {
 
 /** @brief Allocate a frame structure
  * @ingroup frame
- * 开辟帧数据内存
  *
  * @param data_bytes Number of bytes to allocate, or zero
  * @return New frame, or NULL on error
+ *
+ * 开辟帧数据内存
  */
 uvc_frame_t *uvc_allocate_frame(size_t data_bytes) {
-	uvc_frame_t *frame = malloc(sizeof(*frame));	// FIXME using buffer pool is better performance(5-30%) than directory use malloc everytime.
+    // FIXME using buffer pool is better performance(5-30%) than directory use malloc everytime.
+    // 与每次使用malloc相比，使用缓冲池的性能更好（5-30％）
+	uvc_frame_t *frame = malloc(sizeof(*frame));
 
 	if (UNLIKELY(!frame))
 		return NULL;
@@ -88,6 +91,7 @@ uvc_frame_t *uvc_allocate_frame(size_t data_bytes) {
 #ifndef __ANDROID__
 	// XXX in many case, it is not neccesary to clear because all fields are set before use
 	// therefore we remove this to improve performace, but be care not to forget to set fields before use
+	// 在许多情况下，由于所有字段都是在使用前设置的，因此无需清除，因此我们将其删除以提高性能，但是请注意不要忘记在使用之前设置字段
 	memset(frame, 0, sizeof(*frame));	// bzero(frame, sizeof(*frame)); // bzero is deprecated
 #endif
 //	frame->library_owns_data = 1;	// XXX moved to lower
@@ -109,9 +113,10 @@ uvc_frame_t *uvc_allocate_frame(size_t data_bytes) {
 /**
  * @brief Free a frame structure
  * @ingroup frame
- * 释放帧数据内存
  *
  * @param frame Frame to destroy
+ *
+ * 释放帧数据内存
  */
 void uvc_free_frame(uvc_frame_t *frame) {
 	if ((frame->data_bytes > 0) && frame->library_owns_data)
@@ -127,10 +132,11 @@ static inline unsigned char sat(int i) {
 /**
  * @brief Duplicate a frame, preserving color format
  * @ingroup frame
- * 复制帧，保留色彩格式
  *
  * @param in Original frame
  * @param out Duplicate frame
+ *
+ * 复制帧，保留色彩格式
  */
 uvc_error_t uvc_duplicate_frame(uvc_frame_t *in, uvc_frame_t *out) {
 	if (UNLIKELY(uvc_ensure_frame_size(out, in->data_bytes) < 0))
@@ -167,7 +173,7 @@ uvc_error_t uvc_duplicate_frame(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		// 压缩格式？ XXX如果只有一个帧进/出步距高，可能会导致崩溃...
+		// 压缩格式？ 如果只有一个进/出框具有台阶，则可能导致崩溃...
 		memcpy(out->data, in->data, in->actual_bytes);
 	}
 #else
@@ -235,6 +241,8 @@ uvc_error_t uvc_duplicate_frame(uvc_frame_t *in, uvc_frame_t *out) {
  * @ingroup frame
  * @param ini RGB888 frame
  * @param out RGBX8888 frame
+ *
+ * 将帧从 RGB888 转换为 RGBX8888
  */
 uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_RGB))
@@ -277,6 +285,7 @@ uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		// 压缩格式？ 如果只有一个进/出框具有台阶，则可能导致崩溃...
 		for (; (prgbx <= prgbx_end) && (prgb <= prgb_end) ;) {
 			RGB2RGBX_8(prgb, prgbx, 0, 0);
 
@@ -317,6 +326,8 @@ uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
  * @ingroup frame
  * @param ini RGB888 frame
  * @param out RGB565 frame
+ *
+ * 将帧从 RGB888 转换为 RGB565
  */
 uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_RGB))
@@ -359,6 +370,7 @@ uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		// 压缩格式？ 如果只有一个进/出框具有台阶，则可能导致崩溃...
 		for (; (prgb565 <= prgb565_end) && (prgb <= prgb_end) ;) {
 			RGB2RGB565_8(prgb, prgb565, 0, 0);
 
@@ -420,6 +432,8 @@ uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
  *
  * @param in YUYV frame
  * @param out RGB888 frame
+ *
+ * 将帧从 YUYV 转换为 RGB888
  */
 uvc_error_t uvc_yuyv2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_YUYV))
@@ -461,6 +475,7 @@ uvc_error_t uvc_yuyv2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		// 压缩格式？ 如果只有一个进/出框具有台阶，则可能导致崩溃...
 		for (; (prgb <= prgb_end) && (pyuv <= pyuv_end) ;) {
 			IYUYV2RGB_8(pyuv, prgb, 0, 0);
 
@@ -484,6 +499,8 @@ uvc_error_t uvc_yuyv2rgb(uvc_frame_t *in, uvc_frame_t *out) {
  * @ingroup frame
  * @param ini YUYV frame
  * @param out RGB565 frame
+ *
+ * 将帧从 YUYV 转换为 RGB565
  */
 uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_YUYV))
@@ -506,7 +523,7 @@ uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	uint8_t *prgb565 = out->data;
 	const uint8_t *prgb565_end = prgb565 + out->actual_bytes - PIXEL8_RGB565;
 
-	uint8_t tmp[PIXEL8_RGB];	// for temporary rgb888 data(8pixel)
+	uint8_t tmp[PIXEL8_RGB];	// for temporary rgb888 data(8pixel)  用于临时RGB888数据（8像素）
 
 #if USE_STRIDE
 	if (in->step && out->step && (in->step != out->step)) {
@@ -528,6 +545,7 @@ uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		// 压缩格式？ 如果只有一个进/出框具有台阶，则可能导致崩溃...
 		for (; (prgb565 <= prgb565_end) && (pyuv <= pyuv_end) ;) {
 			IYUYV2RGB_8(pyuv, tmp, 0, 0);
 			RGB2RGB565_8(tmp, prgb565, 0, 0);
@@ -580,6 +598,8 @@ uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
  * @ingroup frame
  * @param ini YUYV frame
  * @param out RGBX8888 frame
+ *
+ * 将帧从 YUYV 转换为 RGBX8888
  */
 uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_YUYV))
@@ -622,6 +642,7 @@ uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		// 压缩格式？ 如果只有一个进/出框具有台阶，则可能导致崩溃...
 		for (; (prgbx <= prgbx_end) && (pyuv <= pyuv_end) ;) {
 			IYUYV2RGBX_8(pyuv, prgbx, 0, 0);
 
@@ -670,6 +691,7 @@ uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
  *
  * @param in YUYV frame
  * @param out BGR888 frame
+ * 将帧从 YUYV 转换为 BGR888
  */
 uvc_error_t uvc_yuyv2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_YUYV))
@@ -712,6 +734,7 @@ uvc_error_t uvc_yuyv2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		// 压缩格式？ 如果只有一个进/出框具有台阶，则可能导致崩溃...
 		for (; (pbgr <= pbgr_end) && (pyuv <= pyuv_end) ;) {
 			IYUYV2BGR_8(pyuv, pbgr, 0, 0);
 
@@ -759,6 +782,7 @@ uvc_error_t uvc_yuyv2bgr(uvc_frame_t *in, uvc_frame_t *out) {
  * @ingroup frame
  * @param ini UYVY frame
  * @param out RGB888 frame
+ * 将帧从 UYVY 转换为 RGB888
  */
 uvc_error_t uvc_uyvy2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_UYVY))
@@ -801,6 +825,7 @@ uvc_error_t uvc_uyvy2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		// 压缩格式？ 如果只有一个进/出框具有台阶，则可能导致崩溃...
 		for (; (prgb <= prgb_end) && (pyuv <= pyuv_end) ;) {
 			IUYVY2RGB_8(pyuv, prgb, 0, 0);
 
@@ -823,6 +848,7 @@ uvc_error_t uvc_uyvy2rgb(uvc_frame_t *in, uvc_frame_t *out) {
  * @ingroup frame
  * @param ini UYVY frame
  * @param out RGB565 frame
+ * 将帧从 UYVY 转换为 RGB565
  */
 uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_UYVY))
@@ -868,6 +894,7 @@ uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		// 压缩格式？ 如果只有一个进/出框具有台阶，则可能导致崩溃...
 		for (; (prgb565 <= prgb565_end) && (pyuv <= pyuv_end) ;) {
 			IUYVY2RGB_8(pyuv, tmp, 0, 0);
 			RGB2RGB565_8(tmp, prgb565, 0, 0);
@@ -919,6 +946,7 @@ uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
  * @ingroup frame
  * @param ini UYVY frame
  * @param out RGBX8888 frame
+ * 将帧从 UYVY 转换为 RGBX8888
  */
 uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_UYVY))
@@ -961,6 +989,7 @@ uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		// 压缩格式？ 如果只有一个进/出框具有台阶，则可能导致崩溃...
 		for (; (prgbx <= prgbx_end) && (pyuv <= pyuv_end) ;) {
 			IUYVY2RGBX_8(pyuv, prgbx, 0, 0);
 
@@ -1008,6 +1037,7 @@ uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
  * @ingroup frame
  * @param ini UYVY frame
  * @param out BGR888 frame
+ * 将帧从 UYVY 转换为 BGR888
  */
 uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_UYVY))
@@ -1050,6 +1080,7 @@ uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
+		// 压缩格式？ 如果只有一个进/出框具有台阶，则可能导致崩溃...
 		for (; (pbgr <= pbgr_end) && (pyuv <= pyuv_end) ;) {
 			IUYVY2BGR_8(pyuv, pbgr, 0, 0);
 
@@ -1256,6 +1287,7 @@ uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
  *
  * @param in non-RGB565 frame
  * @param out RGB565 frame
+ * 将帧转换为RGB565
  */
 uvc_error_t uvc_any2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 
@@ -1282,6 +1314,7 @@ uvc_error_t uvc_any2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
  *
  * @param in non-RGB888 frame
  * @param out RGB888 frame
+ * 将帧转换为RGB888
  */
 uvc_error_t uvc_any2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 
@@ -1306,6 +1339,7 @@ uvc_error_t uvc_any2rgb(uvc_frame_t *in, uvc_frame_t *out) {
  *
  * @param in non-BGR888 frame
  * @param out BGR888 frame
+ * 将帧转换为BGR888
  */
 uvc_error_t uvc_any2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 
@@ -1328,10 +1362,10 @@ uvc_error_t uvc_any2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 /**
  * @brief Convert a frame to RGBX8888
  * @ingroup frame
- * 将帧转换为RGBX8888
  *
  * @param in non-rgbx frame
  * @param out rgbx frame
+ * 将帧转换为RGBX8888
  */
 uvc_error_t uvc_any2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 
@@ -1358,6 +1392,8 @@ uvc_error_t uvc_any2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
  *
  * @param in non-yuyv frame
  * @param out yuyv frame
+ *
+ * 将帧转换为yuyv
  */
 uvc_error_t uvc_any2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 
@@ -1378,6 +1414,8 @@ uvc_error_t uvc_any2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
  *
  * @param in non-yuv420sp frame
  * @param out yuv420sp frame
+ *
+ * 将帧转换为yuv420sp
  */
 uvc_error_t uvc_any2yuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
 	uvc_error_t result = UVC_ERROR_NO_MEM;
@@ -1397,6 +1435,8 @@ uvc_error_t uvc_any2yuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
  *
  * @param in non-iyuv420SP(NV21) frame
  * @param out iyuv420SP(NV21) frame
+ *
+ * 将帧转换为iyuv420sp（NV21）
  */
 uvc_error_t uvc_any2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out) {
 	uvc_error_t result = UVC_ERROR_NO_MEM;
