@@ -618,102 +618,6 @@ static int op_init2(struct libusb_context *ctx, const char *usbfs) {	// XXX
 
 static int op_init(struct libusb_context *ctx) {
 	return op_init2(ctx, NULL);
-#if 0
-	struct stat statbuf;
-	int r;
-
-	usbfs_path = find_usbfs_path();
-	if (UNLIKELY(!usbfs_path)) {
-		usbi_err(ctx, "could not find usbfs");
-		return LIBUSB_ERROR_OTHER;
-	}
-
-	if (monotonic_clkid == -1)
-		monotonic_clkid = find_monotonic_clock();
-
-	if (supports_flag_bulk_continuation == -1) {
-		/* bulk continuation URB flag available from Linux 2.6.32
-		 * Linux 2.6.32中提供了块续传URB标志
-		 */
-		supports_flag_bulk_continuation = kernel_version_ge(2, 6, 32);
-		if (supports_flag_bulk_continuation == -1) {
-			usbi_err(ctx, "error checking for bulk continuation support");
-			return LIBUSB_ERROR_OTHER;
-		}
-	}
-
-	if (supports_flag_bulk_continuation)
-		usbi_dbg("bulk continuation flag supported");
-
-	if (-1 == supports_flag_zero_packet) {
-		/* zero length packet URB flag fixed since Linux 2.6.31
-		 * 自Linux 2.6.31起已修复零长度数据包URB标志
-		 */
-		supports_flag_zero_packet = kernel_version_ge(2, 6, 31);
-		if (-1 == supports_flag_zero_packet) {
-			usbi_err(ctx, "error checking for zero length packet support");
-			return LIBUSB_ERROR_OTHER;
-		}
-	}
-
-	if (supports_flag_zero_packet)
-		usbi_dbg("zero length packet flag supported");
-
-	if (-1 == sysfs_has_descriptors) {
-		/* sysfs descriptors has all descriptors since Linux 2.6.26
-		 * sysfs描述符具有Linux 2.6.26以来的所有描述符
-		 */
-		sysfs_has_descriptors = kernel_version_ge(2, 6, 26);
-		if (UNLIKELY(-1 == sysfs_has_descriptors)) {
-			usbi_err(ctx, "error checking for sysfs descriptors");
-			return LIBUSB_ERROR_OTHER;
-		}
-	}
-
-	if (-1 == sysfs_can_relate_devices) {
-		/* sysfs has busnum since Linux 2.6.22
-		 * 自Linux 2.6.22起sysfs具有busnum
-		 */
-		sysfs_can_relate_devices = kernel_version_ge(2, 6, 22);
-		if (UNLIKELY(-1 == sysfs_can_relate_devices)) {
-			usbi_err(ctx, "error checking for sysfs busnum");
-			return LIBUSB_ERROR_OTHER;
-		}
-	}
-
-	if (sysfs_can_relate_devices || sysfs_has_descriptors) {
-		r = stat(SYSFS_DEVICE_PATH, &statbuf);
-		if (r != 0 || !S_ISDIR(statbuf.st_mode)) {
-			usbi_warn(ctx, "sysfs not mounted");
-			sysfs_can_relate_devices = 0;
-			sysfs_has_descriptors = 0;
-		}
-	}
-
-	if (sysfs_can_relate_devices)
-		usbi_dbg("sysfs can relate devices");
-
-	if (sysfs_has_descriptors)
-		usbi_dbg("sysfs has complete descriptors");
-
-	usbi_mutex_static_lock(&android_hotplug_startstop_lock);
-	r = LIBUSB_SUCCESS;
-	if (init_count == 0) {
-		LOGI("start up hotplug event handler");
-		r = android_start_event_monitor();
-	}
-	if (r == LIBUSB_SUCCESS) {
-		r = android_scan_devices(ctx);
-		if (r == LIBUSB_SUCCESS)
-			init_count++;
-		else if (init_count == 0)
-			android_stop_event_monitor();
-	} else
-		usbi_err(ctx, "error starting hotplug event monitor");
-	usbi_mutex_static_unlock(&android_hotplug_startstop_lock);
-
-	return r;
-#endif
 }
 
 
@@ -2549,7 +2453,9 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer) {
 	size_t alloc_size;
 	const int num_packets = transfer->num_iso_packets;
 	int i;
+	//当前urb空间大小
 	int this_urb_len = 0;
+	// urb数量
 	int num_urbs = 1;
 	int packet_offset = 0;
 	unsigned int packet_len;
@@ -2573,7 +2479,9 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer) {
      * 较新的内核提高了32k的限制（USBFS_CAP_NO_PACKET_SIZE_LIM），但是使用任意的大容量传输仍然不是一个好主意，因为内核需要为此分配物理连续内存，这对于大缓冲区可能会失败。
 	 */
 
-	/* calculate how many URBs we need */
+	/* calculate how many URBs we need
+	 * 计算urb数量，每个urb最多32KB
+	 */
 	for (i = 0; i < num_packets; i++) {
 	    // MAX_ISO_BUFFER_LENGTH = 32KB
 		unsigned int space_remaining = MAX_ISO_BUFFER_LENGTH - this_urb_len;
@@ -2588,6 +2496,7 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer) {
 	}
 	usbi_dbg("need %d of 32k URBs for transfer", num_urbs);
 
+    // 创建urbs指针数组内存空间
 	alloc_size = num_urbs * sizeof(*urbs);
 	urbs = calloc(1, alloc_size);
 	if (UNLIKELY(!urbs))
@@ -2604,7 +2513,9 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer) {
 	 */
 	for (i = 0; i < num_urbs; i++) {
 		struct usbfs_urb *urb;
+		// 当前urb可存放数据剩余空间
 		unsigned int space_remaining_in_urb = MAX_ISO_BUFFER_LENGTH; // 32KB
+		// urb存放iso数据包个数
 		int urb_packet_offset = 0;
 		unsigned char *urb_buffer_orig = urb_buffer;
 		int j;
@@ -2612,6 +2523,7 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer) {
 
 		/* swallow up all the packets we can fit into this URB
 		 * 吞下我们可以放入此URB的所有数据包
+		 * 计算当前的一个urb存放数据偏移量，数据长度，每个urb最多32KB
 		 */
 		while (packet_offset < num_packets) {
 			packet_len = transfer->iso_packet_desc[packet_offset].length;
@@ -2630,7 +2542,7 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer) {
 				break;
 			}
 		}
-
+		// 创建一个urb内存空间
 		alloc_size = sizeof(*urb) + (urb_packet_offset * sizeof(struct usbfs_iso_packet_desc));
 		urb = calloc(1, alloc_size);
 		if (UNLIKELY(!urb)) {
@@ -2641,6 +2553,7 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer) {
 
 		/* populate packet lengths
 		 * 填充数据包长度
+		 * 获取对应数据包长度
 		 */
 		for (j = 0, k = packet_offset - urb_packet_offset; k < packet_offset; k++, j++) {
 			packet_len = transfer->iso_packet_desc[k].length;
@@ -2775,8 +2688,7 @@ static int op_submit_transfer(struct usbi_transfer *itransfer) {
         case LIBUSB_TRANSFER_TYPE_ISOCHRONOUS: // 同步端点
             return submit_iso_transfer(itransfer);
         default:
-            usbi_err(TRANSFER_CTX(transfer),
-                "unknown endpoint type %d", transfer->type);
+            usbi_err(TRANSFER_CTX(transfer), "unknown endpoint type %d", transfer->type);
             return LIBUSB_ERROR_INVALID_PARAM;
 	}
 }
@@ -3019,13 +2931,11 @@ static int handle_iso_completion(struct libusb_device_handle *handle,	// XXX add
 		return LIBUSB_ERROR_NOT_FOUND;
 	}
 
-	usbi_dbg("handling completion status %d of iso urb %d/%d",
-		urb->status, urb_idx, num_urbs);
+	usbi_dbg("handling completion status %d of iso urb %d/%d", urb->status, urb_idx, num_urbs);
 
 	/* copy isochronous results back in
 	 * 复制同步结果
 	 */
-
 	for (i = 0; i < urb->number_of_packets; i++) {
 		struct usbfs_iso_packet_desc *urb_desc = &urb->iso_frame_desc[i];
 		struct libusb_iso_packet_descriptor *lib_desc = &transfer->iso_packet_desc[tpriv->iso_packet_offset++];
@@ -3100,8 +3010,7 @@ static int handle_iso_completion(struct libusb_device_handle *handle,	// XXX add
             status = LIBUSB_TRANSFER_NO_DEVICE;
             break;
         default:
-            usbi_warn(TRANSFER_CTX(transfer),
-                "unrecognised urb status %d", urb->status);
+            usbi_warn(TRANSFER_CTX(transfer), "unrecognised urb status %d", urb->status);
             status = LIBUSB_TRANSFER_ERROR;
             break;
 	}

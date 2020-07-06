@@ -140,6 +140,7 @@ int UVCCamera::connect(int vid, int pid, int fd, int busnum, int devaddr, const 
 	if (!mDeviceHandle && fd) {
 		if (mUsbFs)
 			free(mUsbFs);
+		// 复制字符串
 		mUsbFs = strdup(usbfs);
 		if (UNLIKELY(!mContext)) {
 			result = uvc_init2(&mContext, NULL, mUsbFs);

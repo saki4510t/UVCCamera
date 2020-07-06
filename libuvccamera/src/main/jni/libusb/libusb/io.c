@@ -2178,6 +2178,7 @@ static int handle_events(struct libusb_context *ctx, struct timeval *tv) {
 
 redo_poll:
 	usbi_dbg("poll() %d fds with timeout in %dms", nfds, timeout_ms);
+	// linux 使用 poll 方法获取数据，第三个参数(timeout)指定等待的毫秒数，无论I/O是否准备好，poll都会返回。timeout指定为负数值表示无限超时；timeout为0指示poll调用立即返回并列出准备好I/O的文件描述符，但并不等待其它的事件。这种情况下，poll()就像它的名字那样，一旦选举出来，立即返回。
 	r = usbi_poll(fds, nfds, timeout_ms);
 	usbi_dbg("poll() returned %d", r);
 	if (r == 0) {
