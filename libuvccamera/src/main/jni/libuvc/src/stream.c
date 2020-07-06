@@ -762,6 +762,31 @@ static void _uvc_swap_buffers(uvc_stream_handle_t *strmh) {
 	strmh->last_stc = 0;
 	strmh->bfh_err = 0;	// XXX
 }
+// 直接交换缓存，不唤醒其他线程
+static void _uvc_swap_buffers_nobroadcast(uvc_stream_handle_t *strmh) {
+	uint8_t *tmp_buf;
+
+	pthread_mutex_lock(&strmh->cb_mutex);
+	{
+		/* swap the buffers
+		 * 交换缓冲区
+		 */
+		tmp_buf = strmh->holdbuf;
+		strmh->hold_bfh_err = strmh->bfh_err;	// XXX
+		strmh->hold_bytes = strmh->got_bytes;
+		strmh->holdbuf = strmh->outbuf;
+		strmh->outbuf = tmp_buf;
+		strmh->hold_last_stc = strmh->last_stc;
+		strmh->hold_pts = strmh->pts;
+		strmh->hold_seq = strmh->seq;
+	}
+	pthread_mutex_unlock(&strmh->cb_mutex);
+
+	strmh->seq++;
+	strmh->got_bytes = 0;
+	strmh->last_stc = 0;
+	strmh->bfh_err = 0;	// XXX
+}
 
 static void _uvc_delete_transfer(struct libusb_transfer *transfer) {
 	ENTER();
@@ -910,6 +935,12 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 		    data_len = payload_len - header_len;
 		}
 	}
+	if (data_len == 0) {
+		if(header_len<2 || !(payload[1] & UVC_STREAM_EOF) ){
+		    // 数据包只有头，没有实体数据 且没有EOF标记
+			return;
+		}
+	}
 
 	if (UNLIKELY(header_len < 2)) {
 	    // 没有载体头(Payload Header)
@@ -966,7 +997,9 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 				可能出现花帧了
 			*/
 			LOGE("_uvc_process_payload some frames losted 可能出现花帧了 \n");
-			_uvc_swap_buffers(strmh);
+			//_uvc_swap_buffers(strmh);
+            // 直接交换缓存，不唤醒其他线程(如显示)
+			_uvc_swap_buffers_nobroadcast(strmh);
 		}
 
 		strmh->fid = frame_fid;
@@ -1101,6 +1134,12 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 			} else {
 				header_len = pktbuf[0];	// Header length field of Stream Header  流头的头长度字段
 			}
+			if (pkt->actual_length == header_len) {
+			    if(header_len<2 || !(pktbuf[1] & UVC_STREAM_EOF) ){
+			        // 数据包只有头，没有实体数据 且没有EOF标记
+			        continue;
+			    }
+			}
 
 			if (LIKELY(check_header)) {
 				header_info = pktbuf[1];
@@ -1151,7 +1190,9 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 				     可能出现花帧了
                      */
                     LOGE("_uvc_process_payload_iso some frames losted 可能出现花帧了 \n");
-					_uvc_swap_buffers(strmh);
+					//_uvc_swap_buffers(strmh);
+                    // 直接交换缓存，不唤醒其他线程(如显示)
+					_uvc_swap_buffers_nobroadcast(strmh);
 				}
 
 				strmh->fid = frame_fid;
@@ -1456,7 +1497,7 @@ uvc_error_t uvc_stream_open_ctrl(uvc_device_handle_t *devh,
 	/** @todo take only what we need  只拿我们需要的东西 */
 	// 创建接收数据缓存空间，要确保空间足够，至少能存一帧数据
 	// @todo 可以优化，根据协商的信息来创建缓存空间大小
-	uint32_t sizeBuf = LIBUVC_XFER_BUF_SIZE;
+	uint32_t sizeBuf = frame_buffer_size;
 	strmh->outbuf = malloc(sizeBuf); // 原值是 LIBUVC_XFER_BUF_SIZE
 	strmh->holdbuf = malloc(sizeBuf); // 原值是 LIBUVC_XFER_BUF_SIZE
 	strmh->size_buf = sizeBuf;	// xxx for boundary check  用于边界检查

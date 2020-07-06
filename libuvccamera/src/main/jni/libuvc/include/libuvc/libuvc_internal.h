@@ -348,9 +348,11 @@ typedef struct uvc_device_info {
   一个更好的方法可能是调度传输线程FIFO（如果我们有根）。
   我们可以/应该更改此设置以允许在默认情况下将其减少到5，然后允许用户根据需要更改缓冲区的数量。
  */
-#define LIBUVC_NUM_TRANSFER_BUFS 10 // LIBUVC编号转移缓冲区
+#define LIBUVC_NUM_TRANSFER_BUFS 10 // LIBUVC编号传输缓冲区  太小容易出现花帧
 
 #define LIBUVC_XFER_BUF_SIZE	( 2 * 1024 * 1024 ) // 原值16MB
+
+static int frame_buffer_size = LIBUVC_XFER_BUF_SIZE;
 
 struct uvc_stream_handle {
   struct uvc_device_handle *devh;
@@ -389,6 +391,8 @@ struct uvc_stream_handle {
   uint32_t last_polled_seq;
   uvc_frame_callback_t *user_cb;
   void *user_ptr;
+  // transfers 和 transfer_bufs 实际使用长度
+  //int transfers_length;
   struct libusb_transfer *transfers[LIBUVC_NUM_TRANSFER_BUFS];
   uint8_t *transfer_bufs[LIBUVC_NUM_TRANSFER_BUFS];
   struct uvc_frame frame;

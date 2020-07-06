@@ -969,6 +969,10 @@ public class UVCCamera {
 		}
 	}
 
+	public static final void setFrameBufferSize(final int frameBufferSize){
+		nativeFrameBufferSize(frameBufferSize);
+	}
+
 	private static final String[] SUPPORTS_CTRL = {
 			"D0:  Scanning Mode",
 			"D1:  Auto-Exposure Mode",
@@ -1249,4 +1253,5 @@ public class UVCCamera {
 	private final native int nativeUpdatePrivacyLimit(final long id_camera);
 	private static final native int nativeSetPrivacy(final long id_camera, final boolean privacy);
 	private static final native int nativeGetPrivacy(final long id_camera);
+	private static final native void nativeFrameBufferSize(final int frameBufferSize);
 }

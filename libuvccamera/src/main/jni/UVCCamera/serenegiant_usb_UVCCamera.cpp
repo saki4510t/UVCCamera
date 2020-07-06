@@ -38,6 +38,7 @@
 
 #include "libUVCCamera.h"
 #include "UVCCamera.h"
+#include "libuvc/libuvc_internal.h"
 
 /**
  * set the value into the long field
@@ -139,6 +140,11 @@ static void nativeDestroy(JNIEnv *env, jobject thiz,
 }
 
 //======================================================================
+// 设置帧缓存大小
+static void nativeFrameBufferSize(JNIEnv *env, jobject thiz, jint frameBufferSize) {
+    frame_buffer_size = (int)frameBufferSize;
+}
+
 // 连接相机
 static jint nativeConnect(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera,
@@ -2016,6 +2022,7 @@ static JNINativeMethod methods[] = {
 	{ "nativeCreate",					"()J", (void *) nativeCreate },
 	{ "nativeDestroy",					"(J)V", (void *) nativeDestroy },
 	//
+	{ "nativeFrameBufferSize",			"(I)V", (void *) nativeFrameBufferSize },
 	{ "nativeConnect",					"(JIIIIILjava/lang/String;)I", (void *) nativeConnect },
 	{ "nativeRelease",					"(J)I", (void *) nativeRelease },
 
