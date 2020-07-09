@@ -735,7 +735,7 @@ uvc_error_t uvc_probe_stream_ctrl(uvc_device_handle_t *devh,
  * @brief Swap the working buffer with the presented buffer and notify consumers
  * 用提供的缓冲区交换工作缓冲区并通知使用者
  */
-static void _uvc_swap_buffers(uvc_stream_handle_t *strmh) {
+static void _uvc_swap_buffers(uvc_stream_handle_t *strmh, int broadcast) {
 	uint8_t *tmp_buf;
 
 	pthread_mutex_lock(&strmh->cb_mutex);
@@ -752,33 +752,10 @@ static void _uvc_swap_buffers(uvc_stream_handle_t *strmh) {
 		strmh->hold_pts = strmh->pts;
 		strmh->hold_seq = strmh->seq;
 
-        // 唤醒所有等待视频帧线程
-		pthread_cond_broadcast(&strmh->cb_cond);
-	}
-	pthread_mutex_unlock(&strmh->cb_mutex);
-
-	strmh->seq++;
-	strmh->got_bytes = 0;
-	strmh->last_stc = 0;
-	strmh->bfh_err = 0;	// XXX
-}
-// 直接交换缓存，不唤醒其他线程
-static void _uvc_swap_buffers_nobroadcast(uvc_stream_handle_t *strmh) {
-	uint8_t *tmp_buf;
-
-	pthread_mutex_lock(&strmh->cb_mutex);
-	{
-		/* swap the buffers
-		 * 交换缓冲区
-		 */
-		tmp_buf = strmh->holdbuf;
-		strmh->hold_bfh_err = strmh->bfh_err;	// XXX
-		strmh->hold_bytes = strmh->got_bytes;
-		strmh->holdbuf = strmh->outbuf;
-		strmh->outbuf = tmp_buf;
-		strmh->hold_last_stc = strmh->last_stc;
-		strmh->hold_pts = strmh->pts;
-		strmh->hold_seq = strmh->seq;
+        if(broadcast == 1){
+            // 唤醒所有等待视频帧线程
+            pthread_cond_broadcast(&strmh->cb_cond);
+        }
 	}
 	pthread_mutex_unlock(&strmh->cb_mutex);
 
@@ -997,9 +974,7 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 				可能出现花帧了
 			*/
 			LOGE("_uvc_process_payload some frames losted 可能出现花帧了 \n");
-			//_uvc_swap_buffers(strmh);
-            // 直接交换缓存，不唤醒其他线程(如显示)
-			_uvc_swap_buffers_nobroadcast(strmh);
+			_uvc_swap_buffers(strmh, drop_incomplete_frame);
 		}
 
 		strmh->fid = frame_fid;
@@ -1019,7 +994,7 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 		if (header_info & UVC_STREAM_EOF) {
 			// The EOF bit is set, so publish the complete frame
 			// EOF位置1，因此发布完整帧
-			_uvc_swap_buffers(strmh);
+			_uvc_swap_buffers(strmh, 1);
 		}
 	}
 }
@@ -1190,9 +1165,7 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 				     可能出现花帧了
                      */
                     LOGE("_uvc_process_payload_iso some frames losted 可能出现花帧了 \n");
-					//_uvc_swap_buffers(strmh);
-                    // 直接交换缓存，不唤醒其他线程(如显示)
-					_uvc_swap_buffers_nobroadcast(strmh);
+					_uvc_swap_buffers(strmh, drop_incomplete_frame);
 				}
 
 				strmh->fid = frame_fid;
@@ -1235,7 +1208,7 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 				 * E0F帧结束，如果有，指示视频帧的结束，并在属于帧的最后一个视频样本中设置
 				 * EOF位置1，因此发布完整帧
 				 */
-				_uvc_swap_buffers(strmh);
+				_uvc_swap_buffers(strmh, 1);
 			}
 
 		} else {	// if (LIKELY(pktbuf))

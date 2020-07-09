@@ -973,6 +973,10 @@ public class UVCCamera {
 		nativeFrameBufferSize(frameBufferSize);
 	}
 
+	public static final void dropIncompleteFrame(final boolean dropIncompleteFrame){
+		nativeDropIncompleteFrame(dropIncompleteFrame ? 1 : 0);
+	}
+
 	private static final String[] SUPPORTS_CTRL = {
 			"D0:  Scanning Mode",
 			"D1:  Auto-Exposure Mode",
@@ -1254,4 +1258,5 @@ public class UVCCamera {
 	private static final native int nativeSetPrivacy(final long id_camera, final boolean privacy);
 	private static final native int nativeGetPrivacy(final long id_camera);
 	private static final native void nativeFrameBufferSize(final int frameBufferSize);
+	private static final native void nativeDropIncompleteFrame(final int dropIncompleteFrame);
 }

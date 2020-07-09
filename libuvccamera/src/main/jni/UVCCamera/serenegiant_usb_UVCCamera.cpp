@@ -144,6 +144,10 @@ static void nativeDestroy(JNIEnv *env, jobject thiz,
 static void nativeFrameBufferSize(JNIEnv *env, jobject thiz, jint frameBufferSize) {
     frame_buffer_size = (int)frameBufferSize;
 }
+// 设置是否丢弃不完整帧
+static void nativeDropIncompleteFrame(JNIEnv *env, jobject thiz, jint dropIncompleteFrame) {
+    drop_incomplete_frame = (int)dropIncompleteFrame;
+}
 
 // 连接相机
 static jint nativeConnect(JNIEnv *env, jobject thiz,
@@ -2023,6 +2027,7 @@ static JNINativeMethod methods[] = {
 	{ "nativeDestroy",					"(J)V", (void *) nativeDestroy },
 	//
 	{ "nativeFrameBufferSize",			"(I)V", (void *) nativeFrameBufferSize },
+	{ "nativeDropIncompleteFrame",		"(I)V", (void *) nativeDropIncompleteFrame },
 	{ "nativeConnect",					"(JIIIIILjava/lang/String;)I", (void *) nativeConnect },
 	{ "nativeRelease",					"(J)I", (void *) nativeRelease },
 

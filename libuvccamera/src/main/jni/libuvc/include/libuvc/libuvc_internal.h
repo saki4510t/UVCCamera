@@ -354,6 +354,9 @@ typedef struct uvc_device_info {
 
 static int frame_buffer_size = LIBUVC_XFER_BUF_SIZE;
 
+// 是否丢弃不完整帧  0不丢弃， 1丢弃
+static int drop_incomplete_frame = 0;
+
 struct uvc_stream_handle {
   struct uvc_device_handle *devh;
   struct uvc_stream_handle *prev, *next;
