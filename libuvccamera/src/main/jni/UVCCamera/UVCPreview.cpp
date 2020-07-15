@@ -58,6 +58,7 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	requestBandwidth(DEFAULT_BANDWIDTH),
 	frameWidth(DEFAULT_PREVIEW_WIDTH),
 	frameHeight(DEFAULT_PREVIEW_HEIGHT),
+	frameRotationAngle(DEFAULT_FRAME_ROTATION_ANGLE),
 	frameBytes(DEFAULT_PREVIEW_WIDTH * DEFAULT_PREVIEW_HEIGHT * 2),	// YUYV
 	frameMode(0),
 	previewBytes(DEFAULT_PREVIEW_WIDTH * DEFAULT_PREVIEW_HEIGHT * PREVIEW_PIXEL_BYTES),
@@ -79,12 +80,16 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	pthread_mutex_init(&capture_mutex, NULL);
 //	
 	pthread_mutex_init(&pool_mutex, NULL);
+
 	EXIT();
 }
 
 UVCPreview::~UVCPreview() {
 
 	ENTER();
+	if(!rotateImage){
+	    SAFE_DELETE(rotateImage);
+    }
 	if (mPreviewWindow)
 		ANativeWindow_release(mPreviewWindow);
 	mPreviewWindow = NULL;
@@ -191,7 +196,7 @@ void UVCPreview::clear_pool() {
 inline const bool UVCPreview::isRunning() const {return mIsRunning; }
 
 // 设置预览参数
-int UVCPreview::setPreviewSize(int width, int height, int min_fps, int max_fps, int mode, float bandwidth) {
+int UVCPreview::setPreviewSize(int width, int height, int cameraAngle, int min_fps, int max_fps, int mode, float bandwidth) {
 	ENTER();
 	
 	int result = 0;
@@ -202,6 +207,11 @@ int UVCPreview::setPreviewSize(int width, int height, int min_fps, int max_fps, 
 		requestMaxFps = max_fps;
 		requestMode = mode;
 		requestBandwidth = bandwidth;
+		// 根据摄像头角度计算图像帧需要旋转的角度
+		frameRotationAngle = (360 - cameraAngle) % 360;
+		if(frameRotationAngle && !rotateImage) {
+		    rotateImage = new RotateImage();
+	    }
 
 		uvc_stream_ctrl_t ctrl;
 		result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
@@ -588,6 +598,15 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 					// 放回帧池
 					recycle_frame(frame_mjpeg);
 					if (LIKELY(!result)) {
+                        // 需要旋转图像帧
+                        if(frameRotationAngle==90){
+                            rotateImage->rotate_yuyv_90(frame);
+                        }else if(frameRotationAngle==180){
+                            rotateImage->rotate_yuyv_180(frame);
+                        }else if(frameRotationAngle==270){
+                            rotateImage->rotate_yuyv_270(frame);
+                        }
+
 					    // 画预览帧
 						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
 						// 设置抓拍帧
@@ -604,6 +623,14 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 			    // 等待预览帧
 				frame = waitPreviewFrame();
 				if (LIKELY(frame)) {
+				    // 需要旋转图像帧
+                    if(frameRotationAngle==90){
+                        rotateImage->rotate_yuyv_90(frame);
+                    }else if(frameRotationAngle==180){
+                        rotateImage->rotate_yuyv_180(frame);
+                    }else if(frameRotationAngle==270){
+                        rotateImage->rotate_yuyv_270(frame);
+                    }
 				    // 画预览帧
 					frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
 					// 设置抓拍帧

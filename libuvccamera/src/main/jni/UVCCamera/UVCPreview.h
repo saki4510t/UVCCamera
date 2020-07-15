@@ -29,6 +29,7 @@
 #include <pthread.h>
 #include <android/native_window.h>
 #include "objectarray.h"
+#include "RotateImage.h"
 
 #pragma interface
 
@@ -38,6 +39,7 @@
 #define DEFAULT_PREVIEW_FPS_MAX 30
 #define DEFAULT_PREVIEW_MODE 0
 #define DEFAULT_BANDWIDTH 1.0f
+#define DEFAULT_FRAME_ROTATION_ANGLE 0
 
 typedef uvc_error_t (*convFunc_t)(uvc_frame_t *in, uvc_frame_t *out);
 
@@ -64,6 +66,9 @@ private:
 	float requestBandwidth;
 	int frameWidth, frameHeight;
 	int frameMode;
+	// 图像帧需要旋转的角度
+	int frameRotationAngle;
+	RotateImage *rotateImage;
 	size_t frameBytes;
 	pthread_t preview_thread;
 	pthread_mutex_t preview_mutex;
@@ -122,7 +127,7 @@ public:
 	~UVCPreview();
 
 	inline const bool isRunning() const;
-	int setPreviewSize(int width, int height, int min_fps, int max_fps, int mode, float bandwidth = 1.0f);
+	int setPreviewSize(int width, int height, int cameraAngle, int min_fps, int max_fps, int mode, float bandwidth = 1.0f);
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
 	int startPreview();

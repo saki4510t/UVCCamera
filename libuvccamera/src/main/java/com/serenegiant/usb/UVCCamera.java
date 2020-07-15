@@ -50,6 +50,8 @@ public class UVCCamera {
 	public static final int DEFAULT_PREVIEW_MIN_FPS = 1;
 	public static final int DEFAULT_PREVIEW_MAX_FPS = 30;
 	public static final float DEFAULT_BANDWIDTH = 1.0f;
+	// 摄像头自身角度，会根据这个角度旋转从摄像头获取到的图像
+	public static final int DEFAULT_CAMERA_ANGLE = 0;
 
 	public static final int FRAME_FORMAT_YUYV = 0;
 	public static final int FRAME_FORMAT_MJPEG = 1;
@@ -135,6 +137,8 @@ public class UVCCamera {
 	// these fields from here are accessed from native code and do not change name and remove
 	// 这些字段从本地代码访问，不会更改名称并删除
 	protected long mNativePtr;
+	// 摄像头自身角度，会根据这个角度旋转从摄像头获取到的图像
+	protected int mCameraAngle;
 	protected int mScanningModeMin, mScanningModeMax, mScanningModeDef;
 	protected int mExposureModeMin, mExposureModeMax, mExposureModeDef;
 	protected int mExposurePriorityMin, mExposurePriorityMax, mExposurePriorityDef;
@@ -207,7 +211,7 @@ public class UVCCamera {
 		if (mNativePtr != 0 && TextUtils.isEmpty(mSupportedSize)) {
 			mSupportedSize = nativeGetSupportedSize(mNativePtr);
 		}
-		nativeSetPreviewSize(mNativePtr, DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT,
+		nativeSetPreviewSize(mNativePtr, DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT, DEFAULT_CAMERA_ANGLE,
 				DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, DEFAULT_PREVIEW_MODE, DEFAULT_BANDWIDTH);
 	}
 
@@ -286,10 +290,10 @@ public class UVCCamera {
 	/**
 	 * Set preview size and preview mode
 	 * @param width
-	 @param height
+	 * @param height
 	 */
 	public void setPreviewSize(final int width, final int height) {
-		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, mCurrentFrameFormat, mCurrentBandwidthFactor);
+		setPreviewSize(width, height, DEFAULT_CAMERA_ANGLE, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, mCurrentFrameFormat, mCurrentBandwidthFactor);
 	}
 
 	/**
@@ -299,35 +303,48 @@ public class UVCCamera {
 	 * @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
 	 */
 	public void setPreviewSize(final int width, final int height, final int frameFormat) {
-		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, frameFormat, mCurrentBandwidthFactor);
-	}
-
-	/**
-	 * Set preview size and preview mode
-	 * @param width
-	 @param height
-	 @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
-	 @param bandwidth [0.0f,1.0f]
-	 */
-	public void setPreviewSize(final int width, final int height, final int frameFormat, final float bandwidth) {
-		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, frameFormat, bandwidth);
+		setPreviewSize(width, height, DEFAULT_CAMERA_ANGLE, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, frameFormat, mCurrentBandwidthFactor);
 	}
 
 	/**
 	 * Set preview size and preview mode
 	 * @param width
 	 * @param height
+	 * @param cameraAngle 摄像头自身角度，会根据这个角度旋转从摄像头获取到的图像
+	 * @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
+	 */
+	public void setPreviewSize(final int width, final int height, final int cameraAngle, final int frameFormat) {
+		setPreviewSize(width, height, cameraAngle, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, frameFormat, mCurrentBandwidthFactor);
+	}
+
+	/**
+	 * Set preview size and preview mode
+	 * @param width
+	 * @param height
+	 * @param cameraAngle 摄像头自身角度，会根据这个角度旋转从摄像头获取到的图像
+	 * @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
+	 * @param bandwidth [0.0f,1.0f]
+	 */
+	public void setPreviewSize(final int width, final int height, final int cameraAngle, final int frameFormat, final float bandwidth) {
+		setPreviewSize(width, height, cameraAngle, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, frameFormat, bandwidth);
+	}
+
+	/**
+	 * Set preview size and preview mode
+	 * @param width
+	 * @param height
+	 * @param cameraAngle 摄像头自身角度，会根据这个角度旋转从摄像头获取到的图像
 	 * @param min_fps
 	 * @param max_fps
 	 * @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
 	 * @param bandwidthFactor
 	 */
-	public void setPreviewSize(final int width, final int height, final int min_fps, final int max_fps, final int frameFormat, final float bandwidthFactor) {
+	public void setPreviewSize(final int width, final int height, final int cameraAngle, final int min_fps, final int max_fps, final int frameFormat, final float bandwidthFactor) {
 		if ((width == 0) || (height == 0)){
 			throw new IllegalArgumentException("invalid preview size");
 		}
 		if (mNativePtr != 0) {
-			final int result = nativeSetPreviewSize(mNativePtr, width, height, min_fps, max_fps, frameFormat, bandwidthFactor);
+			final int result = nativeSetPreviewSize(mNativePtr, width, height, cameraAngle, min_fps, max_fps, frameFormat, bandwidthFactor);
 			if (result != 0){
 				throw new IllegalArgumentException("Failed to set preview size");
 			}
@@ -335,6 +352,7 @@ public class UVCCamera {
 			mCurrentWidth = width;
 			mCurrentHeight = height;
 			mCurrentBandwidthFactor = bandwidthFactor;
+			mCameraAngle = cameraAngle;
 		}
 	}
 
@@ -426,7 +444,10 @@ public class UVCCamera {
 	public synchronized void startPreview() {
 		if (mCtrlBlock != null) {
 			nativeStartPreview(mNativePtr);
+			Log.e(TAG,"startPreview成功调用了UVC底层预览");
+			return;
 		}
+		Log.e(TAG,"未成功预览mCtrlBlock="+mCtrlBlock);
 	}
 
 	/**
@@ -436,6 +457,7 @@ public class UVCCamera {
 		setFrameCallback(null, 0);
 		if (mCtrlBlock != null) {
 			nativeStopPreview(mNativePtr);
+			Log.e(TAG,"stopPreview成功调用了UVC底层停止预览");
 		}
 	}
 
@@ -969,10 +991,12 @@ public class UVCCamera {
 		}
 	}
 
+	// 设置帧缓存大小，根据帧分辨率调整
 	public static final void setFrameBufferSize(final int frameBufferSize){
 		nativeFrameBufferSize(frameBufferSize);
 	}
 
+	// 丢弃不完整帧
 	public static final void dropIncompleteFrame(final boolean dropIncompleteFrame){
 		nativeDropIncompleteFrame(dropIncompleteFrame ? 1 : 0);
 	}
@@ -1073,7 +1097,7 @@ public class UVCCamera {
 	private static final native int nativeSetStatusCallback(final long mNativePtr, final IStatusCallback callback);
 	private static final native int nativeSetButtonCallback(final long mNativePtr, final IButtonCallback callback);
 
-	private static final native int nativeSetPreviewSize(final long id_camera, final int width, final int height, final int min_fps, final int max_fps, final int mode, final float bandwidth);
+	private static final native int nativeSetPreviewSize(final long id_camera, final int width, final int height, final int cameraAngle, final int min_fps, final int max_fps, final int mode, final float bandwidth);
 	private static final native String nativeGetSupportedSize(final long id_camera);
 	private static final native int nativeStartPreview(final long id_camera);
 	private static final native int nativeStopPreview(final long id_camera);

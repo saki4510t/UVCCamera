@@ -226,12 +226,12 @@ static jobject nativeGetSupportedSize(JNIEnv *env, jobject thiz,
 //======================================================================
 // 设定预览画面的大小
 static jint nativeSetPreviewSize(JNIEnv *env, jobject thiz,
-	ID_TYPE id_camera, jint width, jint height, jint min_fps, jint max_fps, jint mode, jfloat bandwidth) {
+	ID_TYPE id_camera, jint width, jint height, jint cameraAngle, jint min_fps, jint max_fps, jint mode, jfloat bandwidth) {
 
 	ENTER();
 	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
 	if (LIKELY(camera)) {
-		return camera->setPreviewSize(width, height, min_fps, max_fps, mode, bandwidth);
+		return camera->setPreviewSize(width, height, cameraAngle, min_fps, max_fps, mode, bandwidth);
 	}
 	RETURN(JNI_ERR, jint);
 }
@@ -2035,7 +2035,7 @@ static JNINativeMethod methods[] = {
 	{ "nativeSetButtonCallback",		"(JLcom/serenegiant/usb/IButtonCallback;)I", (void *) nativeSetButtonCallback },
 
 	{ "nativeGetSupportedSize",			"(J)Ljava/lang/String;", (void *) nativeGetSupportedSize },
-	{ "nativeSetPreviewSize",			"(JIIIIIF)I", (void *) nativeSetPreviewSize },
+	{ "nativeSetPreviewSize",			"(JIIIIIIF)I", (void *) nativeSetPreviewSize },
 	{ "nativeStartPreview",				"(J)I", (void *) nativeStartPreview },
 	{ "nativeStopPreview",				"(J)I", (void *) nativeStopPreview },
 	{ "nativeSetPreviewDisplay",		"(JLandroid/view/Surface;)I", (void *) nativeSetPreviewDisplay },
