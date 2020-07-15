@@ -402,7 +402,11 @@ public class UVCCamera {
 	 * @param holder
 	 */
 	public synchronized void setPreviewDisplay(final SurfaceHolder holder) {
-		nativeSetPreviewDisplay(mNativePtr, holder.getSurface());
+		if(holder == null){
+			nativeSetPreviewDisplay(mNativePtr, null);
+		}else{
+			nativeSetPreviewDisplay(mNativePtr, holder.getSurface());
+		}
 	}
 
 	/**
