@@ -22,5 +22,5 @@
   ~  may have a different license, see the respective files.
   -->
 <resources>
-    <string name="app_name">USBCameraTest7(dual camera)</string>
+    <string name="app_name">UVC7(dual camera)</string>
 </resources>

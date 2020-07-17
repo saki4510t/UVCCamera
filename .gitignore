@@ -49,6 +49,7 @@ build
 # gedit
 *~
 
+.idea/
 .idea/*.xml
 !.idea/codeStyleSettings.xml
 !.idea/copyright/*.xml
