@@ -395,6 +395,21 @@ void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args)
         frame->width,
         frame->height);
 	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
+
+    JavaVM *vm = getVM();
+    JNIEnv *env;
+    // attach to JavaVM
+    vm->AttachCurrentThread(&env, NULL);
+
+    if (preview->mFrameCallbackObj) {
+        jobject buf = env->NewDirectByteBuffer(frame->data, frame->actual_bytes);
+        env->CallVoidMethod(preview->mFrameCallbackObj, preview->iframecallback_fields.onFrame, buf);
+        env->ExceptionClear();
+        env->DeleteLocalRef(buf);
+    }
+    // detach from JavaVM
+    vm->DetachCurrentThread();
+
 #if 0
 	if UNLIKELY(!preview->isRunning() || !frame || !frame->frame_format || !frame->data || !frame->data_bytes) return;
 	if (UNLIKELY(

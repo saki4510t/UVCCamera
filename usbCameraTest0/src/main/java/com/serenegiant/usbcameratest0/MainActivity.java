@@ -36,10 +36,13 @@ import android.widget.Toast;
 
 import com.serenegiant.common.BaseActivity;
 import com.serenegiant.usb.CameraDialog;
+import com.serenegiant.usb.IFrameCallback;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usb.UVCCamera;
+
+import java.nio.ByteBuffer;
 
 public class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
 	private static final boolean DEBUG = true;	// TODO set false when production
@@ -163,6 +166,7 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 						if (mPreviewSurface != null) {
 							isActive = true;
 							camera.setPreviewDisplay(mPreviewSurface);
+							camera.setFrameCallback(mIFrameCallback, UVCCamera.PIXEL_FORMAT_RAW);
 							camera.startPreview();
 							isPreview = true;
 						}
@@ -257,6 +261,13 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 				isPreview = false;
 			}
 			mPreviewSurface = null;
+		}
+	};
+
+	private final IFrameCallback mIFrameCallback = new IFrameCallback() {
+		@Override
+		public void onFrame(final ByteBuffer frame) {
+			Log.e(TAG, "onFrame: " + frame);
 		}
 	};
 }
