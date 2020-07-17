@@ -388,7 +388,14 @@ int UVCPreview::stopPreview() {
 //
 //**********************************************************************
 void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args) {
+    LOGE("frame_format = %d, data_bytes = %d, actual_bytes = %d, width = %d, height = %d",
+        frame->frame_format,
+        frame->data_bytes,
+        frame->actual_bytes,
+        frame->width,
+        frame->height);
 	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
+#if 0
 	if UNLIKELY(!preview->isRunning() || !frame || !frame->frame_format || !frame->data || !frame->data_bytes) return;
 	if (UNLIKELY(
 		((frame->frame_format != UVC_FRAME_FORMAT_MJPEG) && (frame->actual_bytes < preview->frameBytes))
@@ -416,6 +423,7 @@ void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args)
 		}
 		preview->addPreviewFrame(copy);
 	}
+#endif
 }
 
 void UVCPreview::addPreviewFrame(uvc_frame_t *frame) {
@@ -526,6 +534,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 #if LOCAL_DEBUG
 		LOGI("Streaming...");
 #endif
+#if 0
 		if (frameMode) {
 			// MJPEG mode
 			for ( ; LIKELY(isRunning()) ; ) {
@@ -552,6 +561,18 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				}
 			}
 		}
+#endif
+        for ( ; LIKELY(isRunning()) ; ) {
+            frame = waitPreviewFrame();
+            if (LIKELY(frame)) {
+                LOGE("do_preview frame_format = %d, data_bytes = %d, actual_bytes = %d, width = %d, height = %d",
+                    frame->frame_format,
+                    frame->data_bytes,
+                    frame->actual_bytes,
+                    frame->width,
+                    frame->height);
+            }
+        }
 		pthread_cond_signal(&capture_sync);
 #if LOCAL_DEBUG
 		LOGI("preview_thread_func:wait for all callbacks complete");

@@ -1496,7 +1496,9 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 			for (ep_idx = 0; ep_idx < altsetting->bNumEndpoints; ep_idx++) {
 				endpoint = altsetting->endpoint + ep_idx;
 				if (endpoint->bEndpointAddress == format_desc->parent->bEndpointAddress) {
+				    LOGE("endpoint_bytes_per_packet = %d", endpoint_bytes_per_packet);
 					endpoint_bytes_per_packet = endpoint->wMaxPacketSize;
+				    LOGE("endpoint_bytes_per_packet = %d", endpoint_bytes_per_packet);
 					// wMaxPacketSize: [unused:2 (multiplier-1):3 size:11]
 					// bit10…0:		maximum packet size
 					// bit12…11:	the number of additional transaction opportunities per microframe for high-speed
@@ -1507,6 +1509,7 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 					endpoint_bytes_per_packet
 						= (endpoint_bytes_per_packet & 0x07ff)
 							* (((endpoint_bytes_per_packet >> 11) & 3) + 1);
+				    LOGE("endpoint_bytes_per_packet = %d", endpoint_bytes_per_packet);
 					break;
 				}
 			}
@@ -1519,12 +1522,20 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 					packets_per_transfer = (dwMaxVideoFrameSize
 							+ endpoint_bytes_per_packet - 1)
 							/ endpoint_bytes_per_packet;		// XXX cashed by zero divided exception occured
+				    LOGE("dwMaxVideoFrameSize = %d", dwMaxVideoFrameSize);
 
 					/* But keep a reasonable limit: Otherwise we start dropping data */
 					if (packets_per_transfer > 32)
 						packets_per_transfer = 32;
 
+                    if (packets_per_transfer <= 0) {
+                        packets_per_transfer = 32;
+                    }
+
+				    LOGE("total_transfer_size = %d", total_transfer_size);
+				    LOGE("packets_per_transfer = %d, endpoint_bytes_per_packet = %d", packets_per_transfer, endpoint_bytes_per_packet);
 					total_transfer_size = packets_per_transfer * endpoint_bytes_per_packet;
+				    LOGE("total_transfer_size = %d", total_transfer_size);
 					break;
 				}
 			}
