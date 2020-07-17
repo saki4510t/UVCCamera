@@ -388,12 +388,14 @@ int UVCPreview::stopPreview() {
 //
 //**********************************************************************
 void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args) {
+#if 0
     LOGE("frame_format = %d, data_bytes = %d, actual_bytes = %d, width = %d, height = %d",
         frame->frame_format,
         frame->data_bytes,
         frame->actual_bytes,
         frame->width,
         frame->height);
+#endif
 	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
 
     JavaVM *vm = getVM();

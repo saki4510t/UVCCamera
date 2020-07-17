@@ -267,7 +267,10 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 	private final IFrameCallback mIFrameCallback = new IFrameCallback() {
 		@Override
 		public void onFrame(final ByteBuffer frame) {
-			Log.e(TAG, "onFrame: " + frame);
+			int length = frame.limit();
+			byte[] array = new byte[length];
+			frame.get(array, 0, length);
+			Log.e(TAG, "onFrame: " + array);
 		}
 	};
 }
