@@ -103,6 +103,7 @@ enum uvc_frame_format {
 	UVC_FRAME_FORMAT_RGBX,		// RGBX8888
 	/** Motion-JPEG (or JPEG) encoded images */
 	UVC_FRAME_FORMAT_MJPEG,
+	UVC_FRAME_FORMAT_H264,
 	UVC_FRAME_FORMAT_GRAY8,
 	UVC_FRAME_FORMAT_BY8,
 	/** Number of formats understood */

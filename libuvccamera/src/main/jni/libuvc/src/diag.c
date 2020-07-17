@@ -344,6 +344,7 @@ void uvc_print_format_desc_one(uvc_format_desc_t *format_desc, FILE *stream) {
 	switch (format_desc->bDescriptorSubtype) {
 	case UVC_VS_FORMAT_UNCOMPRESSED:
 	case UVC_VS_FORMAT_MJPEG:
+	case UVC_VS_FORMAT_FRAME_BASED:
 		FPRINTF(stream, "\t\tFormatDescriptor(bFormatIndex=%d)", format_desc->bFormatIndex);
 		FPRINTF(stream, "\t\t  bDescriptorSubtype: %s",
 			_uvc_name_for_subtype(format_desc->bDescriptorSubtype));

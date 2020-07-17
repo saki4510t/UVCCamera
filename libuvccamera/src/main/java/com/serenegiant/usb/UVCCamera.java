@@ -204,10 +204,18 @@ public class UVCCamera {
 			throw new UnsupportedOperationException("open failed:result=" + result);
 		}
     	if (mNativePtr != 0 && TextUtils.isEmpty(mSupportedSize)) {
-    		mSupportedSize = nativeGetSupportedSize(mNativePtr);
+			mSupportedSize = nativeGetSupportedSize(mNativePtr);
+			Log.e(TAG, "open: mSupportedSize " + mSupportedSize);
     	}
-		nativeSetPreviewSize(mNativePtr, DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT,
+		int ret = nativeSetPreviewSize(mNativePtr, DEFAULT_PREVIEW_WIDTH, DEFAULT_PREVIEW_HEIGHT,
 			DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, DEFAULT_PREVIEW_MODE, DEFAULT_BANDWIDTH);
+		Log.e(TAG, "open: nativeSetPreviewSize"
+				+ DEFAULT_PREVIEW_WIDTH + " "
+				+ DEFAULT_PREVIEW_WIDTH + " "
+				+ DEFAULT_PREVIEW_MIN_FPS + " "
+				+ DEFAULT_PREVIEW_MAX_FPS + " "
+				+ DEFAULT_PREVIEW_MODE + " "
+				+ DEFAULT_BANDWIDTH);
     }
 
 	/**

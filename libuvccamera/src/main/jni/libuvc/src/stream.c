@@ -108,9 +108,11 @@ struct format_table_entry *_get_format_entry(enum uvc_frame_format format) {
     	{'B', 'Y', '8', ' ', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
 
 	ABS_FMT(UVC_FRAME_FORMAT_COMPRESSED,
-		{UVC_FRAME_FORMAT_MJPEG})
+		{UVC_FRAME_FORMAT_MJPEG, UVC_FRAME_FORMAT_H264})
 	FMT(UVC_FRAME_FORMAT_MJPEG,
 		{'M', 'J', 'P', 'G'})
+	FMT(UVC_FRAME_FORMAT_H264,
+        {'H', '2', '6', '4', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
 
 	default:
 		return NULL;
@@ -549,9 +551,16 @@ uvc_error_t uvc_get_stream_ctrl_format_size_fps(uvc_device_handle_t *devh,
 	{
 		DL_FOREACH(stream_if->format_descs, format)
 		{
+		    LOGE("uvc_frame_format = %d\n", cf);
+		    LOGE("format->guidFormat");
+		    for (int i = 0; i < 4; i++) {
+		        LOGE("%2x %c", format->guidFormat[i], format->guidFormat[i]);
+		    }
 			if (!_uvc_frame_format_matches_guid(cf, format->guidFormat))
 				continue;
 
+		    LOGE("_uvc_frame_format_matches_guid");
+		    LOGE("format = %d, width = %d, height = %d, min_fps= %d, max_fps = %d", cf, width, height, min_fps, max_fps);
 			result = _uvc_get_stream_ctrl_format(devh, stream_if, ctrl, format, width, height, min_fps, max_fps);
 			if (!result) {	// UVC_SUCCESS
 				goto found;
@@ -559,9 +568,11 @@ uvc_error_t uvc_get_stream_ctrl_format_size_fps(uvc_device_handle_t *devh,
 		}
 	}
 
+    LOGE("UVC_ERROR_INVALID_MODE");
 	RETURN(UVC_ERROR_INVALID_MODE, uvc_error_t);
 
 found:
+    LOGE("found");
 	RETURN(uvc_probe_stream_ctrl(devh, ctrl), uvc_error_t);
 }
 
@@ -1688,6 +1699,9 @@ void _uvc_populate_frame(uvc_stream_handle_t *strmh) {
 		frame->step = frame->width * 2;
 		break;
 	case UVC_FRAME_FORMAT_MJPEG:
+		frame->step = 0;
+		break;
+	case UVC_FRAME_FORMAT_H264:
 		frame->step = 0;
 		break;
 	default:
