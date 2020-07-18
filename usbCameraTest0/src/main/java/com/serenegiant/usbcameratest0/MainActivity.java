@@ -86,7 +86,7 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 	private final static int VIDEO_WIDTH = 848;
 	private final static int VIDEO_HEIGHT = 480;
 	private final static int TIME_INTERNAL = 30;
-	private final static int HEAD_OFFSET = 512;
+	private final static int HEAD_OFFSET = 0;
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState) {
@@ -100,12 +100,13 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 
 		mUSBMonitor = new USBMonitor(this, mOnDeviceConnectListener);
 
+		mSurfaceView = (SurfaceView) findViewById(R.id.surfaceView1);
+		mReadButton = (Button) findViewById(R.id.btn_readfile);
+
 		initH264();
 	}
 
 	private void initH264() {
-		mSurfaceView = (SurfaceView) findViewById(R.id.surfaceView1);
-		mReadButton = (Button) findViewById(R.id.btn_readfile);
 		mReadButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
@@ -126,7 +127,6 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 	}
 
 	public void initDecoder() {
-
 		try {
 			mCodec = MediaCodec.createDecoderByType(MIME_TYPE);
 		} catch (IOException e) {
@@ -142,7 +142,7 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 	int mCount = 0;
 
 	public boolean onFrame(byte[] buf, int offset, int length) {
-		Log.e("Media", "onFrame start");
+		Log.e("Media", "onFrame start " + buf.length + " offset = " + offset + " length = " + length);
 		Log.e("Media", "onFrame Thread:" + Thread.currentThread().getId());
 		// Get input buffer index
 		ByteBuffer[] inputBuffers = mCodec.getInputBuffers();
@@ -338,6 +338,11 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 	private final OnClickListener mOnClickListener = new OnClickListener() {
 		@Override
 		public void onClick(final View view) {
+			if (!isInit) {
+				initDecoder();
+				isInit = true;
+			}
+
 			if (mUVCCamera == null) {
 				// XXX calling CameraDialog.showDialog is necessary at only first time(only when app has no permission).
 				CameraDialog.showDialog(MainActivity.this);
@@ -491,9 +496,9 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 		@Override
 		public void onFrame(final ByteBuffer frame) {
 			int length = frame.limit();
-			byte[] array = new byte[length];
-			frame.get(array, 0, length);
-			Log.e(TAG, "onFrame: " + array);
+			byte[] buffer = new byte[length];
+			frame.get(buffer, 0, length);
+			MainActivity.this.onFrame(buffer, 0, length);
 		}
 	};
 }
