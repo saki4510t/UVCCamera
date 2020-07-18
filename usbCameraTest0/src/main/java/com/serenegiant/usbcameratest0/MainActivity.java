@@ -332,7 +332,6 @@ public class MainActivity extends BaseActivity implements CameraDialog.CameraDia
 		mUVCCameraView = null;
 		mCameraButton = null;
 		super.onDestroy();
-		readFileThread.interrupt();
 	}
 
 	private final OnClickListener mOnClickListener = new OnClickListener() {
