@@ -75,3 +75,5 @@ libuvccamera/src/main/libs
 .idea/*
 *.iml
 .DS_Store
+libuvccamera/.externalNativeBuild/*
+
