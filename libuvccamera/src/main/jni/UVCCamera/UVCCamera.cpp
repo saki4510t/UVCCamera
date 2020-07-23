@@ -2284,3 +2284,15 @@ int UVCCamera::getAnalogVideoLockState() {
 	}
 	RETURN(0, int);
 }
+
+void UVCCamera::setHorizontalMirror(int horizontalMirror){
+	if (mPreview) {
+		mPreview->setHorizontalMirror(horizontalMirror);
+	}
+}
+
+void UVCCamera::setCameraAngle(int cameraAngle){
+	if (mPreview) {
+		mPreview->setCameraAngle(cameraAngle);
+	}
+}

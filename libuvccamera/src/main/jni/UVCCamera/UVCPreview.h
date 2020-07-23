@@ -68,6 +68,8 @@ private:
 	int frameMode;
 	// 图像帧需要旋转的角度
 	int frameRotationAngle;
+	// 是否水平镜像
+	int frameHorizontalMirror;
 	RotateImage *rotateImage;
 	size_t frameBytes;
 	pthread_t preview_thread;
@@ -134,6 +136,9 @@ public:
 	int stopPreview();
 	inline const bool isCapturing() const;
 	int setCaptureDisplay(ANativeWindow *capture_window);
+
+	void setHorizontalMirror(int horizontalMirror);
+	void setCameraAngle(int cameraAngle);
 };
 
 #endif /* UVCPREVIEW_H_ */

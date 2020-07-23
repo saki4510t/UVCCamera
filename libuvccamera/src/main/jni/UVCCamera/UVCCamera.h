@@ -353,6 +353,9 @@ public:
 	int updateAnalogVideoLockStateLimit(int &min, int &max, int &def);
 	int setAnalogVideoLockState(int status);
 	int getAnalogVideoLockState();
+
+	void setHorizontalMirror(int horizontalMirror);
+	void setCameraAngle(int cameraAngle);
 };
 
 #endif /* UVCCAMERA_H_ */

@@ -30,6 +30,10 @@ public:
     // 顺时针旋转 270 度
     void rotate_yuyv_270(uvc_frame_t *src_frame);
     void rotateYuyvDegree270(void *rotatedYuyv, void *yuyv, uint32_t width, uint32_t height);
+
+    // 水平镜像
+    void horizontal_mirror_yuyv(uvc_frame_t *src_frame);
+    void horizontalMirrorYuyv(void *_mirrorYuyv, void *_yuyv, uint32_t width, uint32_t height);
 };
 
 #endif

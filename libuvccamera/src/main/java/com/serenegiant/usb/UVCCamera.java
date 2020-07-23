@@ -343,6 +343,9 @@ public class UVCCamera {
 		if ((width == 0) || (height == 0)){
 			throw new IllegalArgumentException("invalid preview size");
 		}
+		if(cameraAngle % 90 != 0){
+			throw new IllegalArgumentException("invalid cameraAngle");
+		}
 		if (mNativePtr != 0) {
 			final int result = nativeSetPreviewSize(mNativePtr, width, height, cameraAngle, min_fps, max_fps, frameFormat, bandwidthFactor);
 			if (result != 0){
@@ -1005,6 +1008,19 @@ public class UVCCamera {
 		nativeDropIncompleteFrame(dropIncompleteFrame ? 1 : 0);
 	}
 
+	// 设置是否需要水平镜像处理
+	public void setHorizontalMirror(boolean horizontalMirror){
+		nativeHorizontalMirror(mNativePtr, horizontalMirror? 1: 0);
+	}
+
+	// 设置摄像头自身角度
+	public void setCameraAngle(int cameraAngle){
+		if(cameraAngle % 90 == 0){
+			mCameraAngle = cameraAngle;
+			nativeCameraAngle(mNativePtr, cameraAngle);
+		}
+	}
+
 	private static final String[] SUPPORTS_CTRL = {
 			"D0:  Scanning Mode",
 			"D1:  Auto-Exposure Mode",
@@ -1287,4 +1303,6 @@ public class UVCCamera {
 	private static final native int nativeGetPrivacy(final long id_camera);
 	private static final native void nativeFrameBufferSize(final int frameBufferSize);
 	private static final native void nativeDropIncompleteFrame(final int dropIncompleteFrame);
+	private static final native void nativeHorizontalMirror(final long id_camera, final int horizontalMirror);
+	private static final native void nativeCameraAngle(final long id_camera, final int cameraAngle);
 }

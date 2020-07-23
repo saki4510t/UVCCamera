@@ -149,6 +149,26 @@ static void nativeDropIncompleteFrame(JNIEnv *env, jobject thiz, jint dropIncomp
     drop_incomplete_frame = (int)dropIncompleteFrame;
 }
 
+// 设置是否需要水平镜像处理
+static void nativeHorizontalMirror(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jint horizontalMirror) {
+
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		return camera->setHorizontalMirror(horizontalMirror);
+	}
+}
+
+// 设置摄像头自身角度
+static void nativeCameraAngle(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jint cameraAngle) {
+
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		return camera->setCameraAngle(cameraAngle);
+	}
+}
+
 // 连接相机
 static jint nativeConnect(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera,
@@ -2028,6 +2048,8 @@ static JNINativeMethod methods[] = {
 	//
 	{ "nativeFrameBufferSize",			"(I)V", (void *) nativeFrameBufferSize },
 	{ "nativeDropIncompleteFrame",		"(I)V", (void *) nativeDropIncompleteFrame },
+	{ "nativeHorizontalMirror",		    "(JI)V", (void *) nativeHorizontalMirror },
+	{ "nativeCameraAngle",		        "(JI)V", (void *) nativeCameraAngle },
 	{ "nativeConnect",					"(JIIIIILjava/lang/String;)I", (void *) nativeConnect },
 	{ "nativeRelease",					"(J)I", (void *) nativeRelease },
 

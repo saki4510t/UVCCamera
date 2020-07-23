@@ -59,6 +59,7 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	frameWidth(DEFAULT_PREVIEW_WIDTH),
 	frameHeight(DEFAULT_PREVIEW_HEIGHT),
 	frameRotationAngle(DEFAULT_FRAME_ROTATION_ANGLE),
+	frameHorizontalMirror(0),
 	rotateImage(NULL),
 	frameBytes(DEFAULT_PREVIEW_WIDTH * DEFAULT_PREVIEW_HEIGHT * 2),	// YUYV
 	frameMode(0),
@@ -88,7 +89,7 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 UVCPreview::~UVCPreview() {
 
 	ENTER();
-	if(!rotateImage){
+	if(rotateImage){
 	    SAFE_DELETE(rotateImage);
     }
 	if (mPreviewWindow)
@@ -217,7 +218,8 @@ int UVCPreview::setPreviewSize(int width, int height, int cameraAngle, int min_f
 
 	// 根据摄像头角度计算图像帧需要旋转的角度
 	frameRotationAngle = (360 - cameraAngle) % 360;
-	if(frameRotationAngle && !rotateImage) {
+	LOGW("frameRotationAngle:%d",frameRotationAngle);
+	if( (frameHorizontalMirror || frameRotationAngle) && !rotateImage) {
 		rotateImage = new RotateImage();
 	}
 	
@@ -601,12 +603,18 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 					recycle_frame(frame_mjpeg);
 					if (LIKELY(!result)) {
                         // 需要旋转图像帧
-                        if(frameRotationAngle==90){
-                            rotateImage->rotate_yuyv_90(frame);
-                        }else if(frameRotationAngle==180){
-                            rotateImage->rotate_yuyv_180(frame);
-                        }else if(frameRotationAngle==270){
-                            rotateImage->rotate_yuyv_270(frame);
+                        if(rotateImage){
+                            if(frameRotationAngle==90){
+                                rotateImage->rotate_yuyv_90(frame);
+                            }else if(frameRotationAngle==180){
+                                rotateImage->rotate_yuyv_180(frame);
+                            }else if(frameRotationAngle==270){
+                                rotateImage->rotate_yuyv_270(frame);
+                            }
+                            // 需要水平镜像
+                            if(frameHorizontalMirror){
+                                rotateImage->horizontal_mirror_yuyv(frame);
+                            }
                         }
 
 					    // 画预览帧
@@ -626,13 +634,19 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				frame = waitPreviewFrame();
 				if (LIKELY(frame)) {
 				    // 需要旋转图像帧
-                    if(frameRotationAngle==90){
-                        rotateImage->rotate_yuyv_90(frame);
-                    }else if(frameRotationAngle==180){
-                        rotateImage->rotate_yuyv_180(frame);
-                    }else if(frameRotationAngle==270){
-                        rotateImage->rotate_yuyv_270(frame);
-                    }
+				    if(rotateImage){
+                        if(frameRotationAngle==90){
+                            rotateImage->rotate_yuyv_90(frame);
+                        }else if(frameRotationAngle==180){
+                            rotateImage->rotate_yuyv_180(frame);
+                        }else if(frameRotationAngle==270){
+                            rotateImage->rotate_yuyv_270(frame);
+                        }
+                        // 需要水平镜像
+                        if(frameHorizontalMirror){
+                            rotateImage->horizontal_mirror_yuyv(frame);
+                        }
+				    }
 				    // 画预览帧
 					frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
 					// 设置抓拍帧
@@ -1008,4 +1022,18 @@ void UVCPreview::do_capture_callback(JNIEnv *env, uvc_frame_t *frame) {
 		recycle_frame(callback_frame);
 	}
 	EXIT();
+}
+
+void UVCPreview::setHorizontalMirror(int horizontalMirror){
+	frameHorizontalMirror = horizontalMirror;
+	if( frameHorizontalMirror && !rotateImage) {
+	    rotateImage = new RotateImage();
+    }
+}
+
+void UVCPreview::setCameraAngle(int cameraAngle){
+	frameRotationAngle = cameraAngle;
+	if( frameRotationAngle && !rotateImage) {
+	    rotateImage = new RotateImage();
+    }
 }
