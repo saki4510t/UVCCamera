@@ -207,16 +207,17 @@ int UVCPreview::setPreviewSize(int width, int height, int cameraAngle, int min_f
 		requestMaxFps = max_fps;
 		requestMode = mode;
 		requestBandwidth = bandwidth;
-		// 根据摄像头角度计算图像帧需要旋转的角度
-		frameRotationAngle = (360 - cameraAngle) % 360;
-		if(frameRotationAngle && !rotateImage) {
-		    rotateImage = new RotateImage();
-	    }
 
 		uvc_stream_ctrl_t ctrl;
 		result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
 			!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
 			requestWidth, requestHeight, requestMinFps, requestMaxFps);
+	}
+
+	// 根据摄像头角度计算图像帧需要旋转的角度
+	frameRotationAngle = (360 - cameraAngle) % 360;
+	if(frameRotationAngle && !rotateImage) {
+		rotateImage = new RotateImage();
 	}
 	
 	RETURN(result, int);
