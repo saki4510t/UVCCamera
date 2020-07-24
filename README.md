@@ -165,3 +165,11 @@ Add new sample app `usbCameraTest8` to show how to set/get uvc control like brig
 ### 2017/04/17
 Add new sample app on [OpenCVwithUVC](https://github.com/saki4510t/OpenCVwithUVC.git) repository.
 This shows the way to pass video images from UVC into `cv::Mat` (after optional applying video effect by OpenGL|ES) and execute image processing by `OpenCV`.
+
+### 2020/07/24
+* 添加根据摄像头自身角度选择图像处理
+* 添加水平镜像处理
+* 添加垂直镜像处理
+* 添加是否丢弃不完整帧
+* 添加可设置帧缓存大小
+* 修复颜色转换出错问题
