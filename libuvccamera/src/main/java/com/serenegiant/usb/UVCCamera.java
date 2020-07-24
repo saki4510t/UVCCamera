@@ -1012,6 +1012,10 @@ public class UVCCamera {
 	public void setHorizontalMirror(boolean horizontalMirror){
 		nativeHorizontalMirror(mNativePtr, horizontalMirror? 1: 0);
 	}
+	// 设置是否需要垂直镜像处理
+	public void setVerticalMirror(boolean verticalMirror){
+		nativeVerticalMirror(mNativePtr, verticalMirror? 1: 0);
+	}
 
 	// 设置摄像头自身角度
 	public void setCameraAngle(int cameraAngle){
@@ -1304,5 +1308,6 @@ public class UVCCamera {
 	private static final native void nativeFrameBufferSize(final int frameBufferSize);
 	private static final native void nativeDropIncompleteFrame(final int dropIncompleteFrame);
 	private static final native void nativeHorizontalMirror(final long id_camera, final int horizontalMirror);
+	private static final native void nativeVerticalMirror(final long id_camera, final int verticalMirror);
 	private static final native void nativeCameraAngle(final long id_camera, final int cameraAngle);
 }

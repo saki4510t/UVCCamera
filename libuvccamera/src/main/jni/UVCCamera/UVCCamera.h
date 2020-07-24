@@ -355,6 +355,7 @@ public:
 	int getAnalogVideoLockState();
 
 	void setHorizontalMirror(int horizontalMirror);
+	void setVerticalMirror(int verticalMirror);
 	void setCameraAngle(int cameraAngle);
 };
 

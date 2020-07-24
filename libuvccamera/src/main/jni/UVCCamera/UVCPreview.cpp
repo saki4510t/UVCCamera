@@ -60,6 +60,7 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	frameHeight(DEFAULT_PREVIEW_HEIGHT),
 	frameRotationAngle(DEFAULT_FRAME_ROTATION_ANGLE),
 	frameHorizontalMirror(0),
+	frameVerticalMirror(0),
 	rotateImage(NULL),
 	frameBytes(DEFAULT_PREVIEW_WIDTH * DEFAULT_PREVIEW_HEIGHT * 2),	// YUYV
 	frameMode(0),
@@ -219,7 +220,7 @@ int UVCPreview::setPreviewSize(int width, int height, int cameraAngle, int min_f
 	// 根据摄像头角度计算图像帧需要旋转的角度
 	frameRotationAngle = (360 - cameraAngle) % 360;
 	LOGW("frameRotationAngle:%d",frameRotationAngle);
-	if( (frameHorizontalMirror || frameRotationAngle) && !rotateImage) {
+	if( (frameHorizontalMirror || frameVerticalMirror || frameRotationAngle) && !rotateImage) {
 		rotateImage = new RotateImage();
 	}
 	
@@ -615,6 +616,10 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
                             if(frameHorizontalMirror){
                                 rotateImage->horizontal_mirror_yuyv(frame);
                             }
+                            // 需要垂直镜像
+                            if(frameVerticalMirror){
+                                rotateImage->vertical_mirror_yuyv(frame);
+                            }
                         }
 
 					    // 画预览帧
@@ -645,6 +650,10 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
                         // 需要水平镜像
                         if(frameHorizontalMirror){
                             rotateImage->horizontal_mirror_yuyv(frame);
+                        }
+                        // 需要垂直镜像
+                        if(frameVerticalMirror){
+                            rotateImage->vertical_mirror_yuyv(frame);
                         }
 				    }
 				    // 画预览帧
@@ -1031,8 +1040,16 @@ void UVCPreview::setHorizontalMirror(int horizontalMirror){
     }
 }
 
+void UVCPreview::setVerticalMirror(int verticalMirror){
+	frameVerticalMirror = verticalMirror;
+	if( frameVerticalMirror && !rotateImage) {
+	    rotateImage = new RotateImage();
+    }
+}
+
 void UVCPreview::setCameraAngle(int cameraAngle){
-	frameRotationAngle = cameraAngle;
+	frameRotationAngle = (360 - cameraAngle) % 360;
+	LOGW("frameRotationAngle:%d",frameRotationAngle);
 	if( frameRotationAngle && !rotateImage) {
 	    rotateImage = new RotateImage();
     }

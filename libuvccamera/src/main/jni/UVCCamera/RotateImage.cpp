@@ -92,6 +92,16 @@ void RotateImage::horizontal_mirror_yuyv(uvc_frame_t *src_frame){
     rotate_data = temp;
 }
 
+// 垂直镜像
+void RotateImage::vertical_mirror_yuyv(uvc_frame_t *src_frame){
+    SpaceSizeProcessing(src_frame);
+    verticalMirrorYuyv(rotate_data, src_frame->data, src_frame->width, src_frame->height);
+
+    void * temp = src_frame->data;
+    src_frame->data = rotate_data;
+    rotate_data = temp;
+}
+
 void RotateImage::rotateYuyvDegree90(void *_rotatedYuyv, void *_yuyv, uint32_t width, uint32_t height) {
     char *rotatedYuyv = (char *)_rotatedYuyv;
     char *yuyv = (char *)_yuyv;
@@ -213,5 +223,18 @@ void RotateImage::horizontalMirrorYuyv(void *_mirrorYuyv, void *_yuyv, uint32_t 
             mirrorYuyv[lineStartIndex + w + 3] = yuyv[lineStartIndex + lineDataSize - w - 1];
         }
         lineStartIndex += lineDataSize;
+    }
+}
+
+// 垂直镜像 参考 https://www.jianshu.com/p/777b7ea0059c
+void RotateImage::verticalMirrorYuyv(void *_mirrorYuyv, void *_yuyv, uint32_t width, uint32_t height) {
+    char *mirrorYuyv = (char *)_mirrorYuyv;
+    char *yuyv = (char *)_yuyv;
+    uint32_t lineDataSize = width * 2;
+    yuyv += width * height * 2;
+    for (uint32_t h = 0; h < height; h++) {
+        memcpy(mirrorYuyv, yuyv, lineDataSize);
+        mirrorYuyv += lineDataSize;
+        yuyv -= lineDataSize;
     }
 }

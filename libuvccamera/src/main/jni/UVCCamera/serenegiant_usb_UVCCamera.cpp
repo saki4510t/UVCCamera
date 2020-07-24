@@ -159,6 +159,16 @@ static void nativeHorizontalMirror(JNIEnv *env, jobject thiz,
 	}
 }
 
+// 设置是否需要垂直镜像处理
+static void nativeVerticalMirror(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jint verticalMirror) {
+
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		return camera->setVerticalMirror(verticalMirror);
+	}
+}
+
 // 设置摄像头自身角度
 static void nativeCameraAngle(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera, jint cameraAngle) {
@@ -2049,6 +2059,7 @@ static JNINativeMethod methods[] = {
 	{ "nativeFrameBufferSize",			"(I)V", (void *) nativeFrameBufferSize },
 	{ "nativeDropIncompleteFrame",		"(I)V", (void *) nativeDropIncompleteFrame },
 	{ "nativeHorizontalMirror",		    "(JI)V", (void *) nativeHorizontalMirror },
+	{ "nativeVerticalMirror",		    "(JI)V", (void *) nativeVerticalMirror },
 	{ "nativeCameraAngle",		        "(JI)V", (void *) nativeCameraAngle },
 	{ "nativeConnect",					"(JIIIIILjava/lang/String;)I", (void *) nativeConnect },
 	{ "nativeRelease",					"(J)I", (void *) nativeRelease },

@@ -2290,6 +2290,11 @@ void UVCCamera::setHorizontalMirror(int horizontalMirror){
 		mPreview->setHorizontalMirror(horizontalMirror);
 	}
 }
+void UVCCamera::setVerticalMirror(int verticalMirror){
+    if (mPreview) {
+        mPreview->setVerticalMirror(verticalMirror);
+    }
+}
 
 void UVCCamera::setCameraAngle(int cameraAngle){
 	if (mPreview) {

@@ -34,6 +34,11 @@ public:
     // 水平镜像
     void horizontal_mirror_yuyv(uvc_frame_t *src_frame);
     void horizontalMirrorYuyv(void *_mirrorYuyv, void *_yuyv, uint32_t width, uint32_t height);
+
+
+    // 垂直镜像
+    void vertical_mirror_yuyv(uvc_frame_t *src_frame);
+    void verticalMirrorYuyv(void *_mirrorYuyv, void *_yuyv, uint32_t width, uint32_t height);
 };
 
 #endif

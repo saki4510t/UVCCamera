@@ -70,6 +70,8 @@ private:
 	int frameRotationAngle;
 	// 是否水平镜像
 	int frameHorizontalMirror;
+	// 是否垂直镜像
+	int frameVerticalMirror;
 	RotateImage *rotateImage;
 	size_t frameBytes;
 	pthread_t preview_thread;
@@ -138,6 +140,7 @@ public:
 	int setCaptureDisplay(ANativeWindow *capture_window);
 
 	void setHorizontalMirror(int horizontalMirror);
+	void setVerticalMirror(int verticalMirror);
 	void setCameraAngle(int cameraAngle);
 };
 
