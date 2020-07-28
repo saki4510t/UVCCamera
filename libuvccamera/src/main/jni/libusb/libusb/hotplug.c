@@ -151,7 +151,9 @@ static int usbi_hotplug_match_cb (struct libusb_context *ctx,
 	struct libusb_device *dev, libusb_hotplug_event event,
 	struct libusb_hotplug_callback *hotplug_cb)
 {
-	/* Handle lazy deregistration of callback */
+	/* Handle lazy deregistration of callback
+	 * 处理回调的延迟注销
+	 */
 	if (hotplug_cb->needs_free) {
 		/* Free callback */
 		return 1;
@@ -200,7 +202,9 @@ void usbi_hotplug_match(struct libusb_context *ctx, struct libusb_device *dev,
 
 	usbi_mutex_unlock(&ctx->hotplug_cbs_lock);
 
-	/* the backend is expected to call the callback for each active transfer */
+	/* the backend is expected to call the callback for each active transfer
+	 * 后端应为每个活动传输调用回调
+	 */
 }
 
 int API_EXPORTED libusb_hotplug_register_callback(libusb_context *ctx,
@@ -212,12 +216,16 @@ int API_EXPORTED libusb_hotplug_register_callback(libusb_context *ctx,
 	libusb_hotplug_callback *new_callback;
 	static int handle_id = 1;
 
-	/* check for hotplug support */
+	/* check for hotplug support
+	 * 检查热插拔支持
+	 */
 	if (!libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG)) {
 		return LIBUSB_ERROR_NOT_SUPPORTED;
 	}
 
-	/* check for sane values */
+	/* check for sane values
+	 * 检查合理值
+	 */
 	if ((LIBUSB_HOTPLUG_MATCH_ANY != vendor_id && (~0xffff & vendor_id)) ||
 	    (LIBUSB_HOTPLUG_MATCH_ANY != product_id && (~0xffff & product_id)) ||
 	    (LIBUSB_HOTPLUG_MATCH_ANY != dev_class && (~0xff & dev_class)) ||
@@ -245,7 +253,9 @@ int API_EXPORTED libusb_hotplug_register_callback(libusb_context *ctx,
 	usbi_mutex_lock(&ctx->hotplug_cbs_lock);
 
 	/* protect the handle by the context hotplug lock. it doesn't matter if the same handle
-	 * is used for different contexts only that the handle is unique for this context */
+	 * is used for different contexts only that the handle is unique for this context
+	 * 通过上下文热插拔锁保护手柄。相同的句柄用于不同的上下文仅此句柄在该上下文中是唯一的并不重要
+	 */
 	new_callback->handle = handle_id++;
 
 	list_add(&new_callback->list, &ctx->hotplug_cbs);
@@ -288,7 +298,9 @@ void API_EXPORTED libusb_hotplug_deregister_callback (struct libusb_context *ctx
 	libusb_hotplug_message message;
 	ssize_t ret;
 
-	/* check for hotplug support */
+	/* check for hotplug support
+	 * 检查热插拔支持
+	 */
 	if (!libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG)) {
 		return;
 	}
@@ -299,13 +311,17 @@ void API_EXPORTED libusb_hotplug_deregister_callback (struct libusb_context *ctx
 	list_for_each_entry(hotplug_cb, &ctx->hotplug_cbs, list,
 			    struct libusb_hotplug_callback) {
 		if (handle == hotplug_cb->handle) {
-			/* Mark this callback for deregistration */
+			/* Mark this callback for deregistration
+			 * 将此回调标记为注销
+			 */
 			hotplug_cb->needs_free = 1;
 		}
 	}
 	usbi_mutex_unlock(&ctx->hotplug_cbs_lock);
 
-	/* wakeup handle_events to do the actual free */
+	/* wakeup handle_events to do the actual free
+	 * 唤醒handle_events做实际的空闲
+	 */
 	memset(&message, 0, sizeof(message));
 	ret = usbi_write(ctx->hotplug_pipe[1], &message, sizeof(message));
 	if (sizeof(message) != ret) {

@@ -1,5 +1,5 @@
 /** @file libuvc_internal.h
-  * @brief Implementation-specific UVC constants and structures.
+  * @brief Implementation-specific UVC constants and structures. 实现特定的UVC常量和结构。
   * @cond include_hidden
   */
 #ifndef LIBUVC_INTERNAL_H
@@ -19,28 +19,56 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-/** Converts an unaligned 8-byte little-endian integer into an int64 */
+/**
+ * Converts an unaligned 8-byte little-endian integer into an int64
+ * 将未对齐的8字节小尾数整数转换为int64
+ */
 #define QW_TO_LONG(p) \
  ((p)[0] | ((p)[1] << 8) | ((p)[2] << 16) | ((p)[3] << 24) \
   | ((uint64_t)(p)[4] << 32) | ((uint64_t)(p)[5] << 40) \
   | ((uint64_t)(p)[6] << 48) | ((uint64_t)(p)[7] << 56))
-/** Converts an unaligned four-byte little-endian integer into an int32 */
+/**
+ * Converts an unaligned four-byte little-endian integer into an int32
+ * 将未对齐的四字节小尾数整数转换为int32
+ */
 #define DW_TO_INT(p) ((p)[0] | ((p)[1] << 8) | ((p)[2] << 16) | ((p)[3] << 24))
-/** Converts an unaligned four-byte little-endian integer into an signed int32 */
-/** Converts an unaligned two-byte little-endian integer into an int16 */
+
+
+#define _11bits_TO_INT(p) (((p)[0] | ((p)[1] << 8)) & 0x7ff)
+
+/**
+ * Converts an unaligned four-byte little-endian integer into an signed int32
+ * 将未对齐的四字节小尾数整数转换为带符号的int32
+ */
+/**
+ * Converts an unaligned two-byte little-endian integer into an int16
+ * 将未对齐的四字节小尾数整数转换为带符号的int32
+ */
 #define SW_TO_SHORT(p) ((p)[0] | ((p)[1] << 8))
-/** Converts an unaligned two-byte little-endian integer into an int16 as a signed value */
-/** Converts an int16 into an unaligned two-byte little-endian integer */
+/**
+ * Converts an unaligned two-byte little-endian integer into an int16 as a signed value
+ * 将未对齐的双字节小尾数整数转换为带符号的int16值
+ */
+/**
+ * Converts an int16 into an unaligned two-byte little-endian integer
+ * 将int16转换为未对齐的双字节小尾数整数
+ */
 #define SHORT_TO_SW(s, p) \
   (p)[0] = (s); \
   (p)[1] = (s) >> 8;
-/** Converts an int32 into an unaligned four-byte little-endian integer */
+/**
+ * Converts an int32 into an unaligned four-byte little-endian integer
+ * 将int32转换为未对齐的四字节小尾数整数
+ */
 #define INT_TO_DW(i, p) \
   (p)[0] = (i); \
   (p)[1] = (i) >> 8; \
   (p)[2] = (i) >> 16; \
   (p)[3] = (i) >> 24;
-/** Converts an int64 into an unaligned 8-byte little-endian integer */
+/**
+ * Converts an int64 into an unaligned 8-byte little-endian integer
+ * 将int64转换为未对齐的8字节小尾数整数
+ */
 #define LONG_TO_QW(i, p) \
   (p)[0] = (i); \
   (p)[1] = (i) >> 8; \
@@ -52,7 +80,10 @@
   (p)[7] = (i) >> 56;
 
 
-/** Selects the nth item in a doubly linked list. n=-1 selects the last item. */
+/**
+ * Selects the nth item in a doubly linked list. n=-1 selects the last item.
+ * 选择双链接列表中的第n个项。n=-1选择最后一项。
+ */
 #define DL_NTH(head, out, n) \
   do { \
     int dl_nth_i = 0; \
@@ -96,7 +127,10 @@
 #define IS_ARRAY(arg) (IS_INDEXABLE(arg) && (((void *) &arg) == ((void *) arg)))
 #define ARRAYSIZE(arr) (sizeof(arr) / (IS_ARRAY(arr) ? sizeof(arr[0]) : 0))
 
-/** Video interface subclass code (A.2) */
+/**
+ * Video interface subclass code (A.2)
+ * 视频接口子类代码（A.2）
+ */
 enum uvc_int_subclass_code {
   UVC_SC_UNDEFINED = 0x00,
   UVC_SC_VIDEOCONTROL = 0x01,
@@ -104,12 +138,18 @@ enum uvc_int_subclass_code {
   UVC_SC_VIDEO_INTERFACE_COLLECTION = 0x03
 };
 
-/** Video interface protocol code (A.3) */
+/**
+ * Video interface protocol code (A.3)
+ * 视频接口协议代码（A.3）
+ */
 enum uvc_int_proto_code {
   UVC_PC_PROTOCOL_UNDEFINED = 0x00
 };
 
-/** VideoControl interface descriptor subtype (A.5) */
+/**
+ * VideoControl interface descriptor subtype (A.5)
+ * 视频控制接口描述字幕
+ */
 enum uvc_vc_desc_subtype {
   UVC_VC_DESCRIPTOR_UNDEFINED = 0x00,
   UVC_VC_HEADER = 0x01,
@@ -120,7 +160,10 @@ enum uvc_vc_desc_subtype {
   UVC_VC_EXTENSION_UNIT = 0x06
 };
 
-/** UVC endpoint descriptor subtype (A.7) */
+/**
+ * UVC endpoint descriptor subtype (A.7)
+ * UVC端点描述符子类型（A.7）
+ */
 enum uvc_ep_desc_subtype {
   UVC_EP_UNDEFINED = 0x00,
   UVC_EP_GENERAL = 0x01,
@@ -128,30 +171,45 @@ enum uvc_ep_desc_subtype {
   UVC_EP_INTERRUPT = 0x03
 };
 
-/** VideoControl interface control selector (A.9.1) */
+/**
+ * VideoControl interface control selector (A.9.1)
+ * 电子控制接口控制选择器（A.9.1）
+ */
 enum uvc_vc_ctrl_selector {
   UVC_VC_CONTROL_UNDEFINED = 0x00,
   UVC_VC_VIDEO_POWER_MODE_CONTROL = 0x01,
   UVC_VC_REQUEST_ERROR_CODE_CONTROL = 0x02
 };
 
-/** Terminal control selector (A.9.2) */
+/**
+ * Terminal control selector (A.9.2)
+ * 终端控制选择器（A.9.2）
+ */
 enum uvc_term_ctrl_selector {
   UVC_TE_CONTROL_UNDEFINED = 0x00
 };
 
-/** Selector unit control selector (A.9.3) */
+/**
+ * Selector unit control selector (A.9.3)
+ * 选择器单元控制选择器（A.9.3）
+ */
 enum uvc_su_ctrl_selector {
   UVC_SU_CONTROL_UNDEFINED = 0x00,
   UVC_SU_INPUT_SELECT_CONTROL = 0x01
 };
 
-/** Extension unit control selector (A.9.6) */
+/**
+ * Extension unit control selector (A.9.6)
+ * 扩展单元控制选择器（A.9.6）
+ */
 enum uvc_xu_ctrl_selector {
   UVC_XU_CONTROL_UNDEFINED = 0x00
 };
 
-/** VideoStreaming interface control selector (A.9.7) */
+/**
+ * VideoStreaming interface control selector (A.9.7)
+ * 视频流接口控制选择器（A.9.7）
+ */
 enum uvc_vs_ctrl_selector {
   UVC_VS_CONTROL_UNDEFINED = 0x00,
   UVC_VS_PROBE_CONTROL = 0x01,
@@ -165,13 +223,19 @@ enum uvc_vs_ctrl_selector {
   UVC_VS_SYNC_DELAY_CONTROL = 0x09
 };
 
-/** Status packet type (2.4.2.2) */
+/**
+ * Status packet type (2.4.2.2)
+ * 状态包类型（2.4.2.2）
+ */
 enum uvc_status_type {
   UVC_STATUS_TYPE_CONTROL = 1,
   UVC_STATUS_TYPE_STREAMING = 2
 };
 
-/** Payload header flags (2.4.3.3) */
+/**
+ * Payload header flags (2.4.3.3)
+ * 有效载荷标题标志（2.4.3.3）
+ */
 #define UVC_STREAM_EOH (1 << 7)
 #define UVC_STREAM_ERR (1 << 6)
 #define UVC_STREAM_STI (1 << 5)
@@ -181,7 +245,10 @@ enum uvc_status_type {
 #define UVC_STREAM_EOF (1 << 1)
 #define UVC_STREAM_FID (1 << 0)
 
-/** Control capabilities (4.1.2) */
+/**
+ * Control capabilities (4.1.2)
+ * 控制能力（4.1.2）
+ */
 #define UVC_CONTROL_CAP_GET (1 << 0)
 #define UVC_CONTROL_CAP_SET (1 << 1)
 #define UVC_CONTROL_CAP_DISABLED (1 << 2)
@@ -191,15 +258,29 @@ enum uvc_status_type {
 struct uvc_streaming_interface;
 struct uvc_device_info;
 
-/** VideoStream interface */
+/**
+ * VideoStream interface
+ * 视频流接口
+ */
 typedef struct uvc_streaming_interface {
+  // uvc设备信息
   struct uvc_device_info *parent;
+  // uvc流接口
   struct uvc_streaming_interface *prev, *next;
-  /** Interface number */
+  /**
+   * Interface number
+   * 接口编号
+   */
   uint8_t bInterfaceNumber;
-  /** Video formats that this interface provides */
+  /**
+   * Video formats that this interface provides
+   * 此接口提供的视频格式
+   */
   struct uvc_format_desc *format_descs;
-  /** USB endpoint to use when communicating with this interface */
+  /**
+   * USB endpoint to use when communicating with this interface
+   * 当与此接口通信时使用的USB端点
+   */
   uint8_t bEndpointAddress;
   uint8_t bTerminalLink;
   uint8_t bmInfo;	// XXX
@@ -209,8 +290,12 @@ typedef struct uvc_streaming_interface {
   uint64_t *bmaControls;	// XXX
 } uvc_streaming_interface_t;
 
-/** VideoControl interface */
+/**
+ * VideoControl interface
+ * 视频控制接口
+ */
 typedef struct uvc_control_interface {
+  // uvc设备信息
   struct uvc_device_info *parent;
   struct uvc_input_terminal *input_term_descs;
   struct uvc_output_terminal *output_term_descs;
@@ -218,7 +303,10 @@ typedef struct uvc_control_interface {
   struct uvc_extension_unit *extension_unit_descs;
   uint16_t bcdUVC;
   uint8_t bEndpointAddress;
-  /** Interface number */
+  /**
+   * Interface number
+   * 接口编号
+   */
   uint8_t bInterfaceNumber;
 } uvc_control_interface_t;
 
@@ -231,11 +319,20 @@ struct uvc_device {
 };
 
 typedef struct uvc_device_info {
-  /** Configuration descriptor for USB device */
+  /**
+   * Configuration descriptor for USB device
+   * USB设备的配置描述符
+   */
   struct libusb_config_descriptor *config;
-  /** VideoControl interface provided by device */
+  /**
+   * VideoControl interface provided by device
+   * 设备提供视频控制接口
+   */
   uvc_control_interface_t ctrl_if;
-  /** VideoStreaming interfaces on the device */
+  /**
+   * VideoStreaming interfaces on the device
+   * 设备上的视频流接口
+   */
   uvc_streaming_interface_t *stream_ifs;
 } uvc_device_info_t;
 
@@ -246,30 +343,50 @@ typedef struct uvc_device_info {
   scheduled (if we have root).
   We could/should change this to allow reduce it to, say, 5 by default
   and then allow the user to change the number of buffers as required.
- */
-#define LIBUVC_NUM_TRANSFER_BUFS 10
 
-#define LIBUVC_XFER_BUF_SIZE	( 16 * 1024 * 1024 )
+  设置大量的传输缓冲区。这使用了大量的ram，但是避免了在慢板上调度延迟导致丢失传输的问题。
+  一个更好的方法可能是调度传输线程FIFO（如果我们有根）。
+  我们可以/应该更改此设置以允许在默认情况下将其减少到5，然后允许用户根据需要更改缓冲区的数量。
+ */
+#define LIBUVC_NUM_TRANSFER_BUFS 10 // LIBUVC编号传输缓冲区  太小容易出现花帧
+
+#define LIBUVC_XFER_BUF_SIZE	( 2 * 1024 * 1024 ) // 原值16MB
+
+static int frame_buffer_size = LIBUVC_XFER_BUF_SIZE;
+
+// 是否丢弃不完整帧  0不丢弃， 1丢弃
+static int drop_incomplete_frame = 0;
 
 struct uvc_stream_handle {
   struct uvc_device_handle *devh;
   struct uvc_stream_handle *prev, *next;
   struct uvc_streaming_interface *stream_if;
 
-  /** if true, stream is running (streaming video to host) */
+  /**
+   * if true, stream is running (streaming video to host)
+   * 如果为true，则流正在运行（将视频流到主机）
+   */
   uint8_t running;
-  /** Current control block */
+  /**
+   * Current control block
+   * 当前控制块
+   */
   struct uvc_stream_ctrl cur_ctrl;
 
-  /* listeners may only access hold*, and only when holding a 
-   * lock on cb_mutex (probably signaled with cb_cond) */
-  uint8_t bfh_err, hold_bfh_err;	// XXX added to keep UVC_STREAM_ERR
-  uint8_t fid;
+  /**
+   * listeners may only access hold*, and only when holding a
+   * lock on cb_mutex (probably signaled with cb_cond)
+   * 监听器只能在持有 cb_mutex 的锁(可能用 cb_cond 发出信号)时访问 hold*
+   */
+  uint8_t bfh_err, hold_bfh_err;	// XXX added to keep UVC_STREAM_ERR 保持UVC_STREAM_ERR
+  uint8_t fid; // 帧id
+  uint32_t sof; // 帧计数器，同个视频帧会有不相同
   uint32_t seq, hold_seq;
-  uint32_t pts, hold_pts;
-  uint32_t last_scr, hold_last_scr;
-  size_t got_bytes, hold_bytes;
-  size_t size_buf;	// XXX add for boundary check
+  uint32_t pts, hold_pts; // 图像时间戳，同个视频帧多个数据包中保持相同
+  uint32_t last_stc, hold_last_stc; // 系统时间时钟，采样的时钟值
+  size_t got_bytes, hold_bytes; // 现获得的数据大小
+  size_t size_buf;	// XXX add for boundary check 边界检查
+  // outbuf 输出缓存  holdbuf持有缓存
   uint8_t *outbuf, *holdbuf;
   pthread_mutex_t cb_mutex;
   pthread_cond_t cb_cond;
@@ -277,45 +394,72 @@ struct uvc_stream_handle {
   uint32_t last_polled_seq;
   uvc_frame_callback_t *user_cb;
   void *user_ptr;
+  // transfers 和 transfer_bufs 实际使用长度
+  //int transfers_length;
   struct libusb_transfer *transfers[LIBUVC_NUM_TRANSFER_BUFS];
   uint8_t *transfer_bufs[LIBUVC_NUM_TRANSFER_BUFS];
   struct uvc_frame frame;
   enum uvc_frame_format frame_format;
 };
 
-/** Handle on an open UVC device
- *
+/**
+ * Handle on an open UVC device
+ * 打开UVC设备的句柄
  * @todo move most of this into a uvc_device struct?
  */
 struct uvc_device_handle {
   struct uvc_device *dev;
   struct uvc_device_handle *prev, *next;
-  /** Underlying USB device handle */
+  /**
+   * Underlying USB device handle
+   * USB设备底层句柄
+   */
   libusb_device_handle *usb_devh;
   struct uvc_device_info *info;
   struct libusb_transfer *status_xfer;
   pthread_mutex_t status_mutex;	// XXX saki
   uint8_t status_buf[32];
-  /** Function to call when we receive status updates from the camera */
+  /**
+   * Function to call when we receive status updates from the camera
+   * 函数，当我们收到来自摄像头的状态更新时调用
+   */
   uvc_status_callback_t *status_cb;
   void *status_user_ptr;
-  /** Function to call when we receive button events from the camera */
+  /**
+   * Function to call when we receive button events from the camera
+   * 函数，当我们从相机接收按钮事件时调用
+   */
   uvc_button_callback_t *button_cb;
   void *button_user_ptr;
 
   uvc_stream_handle_t *streams;
-  /** Whether the camera is an iSight that sends one header per frame */
+  /**
+   * Whether the camera is an iSight that sends one header per frame
+   * 相机是否为每帧发送一个标题的iSight
+   */
   uint8_t is_isight;
-  uint8_t reset_on_release_if;	// XXX whether interface alt setting needs to reset to 0.
+  uint8_t reset_on_release_if;	// XXX whether interface alt setting needs to reset to 0. 接口alt设置是否需要重置为0。
 };
 
-/** Context within which we communicate with devices */
+/**
+ * Context within which we communicate with devices
+ * 我们与设备通信的上下文
+ */
 struct uvc_context {
-  /** Underlying context for USB communication */
+  /**
+   * Underlying context for USB communication
+   * USB通信的底层上下文
+   */
   struct libusb_context *usb_ctx;
-  /** True if libuvc initialized the underlying USB context */
+  /**
+   * True if libuvc initialized the underlying USB context
+   * 如果libuvc初始化了底层USB上下文，则为true
+   */
   uint8_t own_usb_ctx;
-  /** List of open devices in this context */
+  /**
+   * List of open devices in this context
+   * 在该上下文打开设备的列表
+   */
   uvc_device_handle_t *open_devices;
   pthread_t handler_thread;
   uint8_t kill_handler_thread;

@@ -100,7 +100,7 @@ public final class DeviceFilter {
 	}
 
 	/**
-	 * 指定したxmlリソースからDeviceFilterリストを生成する
+	 * 从指定的xml资源生成DeviceFilter列表
 	 * @param context
 	 * @param deviceFilterXmlId
 	 * @return
@@ -332,8 +332,8 @@ public final class DeviceFilter {
 	} */
 
 	/**
-	 * 指定したクラス・サブクラス・プロトコルがこのDeviceFilterとマッチするかどうかを返す
-	 * mExcludeフラグは別途#isExcludeか自前でチェックすること
+	 * 返回指定的类/子类/协议是否与此DeviceFilter匹配
+	 * 必须通过#isExclude单独检查mExclude标志
 	 * @param clasz
 	 * @param subclass
 	 * @param protocol
@@ -345,8 +345,8 @@ public final class DeviceFilter {
 	}
 
 	/**
-	 * 指定したUsbDeviceがこのDeviceFilterにマッチするかどうかを返す
-	 * mExcludeフラグは別途#isExcludeか自前でチェックすること
+	 * 返回指定的UsbDevice是否与此DeviceFilter匹配
+	 * 必须通过#isExclude单独检查mExclude标志
 	 * @param device
 	 * @return
 	 */
@@ -391,7 +391,7 @@ public final class DeviceFilter {
 	}
 
 	/**
-	 * このDeviceFilterに一致してかつmExcludeがtrueならtrueを返す
+	 * 如果此DeviceFilter匹配并且mExclude为true，则返回true
 	 * @param device
 	 * @return
 	 */
@@ -400,7 +400,7 @@ public final class DeviceFilter {
 	}
 
 	/**
-	 * これって要らんかも, equalsでできる気が
+	 * 我想知道这是否必要
 	 * @param f
 	 * @return
 	 */

@@ -29,6 +29,7 @@
 #include <pthread.h>
 #include <android/native_window.h>
 #include "objectarray.h"
+#include "RotateImage.h"
 
 #pragma interface
 
@@ -38,6 +39,7 @@
 #define DEFAULT_PREVIEW_FPS_MAX 30
 #define DEFAULT_PREVIEW_MODE 0
 #define DEFAULT_BANDWIDTH 1.0f
+#define DEFAULT_FRAME_ROTATION_ANGLE 0
 
 typedef uvc_error_t (*convFunc_t)(uvc_frame_t *in, uvc_frame_t *out);
 
@@ -56,6 +58,7 @@ typedef struct {
 class UVCPreview {
 private:
 	uvc_device_handle_t *mDeviceHandle;
+	// 预览视图
 	ANativeWindow *mPreviewWindow;
 	volatile bool mIsRunning;
 	int requestWidth, requestHeight, requestMode;
@@ -63,11 +66,20 @@ private:
 	float requestBandwidth;
 	int frameWidth, frameHeight;
 	int frameMode;
+	// 图像帧需要旋转的角度
+	int frameRotationAngle;
+	// 是否水平镜像
+	int frameHorizontalMirror;
+	// 是否垂直镜像
+	int frameVerticalMirror;
+	RotateImage *rotateImage;
 	size_t frameBytes;
 	pthread_t preview_thread;
 	pthread_mutex_t preview_mutex;
 	pthread_cond_t preview_sync;
+	// 预览帧数组，获取到的摄像头数据帧都放在这里
 	ObjectArray<uvc_frame_t *> previewFrames;
+	// 预览格式
 	int previewFormat;
 	size_t previewBytes;
 //
@@ -76,14 +88,19 @@ private:
 	pthread_t capture_thread;
 	pthread_mutex_t capture_mutex;
 	pthread_cond_t capture_sync;
+	// 抓拍帧
 	uvc_frame_t *captureQueu;			// keep latest frame
+	// 帧回调Java对象
 	jobject mFrameCallbackObj;
+	// 像素格式转换方法
 	convFunc_t mFrameCallbackFunc;
 	Fields_iframecallback iframecallback_fields;
+	// 帧回调像素格式
 	int mPixelFormat;
 	size_t callbackPixelBytes;
 // improve performance by reducing memory allocation
 	pthread_mutex_t pool_mutex;
+	// 帧池
 	ObjectArray<uvc_frame_t *> mFramePool;
 	uvc_frame_t *get_frame(size_t data_bytes);
 	void recycle_frame(uvc_frame_t *frame);
@@ -114,13 +131,17 @@ public:
 	~UVCPreview();
 
 	inline const bool isRunning() const;
-	int setPreviewSize(int width, int height, int min_fps, int max_fps, int mode, float bandwidth = 1.0f);
+	int setPreviewSize(int width, int height, int cameraAngle, int min_fps, int max_fps, int mode, float bandwidth = 1.0f);
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
 	int startPreview();
 	int stopPreview();
 	inline const bool isCapturing() const;
 	int setCaptureDisplay(ANativeWindow *capture_window);
+
+	void setHorizontalMirror(int horizontalMirror);
+	void setVerticalMirror(int verticalMirror);
+	void setCameraAngle(int cameraAngle);
 };
 
 #endif /* UVCPREVIEW_H_ */

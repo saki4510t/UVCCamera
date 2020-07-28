@@ -30,39 +30,61 @@
  * The hotplug callback structure. The user populates this structure with
  * libusb_hotplug_prepare_callback() and then calls libusb_hotplug_register_callback()
  * to receive notification of hotplug events.
+ * 热插拔回调结构。 用户使用libusb_hotplug_prepare_callback()填充此结构，然后调用libusb_hotplug_register_callback()接收热插拔事件的通知。
  */
 struct libusb_hotplug_callback {
-	/** Context this callback is associated with */
+	/** Context this callback is associated with
+	 * 此回调与之关联的上下文
+	 */
 	struct libusb_context *ctx;
 
-	/** Vendor ID to match or LIBUSB_HOTPLUG_MATCH_ANY */
+	/** Vendor ID to match or LIBUSB_HOTPLUG_MATCH_ANY
+	 * 要匹配的供应商ID或LIBUSB_HOTPLUG_MATCH_ANY
+	 */
 	int vendor_id;
 
-	/** Product ID to match or LIBUSB_HOTPLUG_MATCH_ANY */
+	/** Product ID to match or LIBUSB_HOTPLUG_MATCH_ANY
+	 * 要匹配的产品ID或LIBUSB_HOTPLUG_MATCH_ANY
+	 */
 	int product_id;
 
-	/** Device class to match or LIBUSB_HOTPLUG_MATCH_ANY */
+	/** Device class to match or LIBUSB_HOTPLUG_MATCH_ANY
+	 * 要匹配的设备类或LIBUSB_HOTPLUG_MATCH_ANY
+	 */
 	int dev_class;
 
-	/** Hotplug callback flags */
+	/** Hotplug callback flags
+	 * 热插拔回调标志
+	 */
 	libusb_hotplug_flag flags;
 
-	/** Event(s) that will trigger this callback */
+	/** Event(s) that will trigger this callback
+	 * 会触发此回调的事件
+	 */
 	libusb_hotplug_event events;
 
-	/** Callback function to invoke for matching event/device */
+	/** Callback function to invoke for matching event/device
+	 * 回调函数以调用以匹配事件/设备
+	 */
 	libusb_hotplug_callback_fn cb;
 
-	/** Handle for this callback (used to match on deregister) */
+	/** Handle for this callback (used to match on deregister)
+	 * 此回调的句柄（用于在注销时匹配）
+	 */
 	libusb_hotplug_callback_handle handle;
 
-	/** User data that will be passed to the callback function */
+	/** User data that will be passed to the callback function
+	 * 将传递给回调函数的用户数据 */
 	void *user_data;
 
-	/** Callback is marked for deletion */
+	/** Callback is marked for deletion
+	 * 回调标记为删除
+	 */
 	int needs_free;
 
-	/** List this callback is registered in (ctx->hotplug_cbs) */
+	/** List this callback is registered in (ctx->hotplug_cbs)
+	 * 列出此回调在（ctx-> hotplug_cbs）中注册的列表
+	 */
 	struct list_head list;
 };
 

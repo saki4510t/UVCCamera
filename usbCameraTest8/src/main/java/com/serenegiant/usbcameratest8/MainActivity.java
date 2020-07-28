@@ -379,7 +379,7 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 
 	private int mSettingMode = -1;
 	/**
-	 * 設定画面を表示
+	 * 显示设定画面
 	 * @param mode
 	 */
 	private final void showSettings(final int mode) {
@@ -411,8 +411,8 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 	}
 
 	/**
-	 * 設定画面を非表示にする
-	 * @param fadeOut trueならばフェードアウトさせる, falseなら即座に非表示にする
+	 * 隐藏设置屏幕
+	 * @param fadeOut 淡出为true，如果为false，则立即隐藏
 	 */
 	protected final void hideSetting(final boolean fadeOut) {
 		removeFromUiThread(mSettingHideTask);
@@ -441,12 +441,12 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 	};
 
 	/**
-	 * 設定値変更用のシークバーのコールバックリスナー
+	 * Seekbar回调侦听器，用于设置值更改
 	 */
 	private final SeekBar.OnSeekBarChangeListener mOnSeekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
 		@Override
 		public void onProgressChanged(final SeekBar seekBar, final int progress, final boolean fromUser) {
-			// 設定が変更された時はシークバーの非表示までの時間を延長する
+			// 更改设置后，延长查找栏消失之前的时间
 			if (fromUser) {
 				runOnUiThread(mSettingHideTask, SETTINGS_HIDE_DELAY_MS);
 			}
@@ -458,8 +458,8 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 
 		@Override
 		public void onStopTrackingTouch(final SeekBar seekBar) {
-			// シークバーにタッチして値を変更した時はonProgressChangedへ
-			// 行かないみたいなのでここでも非表示までの時間を延長する
+			// 触摸搜索栏并更改值时，请转到onProgressChanged
+			// 它似乎没有消失，所以现在是时候隐藏了
 			runOnUiThread(mSettingHideTask, SETTINGS_HIDE_DELAY_MS);
 			if (isActive() && checkSupportFlag(mSettingMode)) {
 				switch (mSettingMode) {

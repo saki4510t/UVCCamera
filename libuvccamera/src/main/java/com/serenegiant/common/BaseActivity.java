@@ -47,20 +47,20 @@ import com.serenegiant.utils.PermissionCheck;
 public class BaseActivity extends AppCompatActivity
 	implements MessageDialogFragmentV4.MessageDialogListener {
 
-	private static boolean DEBUG = false;	// FIXME 実働時はfalseにセットすること
+	private static boolean DEBUG = false;	// FIXME 在生产期间设置为false
 	private static final String TAG = BaseActivity.class.getSimpleName();
 
-	/** UI操作のためのHandler */
+	/** UI操作的处理程序 */
 	private final Handler mUIHandler = new Handler(Looper.getMainLooper());
 	private final Thread mUiThread = mUIHandler.getLooper().getThread();
-	/** ワーカースレッド上で処理するためのHandler */
+	/** 在工作线程上处理的处理程序 */
 	private Handler mWorkerHandler;
 	private long mWorkerThreadID = -1;
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		// ワーカースレッドを生成
+		// 生成工作者线程
 		if (mWorkerHandler == null) {
 			mWorkerHandler = HandlerThreadHandler.createHandler(TAG);
 			mWorkerThreadID = mWorkerHandler.getLooper().getThread().getId();
@@ -75,7 +75,7 @@ public class BaseActivity extends AppCompatActivity
 
 	@Override
 	protected synchronized void onDestroy() {
-		// ワーカースレッドを破棄
+		// 销毁工作线程
 		if (mWorkerHandler != null) {
 			try {
 				mWorkerHandler.getLooper().quit();
@@ -89,7 +89,7 @@ public class BaseActivity extends AppCompatActivity
 
 //================================================================================
 	/**
-	 * UIスレッドでRunnableを実行するためのヘルパーメソッド
+	 * 在UI线程上运行Runnable的辅助方法
 	 * @param task
 	 * @param duration
 	 */
@@ -108,7 +108,7 @@ public class BaseActivity extends AppCompatActivity
 	}
 
 	/**
-	 * UIスレッド上で指定したRunnableが実行待ちしていれば実行待ちを解除する
+	 * 如果UI线程上指定的Runnable正在等待执行，请释放执行等待
 	 * @param task
 	 */
 	public final void removeFromUiThread(final Runnable task) {
@@ -117,8 +117,8 @@ public class BaseActivity extends AppCompatActivity
 	}
 
 	/**
-	 * ワーカースレッド上で指定したRunnableを実行する
-	 * 未実行の同じRunnableがあればキャンセルされる(後から指定した方のみ実行される)
+	 * 在工作线程上执行指定的Runnable
+	 * 如果没有相同的Runnable尚未执行，它将被取消（仅执行稍后指定的那个）。
 	 * @param task
 	 * @param delayMillis
 	 */
@@ -139,7 +139,7 @@ public class BaseActivity extends AppCompatActivity
 	}
 
 	/**
-	 * 指定したRunnableをワーカースレッド上で実行予定であればキャンセルする
+	 * 如果要在工作线程上执行，请取消指定的Runnable
 	 * @param task
 	 */
 	protected final synchronized void removeEvent(final Runnable task) {
@@ -154,7 +154,7 @@ public class BaseActivity extends AppCompatActivity
 //================================================================================
 	private Toast mToast;
 	/**
-	 * Toastでメッセージを表示
+	 * 查看带有Toast的消息
 	 * @param msg
 	 */
 	protected void showToast(@StringRes final int msg, final Object... args) {
@@ -164,7 +164,7 @@ public class BaseActivity extends AppCompatActivity
 	}
 
 	/**
-	 * Toastが表示されていればキャンセルする
+	 * 如果显示Toast，则取消
 	 */
 	protected void clearToast() {
 		removeFromUiThread(mShowToastTask);
@@ -206,7 +206,7 @@ public class BaseActivity extends AppCompatActivity
 
 //================================================================================
 	/**
-	 * MessageDialogFragmentメッセージダイアログからのコールバックリスナー
+	 * MessageDialogFragment消息对话框中的回调侦听器
 	 * @param dialog
 	 * @param requestCode
 	 * @param permissions
@@ -216,27 +216,27 @@ public class BaseActivity extends AppCompatActivity
 	@Override
 	public void onMessageDialogResult(final MessageDialogFragmentV4 dialog, final int requestCode, final String[] permissions, final boolean result) {
 		if (result) {
-			// メッセージダイアログでOKを押された時はパーミッション要求する
+			// 在消息对话框中按“确定”时，请求权限
 			if (BuildCheck.isMarshmallow()) {
 				requestPermissions(permissions, requestCode);
 				return;
 			}
 		}
-		// メッセージダイアログでキャンセルされた時とAndroid6でない時は自前でチェックして#checkPermissionResultを呼び出す
+		// 如果在消息对话框中取消了它，并且不是Android 6，则请自己检查并调用#checkPermissionResult
 		for (final String permission: permissions) {
 			checkPermissionResult(requestCode, permission, PermissionCheck.hasPermission(this, permission));
 		}
 	}
 
 	/**
-	 * パーミッション要求結果を受け取るためのメソッド
+	 * 接收许可请求结果的方法
 	 * @param requestCode
 	 * @param permissions
 	 * @param grantResults
 	 */
 	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull final String[] permissions, @NonNull final int[] grantResults) {
-		super.onRequestPermissionsResult(requestCode, permissions, grantResults);	// 何もしてないけど一応呼んどく
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);	// 我什么都没做，只是打电话给我
 		final int n = Math.min(permissions.length, grantResults.length);
 		for (int i = 0; i < n; i++) {
 			checkPermissionResult(requestCode, permissions[i], grantResults[i] == PackageManager.PERMISSION_GRANTED);
@@ -244,14 +244,14 @@ public class BaseActivity extends AppCompatActivity
 	}
 
 	/**
-	 * パーミッション要求の結果をチェック
-	 * ここではパーミッションを取得できなかった時にToastでメッセージ表示するだけ
+	 * 检查许可请求的结果
+	 * 在这里，当无法获得许可时，在Toast中显示一条消息
 	 * @param requestCode
 	 * @param permission
 	 * @param result
 	 */
 	protected void checkPermissionResult(final int requestCode, final String permission, final boolean result) {
-		// パーミッションがないときにはメッセージを表示する
+		// 没有权限时显示一条消息
 		if (!result && (permission != null)) {
 			if (Manifest.permission.RECORD_AUDIO.equals(permission)) {
 				showToast(R.string.permission_audio);
@@ -265,16 +265,16 @@ public class BaseActivity extends AppCompatActivity
 		}
 	}
 
-	// 動的パーミッション要求時の要求コード
+	// 动态权限请求的请求代码
 	protected static final int REQUEST_PERMISSION_WRITE_EXTERNAL_STORAGE = 0x12345;
 	protected static final int REQUEST_PERMISSION_AUDIO_RECORDING = 0x234567;
 	protected static final int REQUEST_PERMISSION_NETWORK = 0x345678;
 	protected static final int REQUEST_PERMISSION_CAMERA = 0x537642;
 
 	/**
-	 * 外部ストレージへの書き込みパーミッションが有るかどうかをチェック
-	 * なければ説明ダイアログを表示する
-	 * @return true 外部ストレージへの書き込みパーミッションが有る
+	 * 检查您是否具有对外部存储的写入权限
+	 * 如果没有，显示说明对话框
+	 * @return true 拥有对外部存储的写入权限
 	 */
 	protected boolean checkPermissionWriteExternalStorage() {
 		if (!PermissionCheck.hasWriteExternalStorage(this)) {
@@ -287,9 +287,9 @@ public class BaseActivity extends AppCompatActivity
 	}
 
 	/**
-	 * 録音のパーミッションが有るかどうかをチェック
-	 * なければ説明ダイアログを表示する
-	 * @return true 録音のパーミッションが有る
+	 * 检查您是否有录音权限
+	 * 如果没有，显示说明对话框
+	 * @return true 有录音权限
 	 */
 	protected boolean checkPermissionAudio() {
 		if (!PermissionCheck.hasAudio(this)) {
@@ -302,9 +302,9 @@ public class BaseActivity extends AppCompatActivity
 	}
 
 	/**
-	 * ネットワークアクセスのパーミッションが有るかどうかをチェック
-	 * なければ説明ダイアログを表示する
-	 * @return true ネットワークアクセスのパーミッションが有る
+	 * 检查您是否具有网络访问权限
+	 * 如果没有，显示说明对话框
+	 * @return true 具有网络访问权限
 	 */
 	protected boolean checkPermissionNetwork() {
 		if (!PermissionCheck.hasNetwork(this)) {
@@ -317,9 +317,9 @@ public class BaseActivity extends AppCompatActivity
 	}
 
 	/**
-	 * カメラアクセスのパーミッションがあるかどうかをチェック
-	 * なければ説明ダイアログを表示する
-	 * @return true カメラアクセスのパーミッションが有る
+	 * 检查您是否具有摄像头访问权限
+	 * 如果没有，显示说明对话框
+	 * @return true 具有摄像头访问权限
 	 */
 	protected boolean checkPermissionCamera() {
 		if (!PermissionCheck.hasCamera(this)) {

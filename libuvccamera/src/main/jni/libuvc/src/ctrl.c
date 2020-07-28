@@ -55,6 +55,7 @@ static const int REQ_TYPE_GET = 0xa1;
 /***** GENERIC CONTROLS *****/
 /**
  * @brief Get the length of a control on a terminal or unit.
+ * 获取终端或单元上控件的长度。
  * 
  * @param devh UVC device handle
  * @param unit Unit or Terminal ID; obtain this from the uvc_extension_unit_t describing the extension unit
@@ -65,10 +66,10 @@ static const int REQ_TYPE_GET = 0xa1;
  */
 int uvc_get_ctrl_len(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl) {
 	unsigned char buf[2];
-
+    // 获取设备的Probe数据结构的长度
 	int ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, UVC_GET_LEN,
 			ctrl << 8,
-			unit << 8,	// FIXME this will work wrong, invalid wIndex value
+			unit << 8,	// FIXME this will work wrong, invalid wIndex value  这将工作错误，wIndex值无效
 			buf, 2, CTRL_TIMEOUT_MILLIS);
 
 	if (UNLIKELY(ret < 0))
@@ -79,6 +80,7 @@ int uvc_get_ctrl_len(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl) {
 
 /**
  * @brief Perform a GET_* request from an extension unit.
+ * 从扩展单元执行GET_ *请求。
  * 
  * @param devh UVC device handle
  * @param unit Unit ID; obtain this from the uvc_extension_unit_t describing the extension unit
@@ -94,12 +96,13 @@ int uvc_get_ctrl(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl,
 		void *data, int len, enum uvc_req_code req_code) {
 	return libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
 			ctrl << 8,
-			unit << 8,	// FIXME this will work wrong, invalid wIndex value
+			unit << 8,	// FIXME this will work wrong, invalid wIndex value  这将工作错误，wIndex值无效
 			data, len, CTRL_TIMEOUT_MILLIS);
 }
 
 /**
  * @brief Perform a SET_CUR request to a terminal or unit.
+ * 对终端或单元执行SET_CUR请求。
  * 
  * @param devh UVC device handle
  * @param unit Unit or Terminal ID
@@ -112,14 +115,18 @@ int uvc_get_ctrl(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl,
  */
 int uvc_set_ctrl(uvc_device_handle_t *devh, uint8_t unit, uint8_t ctrl,
 		void *data, int len) {
+	// 获取设备的流接口探测状态参数
 	return libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
 			ctrl << 8,
-			unit << 8,	// FIXME this will work wrong, invalid wIndex value
+			unit << 8,	// FIXME this will work wrong, invalid wIndex value  这将工作错误，wIndex值无效
 			data, len, CTRL_TIMEOUT_MILLIS);
 }
 
 /***** INTERFACE CONTROLS *****/
-/** VC Request Error Code Control (UVC 4.2.1.2) */ // XXX added saki
+/**
+ * VC Request Error Code Control (UVC 4.2.1.2)
+ * VC请求错误代码控制（UVC 4.2.1.2）
+ */ // XXX added saki
 uvc_error_t uvc_vc_get_error_code(uvc_device_handle_t *devh,
 		uvc_vc_error_code_control_t *error_code, enum uvc_req_code req_code) {
 	uint8_t error_char = 0;
@@ -138,13 +145,16 @@ uvc_error_t uvc_vc_get_error_code(uvc_device_handle_t *devh,
 	}
 }
 
-/** VS Request Error Code Control */ // XXX added saki
+/**
+ * VS Request Error Code Control
+ * VS请求错误代码控制
+ */ // XXX added saki
 uvc_error_t uvc_vs_get_error_code(uvc_device_handle_t *devh,
 		uvc_vs_error_code_control_t *error_code, enum uvc_req_code req_code) {
 	uint8_t error_char = 0;
 	uvc_error_t ret = UVC_SUCCESS;
 
-#if 0 // This code may cause hang-up on some combinations of device and camera and temporary disabled.
+#if 0 // This code may cause hang-up on some combinations of device and camera and temporary disabled.  此代码可能会导致设备和相机的某些组合挂断，并暂时禁用。
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_GET, req_code,
 			UVC_VS_STREAM_ERROR_CODE_CONTROL << 8,
 			devh->info->stream_ifs->bInterfaceNumber,	// XXX is this OK?
@@ -1227,6 +1237,7 @@ uvc_error_t uvc_set_powerline_freqency(uvc_device_handle_t *devh, uint8_t freq) 
 	uvc_error_t ret;
 
 	// XXX AUTO(0x03) is only available for UVC1.5.
+	// AUTO（0x03）仅适用于UVC1.5。
 	if ( ((freq & 0xff) == 0xff)
 		|| (((freq & 0x03) == 0x03) && (devh->info->ctrl_if.bcdUVC < 0x0150)) ) {
 

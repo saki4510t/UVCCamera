@@ -578,7 +578,7 @@ obsd_handle_events(struct libusb_context *ctx, struct pollfd *fds, nfds_t nfds,
 			err = errno;
 			break;
 		}
-
+        // 处理传输完成（完成可能是错误情况）
 		if ((err = usbi_handle_transfer_completion(itransfer,
 		    LIBUSB_TRANSFER_COMPLETED)))
 			break;

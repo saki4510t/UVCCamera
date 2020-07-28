@@ -82,6 +82,8 @@ static const _uvc_error_msg_t uvc_error_msgs[] = {
  *
  * @param err UVC error code
  * @param msg Optional custom message, prepended to output
+ *
+ * 打印一条消息，解释UVC驱动程序中的错误
  */
 void uvc_perror(uvc_error_t err, const char *msg) {
 	if (msg && *msg) {
@@ -104,6 +106,8 @@ void uvc_perror(uvc_error_t err, const char *msg) {
  *
  * @param err UVC error code
  * @return error message
+ *
+ * 返回说明UVC驱动程序中错误的字符串
  */
 const char* uvc_strerror(uvc_error_t err) {
 	size_t idx;
@@ -123,6 +127,10 @@ const char* uvc_strerror(uvc_error_t err) {
  *
  * @param devh UVC device
  * @param stream Output stream (stderr if NULL)
+ *
+ * Print the values in a stream control block
+ *
+ * 在流控制块中打印值
  */
 void uvc_print_stream_ctrl(uvc_stream_ctrl_t *ctrl, FILE *stream) {
 	if (stream == NULL)
@@ -141,13 +149,17 @@ void uvc_print_stream_ctrl(uvc_stream_ctrl_t *ctrl, FILE *stream) {
 	FPRINTF(stream, "dwMaxPayloadTransferSize: %u\n", ctrl->dwMaxPayloadTransferSize);
 	FPRINTF(stream, "bInterfaceNumber: %d\n", ctrl->bInterfaceNumber);
 //
-	/** add UVC 1.1 parameters */
+	/** add UVC 1.1 parameters
+	 * 添加UVC 1.1参数
+	 */
 	FPRINTF(stream, "dwClockFrequency: %d\n", ctrl->dwClockFrequency);
 	FPRINTF(stream, "bmFramingInfo: %d\n", ctrl->bmFramingInfo);
 	FPRINTF(stream, "bPreferedVersion: %d\n", ctrl->bPreferedVersion);
 	FPRINTF(stream, "bMinVersion: %d\n", ctrl->bMinVersion);
 	FPRINTF(stream, "bMaxVersion: %d\n", ctrl->bMaxVersion);
-	/** add UVC 1.5 parameters */
+	/** add UVC 1.5 parameters
+	 * 添加UVC 1.5参数
+	 */
 	FPRINTF(stream, "bUsage: %d\n", ctrl->bUsage);
 	FPRINTF(stream, "bBitDepthLuma: %d\n", ctrl->bBitDepthLuma);
 	FPRINTF(stream, "bmSettings: %d\n", ctrl->bmSettings);
@@ -172,9 +184,9 @@ static const char *_uvc_name_for_desc_type(const uint8_t type) {
 		return "Interface Descriptor(0x04)";
 	case LIBUSB_DT_ENDPOINT:					// 0x05,
 		return "Endpoint Descriptor(0x05)";
-	case LIBUSB_DT_DEVICE_QUALIFIER:			// 0x06,	// deprecated on USB3.0
+	case LIBUSB_DT_DEVICE_QUALIFIER:			// 0x06,	// deprecated on USB3.0  在USB3.0上已弃用
 		return "Qualifier Descriptor(0x06)";
-	case LIBUSB_DT_OTHER_SPEED_CONFIGURATION:	// 0x07,	// deprecated on USB3.0
+	case LIBUSB_DT_OTHER_SPEED_CONFIGURATION:	// 0x07,	// deprecated on USB3.0  在USB3.0上已弃用
 		return "Other speed Config Descriptor(0x07)";
 	case LIBUSB_DT_INTERFACE_POWER:				// 0x08,
 		return "Power interface Descriptor(0x08)";
@@ -203,7 +215,7 @@ static const char *_uvc_name_for_desc_type(const uint8_t type) {
 		return "CS:Hub Descriptor(0x29)";
 	case LIBUSB_DT_SUPERSPEED_HUB: 				// 0x2a,
 		return "CS:Superspeed Hub Descriptor(0x2a)";
-	case LIBUSB_DT_SS_ENDPOINT_COMPANION: 		// 0x30		// defined on USB 3.0
+	case LIBUSB_DT_SS_ENDPOINT_COMPANION: 		// 0x30		// defined on USB 3.0  在USB 3.0上定义
 		return "CS:Superspeed Endpoint Companion Descriptor(0x30)";
 	default:
 		return "Unknown descriptor";
@@ -212,39 +224,39 @@ static const char *_uvc_name_for_desc_type(const uint8_t type) {
 
 static const char *_uvc_name_for_class(const uint8_t clazz) {
 	switch (clazz) {
-	case LIBUSB_CLASS_AUDIO:				// 1,		/** Audio class */
+	case LIBUSB_CLASS_AUDIO:				// 1,		/** Audio class  音频类 */
 		return "Audio";
-	case LIBUSB_CLASS_COMM:					// 2,		/** Communications class */
+	case LIBUSB_CLASS_COMM:					// 2,		/** Communications class  通讯类 */
 		return "Comm";
-	case LIBUSB_CLASS_HID:					// 3,		/** Human Interface Device class */
+	case LIBUSB_CLASS_HID:					// 3,		/** Human Interface Device class  人机界面设备类 */
 		return "HID";
-	case LIBUSB_CLASS_PHYSICAL:				// 5,		/** Physical */
+	case LIBUSB_CLASS_PHYSICAL:				// 5,		/** Physical  物理 */
 		return "Physical";
-	case LIBUSB_CLASS_IMAGE:				// 6,		/** Image class */
+	case LIBUSB_CLASS_IMAGE:				// 6,		/** Image class  图片类 */
 		return "Image";
-	case LIBUSB_CLASS_PRINTER:				// 7,		/** Printer class */
+	case LIBUSB_CLASS_PRINTER:				// 7,		/** Printer class  打印类 */
 		return "Printer";
-	case LIBUSB_CLASS_MASS_STORAGE:			// 8,		/** Mass storage class */
+	case LIBUSB_CLASS_MASS_STORAGE:			// 8,		/** Mass storage class  大容量存储类 */
 		return "Mass storage";
-	case LIBUSB_CLASS_HUB:					// 9,		/** Hub class */
+	case LIBUSB_CLASS_HUB:					// 9,		/** Hub class  集线器类 */
 		return "Hub";
-	case LIBUSB_CLASS_DATA:					// 0x0a,	/** Data class */
+	case LIBUSB_CLASS_DATA:					// 0x0a,	/** Data class  资料类 */
 		return "Data";
-	case LIBUSB_CLASS_SMART_CARD:			// 0x0b,	/** Smart Card */
+	case LIBUSB_CLASS_SMART_CARD:			// 0x0b,	/** Smart Card  智能卡 */
 		return "Smart card";
-	case LIBUSB_CLASS_CONTENT_SECURITY:		// 0x0d,	/** Content Security */
+	case LIBUSB_CLASS_CONTENT_SECURITY:		// 0x0d,	/** Content Security  内容安全 */
 		return "Security";
-	case LIBUSB_CLASS_VIDEO:				// 0x0e,	/** Video */
+	case LIBUSB_CLASS_VIDEO:				// 0x0e,	/** Video  视频 */
 		return "Video";
-	case LIBUSB_CLASS_PERSONAL_HEALTHCARE:	// 0x0f,	/** Personal Healthcare */
+	case LIBUSB_CLASS_PERSONAL_HEALTHCARE:	// 0x0f,	/** Personal Healthcare  个人保健 */
 		return "Helthcare";
-	case LIBUSB_CLASS_DIAGNOSTIC_DEVICE:	// 0xdc,	/** Diagnostic Device */
+	case LIBUSB_CLASS_DIAGNOSTIC_DEVICE:	// 0xdc,	/** Diagnostic Device  诊断装置 */
 		return "Diag";
-	case LIBUSB_CLASS_WIRELESS:				// 0xe0,	/** Wireless class */
+	case LIBUSB_CLASS_WIRELESS:				// 0xe0,	/** Wireless class  无线类 */
 		return "Wireless";
-	case LIBUSB_CLASS_APPLICATION:			// 0xfe,	/** Application class */
+	case LIBUSB_CLASS_APPLICATION:			// 0xfe,	/** Application class  应用类 */
 		return "App";
-	case LIBUSB_CLASS_VENDOR_SPEC:			// 0xff		/** Class is vendor-specific */
+	case LIBUSB_CLASS_VENDOR_SPEC:			// 0xff		/** Class is vendor-specific  类是特定于供应商的 */
 		return "Vender specific";
 	default:
 		return "Unknown";
@@ -291,6 +303,8 @@ static const char *_uvc_name_for_subtype(const uint8_t subtype) {
  *
  * @param devh UVC device
  * @param stream Output stream (stderr if NULL)
+ *
+ * 打印相机功能和配置。
  */
 void uvc_print_diag(uvc_device_handle_t *devh, FILE *stream) {
 	UVC_ENTER();

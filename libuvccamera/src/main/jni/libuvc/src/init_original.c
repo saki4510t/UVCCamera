@@ -151,9 +151,11 @@ void uvc_exit(uvc_context_t *ctx) {
  * @internal
  * @brief Spawns a handler thread for the context
  * @ingroup init
+ * 为上下文生成处理程序线程
  *
  * This should be called at the end of a successful uvc_open if no devices
  * are already open (and being handled).
+ * 如果尚未打开（并正在处理）任何设备，则应在成功uvc_open的结尾处调用此函数。
  */
 void uvc_start_handler_thread(uvc_context_t *ctx) {
   if (ctx->own_usb_ctx)

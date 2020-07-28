@@ -55,6 +55,7 @@ LOCAL_ARM_MODE := arm
 LOCAL_SRC_FILES := \
 		_onload.cpp \
 		utilbase.cpp \
+		RotateImage.cpp \
 		UVCCamera.cpp \
 		UVCPreview.cpp \
 		UVCButtonCallback.cpp \

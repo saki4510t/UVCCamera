@@ -117,6 +117,9 @@ void *_uvc_handle_events(void *arg) {
  * @param[out] pctx The location where the context reference should be stored.
  * @param[in]  usb_ctx Optional USB context to use
  * @return Error opening context or UVC_SUCCESS
+ *
+ * 初始化UVC上下文
+ * 如果提供自己的USB上下文，则必须使用libusb_handle_events之类的函数处理libusb事件处理。
  */
 uvc_error_t uvc_init2(uvc_context_t **pctx, struct libusb_context *usb_ctx, const char *usbfs) {
 	uvc_error_t ret = UVC_SUCCESS;
@@ -183,6 +186,10 @@ uvc_error_t uvc_init(uvc_context_t **pctx, struct libusb_context *usb_ctx) {
  * context will be destroyed.
  *
  * @param ctx UVC context to shut down
+ *
+ * 关闭UVC上下文，关闭所有活动的摄像机。
+ * 此功能会使对上下文摄像机的任何现有引用无效。
+ * 如果未向#uvc_init提供USB上下文，则将破坏UVC特定的USB上下文。
  */
 void uvc_exit(uvc_context_t *ctx) {
 	uvc_device_handle_t *devh;
@@ -205,6 +212,9 @@ void uvc_exit(uvc_context_t *ctx) {
  *
  * This should be called at the end of a successful uvc_open if no devices
  * are already open (and being handled).
+ *
+ * 为上下文生成处理程序线程
+ * 如果尚未打开（并正在处理）任何设备，则应在成功uvc_open的结尾处调用此函数。
  */
 void uvc_start_handler_thread(uvc_context_t *ctx) {
 	if (ctx->own_usb_ctx) {

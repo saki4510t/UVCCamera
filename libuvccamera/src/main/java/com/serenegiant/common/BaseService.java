@@ -31,20 +31,20 @@ import android.util.Log;
 import com.serenegiant.utils.HandlerThreadHandler;
 
 public abstract class BaseService extends Service {
-	private static boolean DEBUG = false;	// FIXME 実働時はfalseにセットすること
+	private static boolean DEBUG = false;	// FIXME 在生产期间设置为false
 	private static final String TAG = BaseService.class.getSimpleName();
 
-	/** UI操作のためのHandler */
+	/** UI操作的处理程序 */
 	private final Handler mUIHandler = new Handler(Looper.getMainLooper());
 	private final Thread mUiThread = mUIHandler.getLooper().getThread();
-	/** ワーカースレッド上で処理するためのHandler */
+	/** 在工作线程上处理的处理程序 */
 	private Handler mWorkerHandler;
 	private long mWorkerThreadID = -1;
 
 	@Override
 	public void onCreate() {
 		super.onCreate();
-		// ワーカースレッドを生成
+		// 生成工作者线程
 		if (mWorkerHandler == null) {
 			mWorkerHandler = HandlerThreadHandler.createHandler(TAG);
 			mWorkerThreadID = mWorkerHandler.getLooper().getThread().getId();
@@ -53,7 +53,7 @@ public abstract class BaseService extends Service {
 
 	@Override
 	public synchronized void onDestroy() {
-		// ワーカースレッドを破棄
+		// 销毁工作线程
 		if (mWorkerHandler != null) {
 			try {
 				mWorkerHandler.getLooper().quit();
@@ -67,7 +67,7 @@ public abstract class BaseService extends Service {
 
 //================================================================================
 	/**
-	 * UIスレッドでRunnableを実行するためのヘルパーメソッド
+	 * 在UI线程上运行Runnable的辅助方法
 	 * @param task
 	 * @param duration
 	 */
@@ -86,7 +86,7 @@ public abstract class BaseService extends Service {
 	}
 
 	/**
-	 * UIスレッド上で指定したRunnableが実行待ちしていれば実行待ちを解除する
+	 * 如果UI线程上指定的Runnable正在等待执行，请释放执行等待
 	 * @param task
 	 */
 	public final void removeFromUiThread(final Runnable task) {
@@ -95,8 +95,8 @@ public abstract class BaseService extends Service {
 	}
 
 	/**
-	 * ワーカースレッド上で指定したRunnableを実行する
-	 * 未実行の同じRunnableがあればキャンセルされる(後から指定した方のみ実行される)
+	 * 在工作线程上执行指定的Runnable
+	 * 如果没有相同的Runnable尚未执行，它将被取消（仅执行稍后指定的那个）。
 	 * @param task
 	 * @param delayMillis
 	 */
@@ -117,7 +117,7 @@ public abstract class BaseService extends Service {
 	}
 
 	/**
-	 * 指定したRunnableをワーカースレッド上で実行予定であればキャンセルする
+	 * 如果要在工作线程上执行，请取消指定的Runnable
 	 * @param task
 	 */
 	protected final synchronized void removeEvent(final Runnable task) {

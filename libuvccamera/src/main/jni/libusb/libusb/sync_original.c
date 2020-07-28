@@ -91,6 +91,7 @@ int API_EXPORTED libusb_control_transfer(libusb_device_handle *dev_handle,
 	uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue, uint16_t wIndex,
 	unsigned char *data, uint16_t wLength, unsigned int timeout)
 {
+    // 为libusb传输分配指定数量的同步数据包描述符
 	struct libusb_transfer *transfer = libusb_alloc_transfer(0);
 	unsigned char *buffer;
 	int completed = 0;
@@ -110,9 +111,9 @@ int API_EXPORTED libusb_control_transfer(libusb_device_handle *dev_handle,
 	if ((bmRequestType & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT)
 		memcpy(buffer + LIBUSB_CONTROL_SETUP_SIZE, data, wLength);
 
-	libusb_fill_control_transfer(transfer, dev_handle, buffer,
-		sync_transfer_cb, &completed, timeout);
+	libusb_fill_control_transfer(transfer, dev_handle, buffer, sync_transfer_cb, &completed, timeout);
 	transfer->flags = LIBUSB_TRANSFER_FREE_BUFFER;
+	// 提交传输。 此功能将触发USB传输，然后立即返回。
 	r = libusb_submit_transfer(transfer);
 	if (r < 0) {
 		libusb_free_transfer(transfer);
@@ -159,6 +160,7 @@ static int do_sync_bulk_transfer(struct libusb_device_handle *dev_handle,
 	unsigned char endpoint, unsigned char *buffer, int length,
 	int *transferred, unsigned int timeout, unsigned char type)
 {
+    // 为libusb传输分配指定数量的同步数据包描述符
 	struct libusb_transfer *transfer = libusb_alloc_transfer(0);
 	int completed = 0;
 	int r;
@@ -166,10 +168,10 @@ static int do_sync_bulk_transfer(struct libusb_device_handle *dev_handle,
 	if (!transfer)
 		return LIBUSB_ERROR_NO_MEM;
 
-	libusb_fill_bulk_transfer(transfer, dev_handle, endpoint, buffer, length,
-		sync_transfer_cb, &completed, timeout);
+    // Helper函数可填充批量传输所需的libusb_transfer字段。
+	libusb_fill_bulk_transfer(transfer, dev_handle, endpoint, buffer, length, sync_transfer_cb, &completed, timeout);
 	transfer->type = type;
-
+    // 提交传输。 此功能将触发USB传输，然后立即返回。
 	r = libusb_submit_transfer(transfer);
 	if (r < 0) {
 		libusb_free_transfer(transfer);

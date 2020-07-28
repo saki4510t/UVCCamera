@@ -141,7 +141,7 @@ int android_netlink_start_event_monitor(void)
 		RETURN(LIBUSB_ERROR_OTHER, int);
 	}
 
-	/* TODO -- add authentication */
+	/* TODO -- add authentication add authentication */
 	/* setsockopt(android_netlink_socket, SOL_SOCKET, SO_PASSCRED, &one, sizeof(one)); */
 
 	ret = usbi_pipe(netlink_control_pipe);
@@ -169,12 +169,14 @@ int android_netlink_stop_event_monitor(void)
 	char dummy = 1;
 
 	if (-1 == android_netlink_socket) {
-		/* already closed. nothing to do */
+		/* already closed. nothing to do
+		 * 已经关闭。 没事做
+		 */
 		return LIBUSB_SUCCESS;
 	}
 
-	/* Write some dummy data to the control pipe and
-	 * wait for the thread to exit */
+	/* Write some dummy data to the control pipe and wait for the thread to exit
+	 * 将一些伪数据写入控制管道，然后等待线程退出 */
 	r = usbi_write(netlink_control_pipe[1], &dummy, sizeof(dummy));
 	if (r <= 0) {
 		usbi_warn(NULL, "netlink control pipe signal failed");
@@ -184,7 +186,7 @@ int android_netlink_stop_event_monitor(void)
 	close(android_netlink_socket);
 	android_netlink_socket = -1;
 
-	/* close and reset control pipe */
+	/* close and reset control pipe 关闭并重置控制管道 */
 	close(netlink_control_pipe[0]);
 	close(netlink_control_pipe[1]);
 	netlink_control_pipe[0] = -1;
@@ -208,7 +210,9 @@ static const char *netlink_message_parse (const char *buffer, size_t len, const 
 	return NULL;
 }
 
-/* parse parts of netlink message common to both libudev and the kernel */
+/* parse parts of netlink message common to both libudev and the kernel
+ * 解析 libudev 和内核共有的 netlink 消息部分
+ */
 static int android_netlink_parse(char *buffer, size_t len, int *detached, const char **sys_name,
 			       uint8_t *busnum, uint8_t *devaddr) {
 	const char *tmp;
@@ -233,23 +237,25 @@ static int android_netlink_parse(char *buffer, size_t len, int *detached, const 
 		return -1;
 	}
 
-	/* check that this is a usb message */
+	/* check that this is a usb message
+	 * 检查这是usb消息
+	 */
 	tmp = netlink_message_parse(buffer, len, "SUBSYSTEM");
 	if (NULL == tmp || 0 != strcmp(tmp, "usb")) {
-		/* not usb. ignore */
+		/* not usb. ignore  没有usb。 忽视 */
 		return -1;
 	}
 
 	tmp = netlink_message_parse(buffer, len, "BUSNUM");
 	if (NULL == tmp) {
-		/* no bus number. try "DEVICE" */
+		/* no bus number. try "DEVICE"  没有总线号码。 尝试“DEVICE” */
 		tmp = netlink_message_parse(buffer, len, "DEVICE");
 		if (NULL == tmp) {
-			/* not usb. ignore */
+			/* not usb. ignore   没有usb。 忽视*/
 			return -1;
 		}
 		
-		/* Parse a device path such as /dev/bus/usb/003/004 */
+		/* Parse a device path such as /dev/bus/usb/003/004   解析设备路径，例如/dev/bus/usb/003/004  */
 		char *pLastSlash = (char*)strrchr(tmp,'/');
 		if(NULL == pLastSlash) {
 			return -1;
@@ -299,22 +305,21 @@ static int android_netlink_parse(char *buffer, size_t len, int *detached, const 
 		}
 	}
 
-	/* found a usb device */
+	/* found a usb device  找到一个USB设备 */
 	return 0;
 }
 
 static int android_netlink_read_message(void)
 {
-	char buffer[1024];	// XXX changed from unsigned char to char because the first argument of android_netlink_parse is char *
+	char buffer[1024];	// XXX changed from unsigned char to char because the first argument of android_netlink_parse is char *  从unsigned char更改为char，因为android_netlink_parse的第一个参数是 char *
 	struct iovec iov = {.iov_base = buffer, .iov_len = sizeof(buffer)};
-	struct msghdr meh = { .msg_iov=&iov, .msg_iovlen=1,
-			     .msg_name=&snl, .msg_namelen=sizeof(snl) };
+	struct msghdr meh = { .msg_iov=&iov, .msg_iovlen=1, .msg_name=&snl, .msg_namelen=sizeof(snl) };
 	const char *sys_name = NULL;
 	uint8_t busnum, devaddr;
 	int detached, r;
 	size_t len;
 
-	/* read netlink message */
+	/* read netlink message  阅读网络链接消息 */
 	memset(buffer, 0, sizeof(buffer));
 	len = recvmsg(android_netlink_socket, &meh, 0);
 	if (len < 32) {
@@ -323,7 +328,7 @@ static int android_netlink_read_message(void)
 		return -1;
 	}
 
-	/* TODO -- authenticate this message is from the kernel or udevd */
+	/* TODO -- authenticate this message is from the kernel or udevd  验证此消息来自内核还是udevd */
 
 	r = android_netlink_parse(buffer, len, &detached, &sys_name, &busnum, &devaddr);
 	if (r)
@@ -332,7 +337,7 @@ static int android_netlink_read_message(void)
 	usbi_dbg("netlink hotplug found device busnum: %hhu, devaddr: %hhu, sys_name: %s, removed: %s",
 		 busnum, devaddr, sys_name, detached ? "yes" : "no");
 
-	/* signal device is available (or not) to all contexts */
+	/* signal device is available (or not) to all contexts  信号设备在所有环境中都可用（或不可用） */
 	if (detached)
 		android_device_disconnected(busnum, devaddr, sys_name);
 	else
@@ -352,12 +357,14 @@ static void *android_netlink_event_thread_main(void *arg)
 		  .events = POLLIN },
 	};
 
-	/* silence compiler warning */
+	/* silence compiler warning  静默编译器警告 */
 	(void) arg;
 
 	while (poll(fds, 2, -1) >= 0) {
 		if (fds[0].revents & POLLIN) {
-			/* activity on control pipe, read the byte and exit */
+			/* activity on control pipe, read the byte and exit
+			 * 控制管道上的活动，读取字节并退出
+			 */
 			r = usbi_read(netlink_control_pipe[0], &dummy, sizeof(dummy));
 			if (r <= 0) {
 				usbi_warn(NULL, "netlink control pipe read failed");

@@ -790,6 +790,7 @@ void myfunc() {
 	unsigned char buffer[LIBUSB_CONTROL_SETUP_SIZE] __attribute__ ((aligned (2)));
 	int completed = 0;
 
+    // 为libusb传输分配指定数量的同步数据包描述符
 	transfer = libusb_alloc_transfer(0);
 	libusb_fill_control_setup(buffer,
 		LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT, 0x04, 0x01, 0, 0);
@@ -1140,8 +1141,7 @@ int usbi_io_init(struct libusb_context *ctx)
 		goto err_close_hp_pipe;
 
 #ifdef USBI_TIMERFD_AVAILABLE
-	ctx->timerfd = timerfd_create(usbi_backend->get_timerfd_clockid(),
-		TFD_NONBLOCK);
+	ctx->timerfd = timerfd_create(usbi_backend->get_timerfd_clockid(), TFD_NONBLOCK);
 	if (ctx->timerfd >= 0) {
 		usbi_dbg("using timerfd for timeouts");
 		r = usbi_add_pollfd(ctx, ctx->timerfd, POLLIN);
@@ -1229,7 +1229,11 @@ static int calculate_timeout(struct usbi_transfer *transfer)
  * Callers of this function must hold the flying_transfers_lock.
  * This function *always* adds the transfer to the flying_transfers list,
  * it will return non 0 if it fails to update the timer, but even then the
- * transfer is added to the flying_transfers list. */
+ * transfer is added to the flying_transfers list.
+ * 将传输添加到（超时排序的）活动传输列表中。
+ * 此函数的调用者必须持有flying_transfers_lock。
+ * 该函数“总是”将传输添加到flying_transfers列表中，如果无法更新计时器，它将返回非0，但即使这样转移也被添加到flying_transfers列表中。
+ */
 static int add_to_flying_list(struct usbi_transfer *transfer)
 {
 	struct usbi_transfer *cur;
@@ -1364,6 +1368,7 @@ void API_EXPORTED libusb_free_transfer(struct libusb_transfer *transfer)
 }
 
 #ifdef USBI_TIMERFD_AVAILABLE
+// 停止定时器
 static int disarm_timerfd(struct libusb_context *ctx)
 {
 	const struct itimerspec disarm_timer = { { 0, 0 }, { 0, 0 } };
