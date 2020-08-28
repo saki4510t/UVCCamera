@@ -44,7 +44,7 @@ If you want to use Android Studio(unfortunately NDK supporting on Android Studio
 5. Android Studio raise some errors but just ignore now. Android Studio generate `local.properties` file. Please open `local.properties` and add `ndk.dir` key to the end of the file. The contents of the file looks like this.
 ```
 sdk.dir={path to Android SDK on your storage}
-ndk.dir={path to Android SDK on your storage}
+ndk.dir={path to Android NDK on your storage}
 ```
 Please replace actual path to SDK and NDK on your storage.  
 Of course you can make `local.properties` by manually instead of using automatically generated ones by Android Studio.
