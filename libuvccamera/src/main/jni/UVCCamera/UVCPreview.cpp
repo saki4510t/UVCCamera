@@ -388,10 +388,10 @@ int UVCPreview::startPreview() {
 		mIsRunning = true;
 		pthread_mutex_lock(&preview_mutex);
 		{
-			if (LIKELY(mPreviewWindow)) {
+			//if (LIKELY(mPreviewWindow)) {
 			    // 创建线程执行 preview_thread_func
 				result = pthread_create(&preview_thread, NULL, preview_thread_func, (void *)this);
-			}
+			//}
 		}
 		pthread_mutex_unlock(&preview_mutex);
 		if (UNLIKELY(result != EXIT_SUCCESS)) {
@@ -641,7 +641,9 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
                         handleFrame(frame);
 
 					    // 画预览帧
-						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+					    if (LIKELY(mPreviewWindow)) {
+						    frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+					    }
 						// 设置抓拍帧
 						addCaptureFrame(frame);
 					} else {
@@ -660,7 +662,9 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				    handleFrame(frame);
 
 				    // 画预览帧
-					frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+				    if (LIKELY(mPreviewWindow)) {
+				        frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+				    }
 					// 设置抓拍帧
 					addCaptureFrame(frame);
 				}
