@@ -54,7 +54,10 @@ void RotateImage::rotate_yuyv_90(uvc_frame_t *src_frame) {
     uint32_t switchTemp = src_frame->width;
     src_frame->width = src_frame->height;
     src_frame->height = switchTemp;
-    src_frame->step = src_frame->width * 2;
+
+    // step 每行的字节数 yuyv一个像素占两个字节数
+    // src_frame->step = src_frame->width * 2;
+    src_frame->step = src_frame->width << 1;
 }
 
 // 顺时针旋转 180 度
@@ -79,7 +82,10 @@ void RotateImage::rotate_yuyv_270(uvc_frame_t *src_frame) {
     uint32_t switchTemp = src_frame->width;
     src_frame->width = src_frame->height;
     src_frame->height = switchTemp;
-    src_frame->step = src_frame->width * 2;
+
+    // step 每行的字节数 yuyv一个像素占两个字节数
+    // src_frame->step = src_frame->width * 2;
+    src_frame->step = src_frame->width << 1;
 }
 
 // 水平镜像
@@ -105,8 +111,10 @@ void RotateImage::vertical_mirror_yuyv(uvc_frame_t *src_frame){
 void RotateImage::rotateYuyvDegree90(void *_rotatedYuyv, void *_yuyv, uint32_t width, uint32_t height) {
     char *rotatedYuyv = (char *)_rotatedYuyv;
     char *yuyv = (char *)_yuyv;
-    uint32_t lineDataSize = width * 2;
-    uint32_t rotatedLineDataSize = height * 2;
+    // uint32_t lineDataSize = width * 2;
+    uint32_t lineDataSize = width << 1;
+    // uint32_t rotatedLineDataSize = height * 2;
+    uint32_t rotatedLineDataSize = height << 1;
     uint32_t rotatedYuyvIndex = 0;
     uint32_t finalLineStartIndex = (height - 2) * lineDataSize;
     for (uint32_t w = 0; w < lineDataSize; w += 4) {
@@ -140,7 +148,8 @@ void RotateImage::rotateYuyvDegree90(void *_rotatedYuyv, void *_yuyv, uint32_t w
             (rotatedYuyv)[targetNextLineOffset + 3] = (yuyv)[originalOffset + 3];
 
             rotatedYuyvIndex += 4;
-            offset += lineDataSize * 2;
+            // offset += lineDataSize * 2
+            offset += lineDataSize << 1;
         }
         rotatedYuyvIndex += rotatedLineDataSize;
     }
@@ -149,7 +158,8 @@ void RotateImage::rotateYuyvDegree90(void *_rotatedYuyv, void *_yuyv, uint32_t w
 void RotateImage::rotateYuyvDegree180(void *_rotatedYuyv, void *_yuyv, uint32_t width, uint32_t height) {
     char *rotatedYuyv = (char *)_rotatedYuyv;
     char *yuyv = (char *)_yuyv;
-    uint32_t lineDataSize = width * 2;
+    // uint32_t lineDataSize = width * 2;
+    uint32_t lineDataSize = width << 1;
     uint32_t yuyvIndex = lineDataSize * height - 4;
     uint32_t rotatedIndex = 0;
     //rotate
@@ -167,8 +177,10 @@ void RotateImage::rotateYuyvDegree180(void *_rotatedYuyv, void *_yuyv, uint32_t 
 void RotateImage::rotateYuyvDegree270(void *_rotatedYuyv, void *_yuyv, uint32_t width, uint32_t height) {
     char *rotatedYuyv = (char *)_rotatedYuyv;
     char *yuyv = (char *)_yuyv;
-    uint32_t lineDataSize = width * 2;
-    uint32_t rotatedLineDataSize = height * 2;
+    // uint32_t lineDataSize = width * 2;
+    uint32_t lineDataSize = width << 1;
+    // uint32_t rotatedLineDataSize = height * 2;
+    uint32_t rotatedLineDataSize = height << 1;
     uint32_t rotatedYuyvIndex = 0;
     uint32_t finalColumnStartIndex = lineDataSize - 4;
     for (uint32_t w = 0; w < lineDataSize; w += 4) {
@@ -202,7 +214,8 @@ void RotateImage::rotateYuyvDegree270(void *_rotatedYuyv, void *_yuyv, uint32_t 
             (rotatedYuyv)[targetNextLineOffset + 3] = (yuyv)[originalNextLineOffset + 3];
 
             rotatedYuyvIndex += 4;
-            offset += lineDataSize * 2;
+            // offset += lineDataSize * 2;
+            offset += lineDataSize << 1;
         }
         finalColumnStartIndex -= 4;
         rotatedYuyvIndex += rotatedLineDataSize;
@@ -214,7 +227,8 @@ void RotateImage::horizontalMirrorYuyv(void *_mirrorYuyv, void *_yuyv, uint32_t 
     char *mirrorYuyv = (char *)_mirrorYuyv;
     char *yuyv = (char *)_yuyv;
     uint32_t lineStartIndex = 0;
-    uint32_t lineDataSize = width * 2;
+    // uint32_t lineDataSize = width * 2;
+    uint32_t lineDataSize = width << 1;
     for (uint32_t h = 0; h < height; h++) {
         for (uint32_t w = 0; w < lineDataSize; w += 4) {
             mirrorYuyv[lineStartIndex + w] = yuyv[lineStartIndex + lineDataSize - w - 2];
@@ -230,8 +244,10 @@ void RotateImage::horizontalMirrorYuyv(void *_mirrorYuyv, void *_yuyv, uint32_t 
 void RotateImage::verticalMirrorYuyv(void *_mirrorYuyv, void *_yuyv, uint32_t width, uint32_t height) {
     char *mirrorYuyv = (char *)_mirrorYuyv;
     char *yuyv = (char *)_yuyv;
-    uint32_t lineDataSize = width * 2;
-    yuyv += width * height * 2;
+    // uint32_t lineDataSize = width * 2;
+    uint32_t lineDataSize = width << 1;
+    // yuyv += width * height * 2;
+    yuyv += width * height << 1;
     for (uint32_t h = 0; h < height; h++) {
         memcpy(mirrorYuyv, yuyv, lineDataSize);
         mirrorYuyv += lineDataSize;

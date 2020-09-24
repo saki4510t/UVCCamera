@@ -126,6 +126,8 @@ private:
 	void do_capture_idle_loop(JNIEnv *env);
 	void do_capture_callback(JNIEnv *env, uvc_frame_t *frame);
 	void callbackPixelFormatChanged();
+	// 处理图像帧
+	void handleFrame(uvc_frame_t *frame);
 public:
 	UVCPreview(uvc_device_handle_t *devh);
 	~UVCPreview();
