@@ -23,6 +23,6 @@
   ~  may have a different license, see the respective files.
   -->
 
-<usb>
-	<usb-device class="239" subclass="2" />	<!-- all device of UVC -->
-</usb>
+<resources>
+	<usb-device vendor-id="" product-id="" subclass=""  />	<!-- all device of UVC -->
+</resources>

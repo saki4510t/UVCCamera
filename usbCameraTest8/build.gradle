@@ -34,13 +34,19 @@ android {
 
 	defaultConfig {
 		applicationId "com.serenegiant.usbcameratest8"
-		minSdkVersion 18
+		minSdkVersion 21
 		targetSdkVersion versionTarget
 		versionCode 1
 		versionName "1.0"
 
 		testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
+		ndk {
+			abiFilters "armeabi-v7a", "x86"
+		}
+		packagingOptions {
+			exclude "lib/arm64-v8a/librealm-jni.so"
+		}
 	}
 	buildTypes {
 		release {

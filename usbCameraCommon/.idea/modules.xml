@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/-839645613/UVCCamera.iml" filepath="$PROJECT_DIR$/.idea/modules/-839645613/UVCCamera.iml" group="UVCCamera" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/1403831518/libuvccamera.iml" filepath="$PROJECT_DIR$/.idea/modules/1403831518/libuvccamera.iml" group="UVCCamera/libuvccamera" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/usbCameraCommon.iml" filepath="$PROJECT_DIR$/.idea/modules/usbCameraCommon.iml" group="UVCCamera/usbCameraCommon" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/262707967/usbCameraTest.iml" filepath="$PROJECT_DIR$/.idea/modules/262707967/usbCameraTest.iml" group="UVCCamera/usbCameraTest" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/-445987567/usbCameraTest0.iml" filepath="$PROJECT_DIR$/.idea/modules/-445987567/usbCameraTest0.iml" group="UVCCamera/usbCameraTest0" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/-445987565/usbCameraTest2.iml" filepath="$PROJECT_DIR$/.idea/modules/-445987565/usbCameraTest2.iml" group="UVCCamera/usbCameraTest2" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/-445987564/usbCameraTest3.iml" filepath="$PROJECT_DIR$/.idea/modules/-445987564/usbCameraTest3.iml" group="UVCCamera/usbCameraTest3" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/-445987563/usbCameraTest4.iml" filepath="$PROJECT_DIR$/.idea/modules/-445987563/usbCameraTest4.iml" group="UVCCamera/usbCameraTest4" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/-445987562/usbCameraTest5.iml" filepath="$PROJECT_DIR$/.idea/modules/-445987562/usbCameraTest5.iml" group="UVCCamera/usbCameraTest5" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/-445987561/usbCameraTest6.iml" filepath="$PROJECT_DIR$/.idea/modules/-445987561/usbCameraTest6.iml" group="UVCCamera/usbCameraTest6" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/-445987560/usbCameraTest7.iml" filepath="$PROJECT_DIR$/.idea/modules/-445987560/usbCameraTest7.iml" group="UVCCamera/usbCameraTest7" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/-445987559/usbCameraTest8.iml" filepath="$PROJECT_DIR$/.idea/modules/-445987559/usbCameraTest8.iml" group="UVCCamera/usbCameraTest8" />
+    </modules>
+  </component>
+</project>

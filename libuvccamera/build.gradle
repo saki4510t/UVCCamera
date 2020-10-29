@@ -34,8 +34,8 @@ android {
 	}
 
     defaultConfig {
-        minSdkVersion 14
-		targetSdkVersion versionTarget
+        minSdkVersion 21 
+	targetSdkVersion versionTarget
     }
 
     buildTypes {
@@ -72,6 +72,7 @@ String getNdkBuildPath() {
 task ndkBuild(type: Exec, description: 'Compile JNI source via NDK') {
 	println('executing ndkBuild')
 	def ndkBuildPath = getNdkBuildPath();
+	println(ndkBuildPath)
 	commandLine ndkBuildPath, '-j8', '-C', file('src/main').absolutePath
 }
 
