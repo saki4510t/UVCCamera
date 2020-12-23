@@ -2932,7 +2932,7 @@ static int reap_for_handle(struct libusb_device_handle *handle) {
 	
 	//if not check status, will crash when target > 27
 	//current error status is -108
-	if(urb->status < 0){
+	if(urb->status == -108){
 	    return LIBUSB_ERROR_OTHER;
 	}
 	
