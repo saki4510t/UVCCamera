@@ -358,8 +358,8 @@ int UVCPreview::stopPreview() {
 		mIsRunning = false;
 		pthread_cond_signal(&preview_sync);
 		pthread_cond_signal(&capture_sync);
-		if (pthread_join(capture_thread, NULL) != EXIT_SUCCESS) {
-			LOGW("UVCPreview::terminate capture thread: pthread_join failed");
+        if (pthread_join(capture_thread, NULL) != EXIT_SUCCESS) {
+            LOGW("UVCPreview::terminate capture thread: pthread_join failed");
 		}
 		if (pthread_join(preview_thread, NULL) != EXIT_SUCCESS) {
 			LOGW("UVCPreview::terminate preview thread: pthread_join failed");
@@ -845,7 +845,7 @@ void UVCPreview::do_capture_surface(JNIEnv *env) {
  */
 void UVCPreview::do_capture_callback(JNIEnv *env, uvc_frame_t *frame) {
 	ENTER();
-
+	pthread_mutex_lock(&capture_mutex);
 	if (LIKELY(frame)) {
 		uvc_frame_t *callback_frame = frame;
 		if (mFrameCallbackObj) {
@@ -872,5 +872,6 @@ void UVCPreview::do_capture_callback(JNIEnv *env, uvc_frame_t *frame) {
  SKIP:
 		recycle_frame(callback_frame);
 	}
+	pthread_mutex_unlock(&capture_mutex);
 	EXIT();
 }
