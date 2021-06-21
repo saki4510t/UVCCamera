@@ -302,35 +302,35 @@ void UVCPreview::callbackPixelFormatChanged() {
 	// 帧回调像素格式
 	switch (mPixelFormat) {
 	  case PIXEL_FORMAT_RAW:
-		LOGI("PIXEL_FORMAT_RAW:");
+		// LOGI("PIXEL_FORMAT_RAW:");
 		// callbackPixelBytes = sz * 2;
 		callbackPixelBytes = sz << 1;
 		break;
 	  case PIXEL_FORMAT_YUV:
-		LOGI("PIXEL_FORMAT_YUV:");
+		// LOGI("PIXEL_FORMAT_YUV:");
 		// callbackPixelBytes = sz * 2;
 		callbackPixelBytes = sz << 1;
 		break;
 	  case PIXEL_FORMAT_RGB565:
-		LOGI("PIXEL_FORMAT_RGB565:");
+		// LOGI("PIXEL_FORMAT_RGB565:");
 		mFrameCallbackFunc = uvc_any2rgb565;
 		// callbackPixelBytes = sz * 2;
 		callbackPixelBytes = sz << 1;
 		break;
 	  case PIXEL_FORMAT_RGBX:
-		LOGI("PIXEL_FORMAT_RGBX:");
+		// LOGI("PIXEL_FORMAT_RGBX:");
 		mFrameCallbackFunc = uvc_any2rgbx;
 		// callbackPixelBytes = sz * 4;
 		callbackPixelBytes = sz << 2;
 		break;
 	  case PIXEL_FORMAT_YUV20SP:
-		LOGI("PIXEL_FORMAT_YUV20SP:");
+		// LOGI("PIXEL_FORMAT_YUV20SP:");
 		// NV12: YYYYYYYY UVUV   => YUV420SP
 		mFrameCallbackFunc = uvc_yuyv2yuv420SP;
 		callbackPixelBytes = (sz * 3) / 2;
 		break;
 	  case PIXEL_FORMAT_NV21:
-		LOGI("PIXEL_FORMAT_NV21:");
+		// LOGI("PIXEL_FORMAT_NV21:");
 	    // NV21: YYYYYYYY VUVU   => YUV420SP
 		mFrameCallbackFunc = uvc_yuyv2iyuv420SP;
 		callbackPixelBytes = (sz * 3) / 2;
