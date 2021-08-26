@@ -335,6 +335,10 @@ void UVCPreview::callbackPixelFormatChanged() {
 		mFrameCallbackFunc = uvc_yuyv2iyuv420SP;
 		callbackPixelBytes = (sz * 3) / 2;
 		break;
+	  case PIXEL_FORMAT_BGR:
+	    mFrameCallbackFunc = uvc_any2bgr;
+      	callbackPixelBytes = sz * 3;
+      	break;
 	}
 }
 
