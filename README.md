@@ -173,3 +173,8 @@ This shows the way to pass video images from UVC into `cv::Mat` (after optional 
 * 添加是否丢弃不完整帧
 * 添加可设置帧缓存大小
 * 修复颜色转换出错问题
+
+### 2021/08/26
+* 添加回调帧支持BGR24
+* gitee地址  https://gitee.com/dengly/UVCCamera
+* github地址 https://github.com/dengly/UVCCamera
