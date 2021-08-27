@@ -115,7 +115,7 @@ class UVCCamera {
 	uvc_device_handle_t *mDeviceHandle;
 	UVCStatusCallback *mStatusCallback;
 	UVCButtonCallback *mButtonCallback;
-	// プレビュー用
+	// プレビュー用  预览
 	UVCPreview *mPreview;
 	uint64_t mCtrlSupports;
 	uint64_t mPUSupports;
@@ -188,7 +188,7 @@ public:
 	int setButtonCallback(JNIEnv *env, jobject button_callback_obj);
 
 	char *getSupportedSize();
-	int setPreviewSize(int width, int height, int min_fps, int max_fps, int mode, float bandwidth = DEFAULT_BANDWIDTH);
+	int setPreviewSize(int width, int height, int cameraAngle, int min_fps, int max_fps, int mode, float bandwidth = DEFAULT_BANDWIDTH);
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
 	int startPreview();
@@ -353,6 +353,10 @@ public:
 	int updateAnalogVideoLockStateLimit(int &min, int &max, int &def);
 	int setAnalogVideoLockState(int status);
 	int getAnalogVideoLockState();
+
+	void setHorizontalMirror(int horizontalMirror);
+	void setVerticalMirror(int verticalMirror);
+	void setCameraAngle(int cameraAngle);
 };
 
 #endif /* UVCCAMERA_H_ */

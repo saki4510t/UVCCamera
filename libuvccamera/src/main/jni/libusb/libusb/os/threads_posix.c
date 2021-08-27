@@ -45,7 +45,9 @@ int usbi_mutex_init_recursive(pthread_mutex_t *mutex, pthread_mutexattr_t *attr)
 			return err;
 	}
 
-	/* mutexattr_settype requires _GNU_SOURCE or _XOPEN_SOURCE >= 500 on Linux */
+	/* mutexattr_settype requires _GNU_SOURCE or _XOPEN_SOURCE >= 500 on Linux
+	 * mutexattr_settype 在Linux上需要 _GNU_SOURCE 或 _XOPEN_SOURCE >= 500
+	 */
 	err = pthread_mutexattr_settype(attr, PTHREAD_MUTEX_RECURSIVE);
 	if (err != 0)
 		goto finish;
@@ -66,8 +68,9 @@ int usbi_get_tid(void) {
 #elif defined(__linux__)
 	ret = syscall(SYS_gettid);
 #elif defined(__OpenBSD__)
-	/* The following only works with OpenBSD > 5.1 as it requires
-	 real thread support. For 5.1 and earlier, -1 is returned. */
+	/* The following only works with OpenBSD > 5.1 as it requires real thread support. For 5.1 and earlier, -1 is returned.
+	 * 以下内容仅适用于OpenBSD > 5.1，因为它需要真正的线程支持。 对于5.1及更早版本，返回-1。
+	 */
 	ret = syscall(SYS_getthrid);
 #elif defined(__APPLE__)
 	ret = mach_thread_self();
@@ -75,6 +78,6 @@ int usbi_get_tid(void) {
 #elif defined(__CYGWIN__)
 	ret = GetCurrentThreadId();
 #endif
-	/* TODO: NetBSD thread ID support */
+	/* TODO: NetBSD thread ID support  NetBSD线程ID支持 */
 	return ret;
 }

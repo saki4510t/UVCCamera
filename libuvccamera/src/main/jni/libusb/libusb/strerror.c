@@ -150,6 +150,14 @@ static const char* usbi_localized_errors[ARRAYSIZE(usbi_locale_supported)][LIBUS
  * \returns LIBUSB_ERROR_INVALID_PARAM if the locale doesn't meet the requirements
  * \returns LIBUSB_ERROR_NOT_FOUND if the requested language is not supported
  * \returns a LIBUSB_ERROR code on other errors
+ *
+ * 设置语言，仅设置语言，而不设置编码！ 用于可翻译的libusb消息。
+ * 这采用默认setlocale格式的语言环境字符串：lang [-region]或lang [_country_region] [。codeset]。
+ * 仅使用字符串的lang部分，并且仅接受2个字母的ISO 639-1代码，例如“ de”。 可选的region，country_region或代码集部分将被忽略。
+ * 这意味着返回可翻译字符串的函数将不支持指定的编码。 返回的所有字符串均编码为UTF-8字符串。
+ * 如果未调用libusb_setlocale()，则所有消息均为英文。
+ * 以下函数返回可翻译的字符串：libusb_strerror()。 请注意，通过libusb_set_debug()控制的libusb日志消息未翻译，它们始终为英文。
+ * 对于POSIX UTF-8环境，如果您希望libusb遵循标准的语言环境设置，请在应用程序完成其语言环境设置之后，调用libusb_setlocale（setlocale（LC_MESSAGES，NULL））。
  */
 
 int API_EXPORTED libusb_setlocale(const char *locale)
@@ -185,13 +193,19 @@ int API_EXPORTED libusb_setlocale(const char *locale)
  *
  * \param errcode the error code whose description is desired
  * \returns a short description of the error code in UTF-8 encoding
+ *
+ * 返回带有给定错误代码的简短描述的常量字符串，该描述旨在显示给最终用户，并且使用libusb_setlocale()设置的语言。
+ * 返回的字符串以UTF-8编码。
+ * 消息始终以大写字母开头，结尾不带任何点。 调用者不得free()返回的字符串。
  */
 DEFAULT_VISIBILITY const char* LIBUSB_CALL libusb_strerror(enum libusb_error errcode)
 {
 	int errcode_index = -errcode;
 
 	if ((errcode_index < 0) || (errcode_index >= LIBUSB_ERROR_COUNT)) {
-		/* "Other Error", which should always be our last message, is returned */
+		/* "Other Error", which should always be our last message, is returned
+		 * 返回"Other Error"，该错误应始终是我们的最后一条消息
+		 */
 		errcode_index = LIBUSB_ERROR_COUNT - 1;
 	}
 

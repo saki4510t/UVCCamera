@@ -31,6 +31,10 @@
  * This page documents libusb's synchronous (blocking) API for USB device I/O.
  * This interface is easy to use but has some limitations. More advanced users
  * may wish to consider using the \ref asyncio "asynchronous I/O API" instead.
+ *
+ * 同步设备I/O
+ * 本页记录了libusb的USB设备I/O同步（阻塞）API。
+ * 该界面易于使用，但有一些限制。更高级的用户可能希望考虑使用异步“异步I/O API”。
  */
 
 static void LIBUSB_CALL sync_transfer_cb(struct libusb_transfer *transfer)
@@ -38,7 +42,9 @@ static void LIBUSB_CALL sync_transfer_cb(struct libusb_transfer *transfer)
 	int *completed = transfer->user_data;
 	*completed = 1;
 	usbi_dbg("actual_length=%d", transfer->actual_length);
-	/* caller interprets result and frees transfer */
+	/* caller interprets result and frees transfer
+	 * 呼叫者解释结果并释放传输
+	 */
 }
 
 static void sync_transfer_wait_for_completion(struct libusb_transfer *transfer)
@@ -86,11 +92,16 @@ static void sync_transfer_wait_for_completion(struct libusb_transfer *transfer)
  * device
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns another LIBUSB_ERROR code on other failures
+ *
+ * 执行USB控制传输。
+ * 从建立数据包的bmRequestType字段可以推断出传输方向。
+ * wValue，wIndex和wLength字段值应以主机字节序排列。
  */
 int API_EXPORTED libusb_control_transfer(libusb_device_handle *dev_handle,
 	uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue, uint16_t wIndex,
 	unsigned char *data, uint16_t wLength, unsigned int timeout)
 {
+    // 为libusb传输分配指定数量的同步数据包描述符
 	struct libusb_transfer *transfer = libusb_alloc_transfer(0);
 	unsigned char *buffer;
 	int completed = 0;
@@ -109,9 +120,9 @@ int API_EXPORTED libusb_control_transfer(libusb_device_handle *dev_handle,
 	if ((bmRequestType & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT)
 		memcpy(buffer + LIBUSB_CONTROL_SETUP_SIZE, data, wLength);
 
-	libusb_fill_control_transfer(transfer, dev_handle, buffer,
-		sync_transfer_cb, &completed, timeout);
+	libusb_fill_control_transfer(transfer, dev_handle, buffer, sync_transfer_cb, &completed, timeout);
 	transfer->flags = LIBUSB_TRANSFER_FREE_BUFFER;
+	// 提交传输。 此功能将触发USB传输，然后立即返回。
 	r = libusb_submit_transfer(transfer);
 	if (UNLIKELY(r < 0)) {
 		libusb_free_transfer(transfer);
@@ -158,6 +169,7 @@ static int do_sync_bulk_transfer(struct libusb_device_handle *dev_handle,
 	unsigned char endpoint, unsigned char *buffer, int length,
 	int *transferred, unsigned int timeout, unsigned char type)
 {
+    // 为libusb传输分配指定数量的同步数据包描述符
 	struct libusb_transfer *transfer = libusb_alloc_transfer(0);
 	int completed = 0;
 	int r;
@@ -165,10 +177,10 @@ static int do_sync_bulk_transfer(struct libusb_device_handle *dev_handle,
 	if (UNLIKELY(!transfer))
 		return LIBUSB_ERROR_NO_MEM;
 
-	libusb_fill_bulk_transfer(transfer, dev_handle, endpoint, buffer, length,
-		sync_transfer_cb, &completed, timeout);
+    // Helper函数可填充批量传输所需的libusb_transfer字段。
+	libusb_fill_bulk_transfer(transfer, dev_handle, endpoint, buffer, length, sync_transfer_cb, &completed, timeout);
 	transfer->type = type;
-
+    // 提交传输。 此功能将触发USB传输，然后立即返回。
 	r = libusb_submit_transfer(transfer);
 	if (UNLIKELY(r < 0)) {
 		libusb_free_transfer(transfer);
@@ -247,6 +259,12 @@ static int do_sync_bulk_transfer(struct libusb_device_handle *dev_handle,
  * \ref packetoverflow
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns another LIBUSB_ERROR code on other failures
+ *
+ * 执行USB批量传输。从端点地址的方向位推断出传输方向。
+ * 对于块读取，长度字段指示您希望接收的最大数据长度。如果到达的数据少于预期，则此函数将返回该数据，因此请确保检查传输的输出参数。
+ * 您还应该检查传输的参数以进行块写入。 并非所有数据都已被写入。
+ * 处理超时错误代码时也请检查已传输。 libusb可能必须将您的传输分成多个块，以满足潜在的O/S要求，这意味着超时可能在前几个块完成后终止。
+ * libusb小心不要丢失任何可能已经传输的数据； 不要假设超时条件表明完全没有I/O。
  */
 int API_EXPORTED libusb_bulk_transfer(struct libusb_device_handle *dev_handle,
 	unsigned char endpoint, unsigned char *data, int length, int *transferred,
@@ -296,6 +314,13 @@ int API_EXPORTED libusb_bulk_transfer(struct libusb_device_handle *dev_handle,
  * \ref packetoverflow
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns another LIBUSB_ERROR code on other error
+ *
+ * 执行USB中断传输。 从端点地址的方向位推断出传输方向。
+ * 对于中断读取，长度字段指示您希望接收的最大数据长度。 如果到达的数据少于预期，则此函数将返回该数据，因此请确保检查传输的输出参数。
+ * 您还应该检查传输的参数以进行中断写入。并非所有数据都已被写入。
+ * 处理超时错误代码时也请检查已传输。 libusb可能必须将您的传输分成多个块，以满足潜在的O/S要求，这意味着超时可能在前几个块完成后终止。
+ * libusb小心不要丢失任何可能已经传输的数据； 不要假设超时条件表明完全没有I/O。
+ * 默认端点bInterval值用作轮询间隔。
  */
 int API_EXPORTED libusb_interrupt_transfer(
 	struct libusb_device_handle *dev_handle, unsigned char endpoint,

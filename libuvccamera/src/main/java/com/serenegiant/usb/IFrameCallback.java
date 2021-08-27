@@ -40,6 +40,7 @@ public interface IFrameCallback {
 	 * consider to get images via texture(SurfaceTexture) and read pixel buffer from it using OpenGL|ES2/3
 	 * instead of using IFrameCallback(this way is much efficient in most case than using IFrameCallback).
 	 * @param frame this is direct ByteBuffer from JNI layer and you should handle it's byte order and limitation.
+	 *              如果需要加工该帧数据，建议复制一份出来加工处理，推荐使用线程异步处理，否则会阻塞uvc
 	 */
 	public void onFrame(ByteBuffer frame);
 }

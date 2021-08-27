@@ -62,7 +62,7 @@ public final class USBMonitor {
 	public static final String ACTION_USB_DEVICE_ATTACHED = "android.hardware.usb.action.USB_DEVICE_ATTACHED";
 
 	/**
-	 * openしているUsbControlBlock
+	 * UsbControlBlock打开
 	 */
 	private final ConcurrentHashMap<UsbDevice, UsbControlBlock> mCtrlBlocks = new ConcurrentHashMap<UsbDevice, UsbControlBlock>();
 	private final SparseArray<WeakReference<UsbDevice>> mHasPermissions = new SparseArray<WeakReference<UsbDevice>>();
@@ -74,12 +74,12 @@ public final class USBMonitor {
 	private List<DeviceFilter> mDeviceFilters = new ArrayList<DeviceFilter>();
 
 	/**
-	 * コールバックをワーカースレッドで呼び出すためのハンドラー
+	 * 在工作线程上调用回调的处理程序
 	 */
 	private final Handler mAsyncHandler;
 	private volatile boolean destroyed;
 	/**
-	 * USB機器の状態変更時のコールバックリスナー
+	 * USB设备状态更改时的回调侦听器
 	 */
 	public interface OnDeviceConnectListener {
 		/**
@@ -133,7 +133,7 @@ public final class USBMonitor {
 		unregister();
 		if (!destroyed) {
 			destroyed = true;
-			// モニターしているUSB機器を全てcloseする
+			// 关闭所有受监控的USB设备
 			final Set<UsbDevice> keys = mCtrlBlocks.keySet();
 			if (keys != null) {
 				UsbControlBlock ctrlBlock;
@@ -184,7 +184,7 @@ public final class USBMonitor {
 	 * @throws IllegalStateException
 	 */
 	public synchronized void unregister() throws IllegalStateException {
-		// 接続チェック用Runnableを削除
+		// 删除可运行以进行连接检查
 		mDeviceCounts = 0;
 		if (!destroyed) {
 			mAsyncHandler.removeCallbacks(mDeviceCheckRunnable);
@@ -219,7 +219,7 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * デバイスフィルターを追加
+	 * 添加设备过滤器
 	 * @param filter
 	 * @throws IllegalStateException
 	 */
@@ -229,7 +229,7 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * デバイスフィルターを削除
+	 * 删除设备过滤器
 	 * @param filter
 	 * @throws IllegalStateException
 	 */
@@ -381,7 +381,7 @@ public final class USBMonitor {
 	/**
 	 * return whether the specific Usb device has permission
 	 * @param device
-	 * @return true: 指定したUsbDeviceにパーミッションがある
+	 * @return true: 指定的UsbDevice拥有权限
 	 * @throws IllegalStateException
 	 */
 	public final boolean hasPermission(final UsbDevice device) throws IllegalStateException {
@@ -390,7 +390,7 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * 内部で保持しているパーミッション状態を更新
+	 * 更新内部权限状态
 	 * @param device
 	 * @param hasPermission
 	 * @return hasPermission
@@ -445,10 +445,10 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * 指定したUsbDeviceをopenする
+	 * 打开指定的UsbDevice
 	 * @param device
 	 * @return
-	 * @throws SecurityException パーミッションがなければSecurityExceptionを投げる
+	 * @throws SecurityException 如果权限丢失，则抛出SecurityException
 	 */
 	public UsbControlBlock openDevice(final UsbDevice device) throws SecurityException {
 		if (hasPermission(device)) {
@@ -614,10 +614,9 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * USB機器毎の設定保存用にデバイスキー名を生成する。
-	 * ベンダーID, プロダクトID, デバイスクラス, デバイスサブクラス, デバイスプロトコルから生成
-	 * 同種の製品だと同じキー名になるので注意
-	 * @param device nullなら空文字列を返す
+	 * 生成设备密钥名称以保存每个USB设备的设置。
+	 * 请注意，相同的键名称将用于由供应商ID，产品ID，设备类，设备子类和设备协议生成的相同类型的产品。
+	 * @param device 如果为null，则返回一个空字符串
 	 * @return
 	 */
 	public static final String getDeviceKeyName(final UsbDevice device) {
@@ -625,8 +624,8 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * USB機器毎の設定保存用にデバイスキー名を生成する。
-	 * useNewAPI=falseで同種の製品だと同じデバイスキーになるので注意
+	 * 生成设备密钥名称以保存每个USB设备的设置。
+	 * 请注意，useNewAPI = false将导致相似产品使用相同的设备密钥
 	 * @param device
 	 * @param useNewAPI
 	 * @return
@@ -635,14 +634,14 @@ public final class USBMonitor {
 		return getDeviceKeyName(device, null, useNewAPI);
 	}
 	/**
-	 * USB機器毎の設定保存用にデバイスキー名を生成する。この機器名をHashMapのキーにする
-	 * UsbDeviceがopenしている時のみ有効
-	 * ベンダーID, プロダクトID, デバイスクラス, デバイスサブクラス, デバイスプロトコルから生成
-	 * serialがnullや空文字でなければserialを含めたデバイスキー名を生成する
-	 * useNewAPI=trueでAPIレベルを満たしていればマニュファクチャ名, バージョン, コンフィギュレーションカウントも使う
-	 * @param device nullなら空文字列を返す
-	 * @param serial	UsbDeviceConnection#getSerialで取得したシリアル番号を渡す, nullでuseNewAPI=trueでAPI>=21なら内部で取得
-	 * @param useNewAPI API>=21またはAPI>=23のみで使用可能なメソッドも使用する(ただし機器によってはnullが返ってくるので有効かどうかは機器による)
+	 * 生成设备密钥名称以保存每个USB设备的设置。 使用此设备名称作为HashMap的密钥
+	 * 仅在打开UsbDevice时有效
+	 * 由供应商ID，产品ID，设备类别，设备子类别，设备协议生成
+	 * 如果serial不为null或为空，则生成包括序列号在内的设备密钥名称
+	 * 如果useNewAPI = true满足API级别，则还将使用制造商名称，版本和配置计数
+	 * @param device 如果为null，则返回一个空字符串
+	 * @param serial	传递由UsbDeviceConnection＃getSerial获得的序列号，如果为null，则useNewAPI = true，API> = 21，在内部获取
+	 * @param useNewAPI 还要使用仅适用于API> = 21或API> = 23的方法（但是，返回的值取决于设备，因此有效性取决于设备）
 	 * @return
 	 */
 	@SuppressLint("NewApi")
@@ -673,11 +672,10 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * デバイスキーを整数として取得
-	 * getDeviceKeyNameで得られる文字列のhasCodeを取得
-	 * ベンダーID, プロダクトID, デバイスクラス, デバイスサブクラス, デバイスプロトコルから生成
-	 * 同種の製品だと同じデバイスキーになるので注意
-	 * @param device nullなら0を返す
+	 * 获取设备密钥为整数
+	 * 获取由getDeviceKeyName获得的字符串的hasCode
+	 * 请注意，相同的设备密钥是根据由供应商ID，产品ID，设备类，设备子类和设备协议生成的相同类型的产品生成的。
+	 * @param device 如果为null，则返回0
 	 * @return
 	 */
 	public static final int getDeviceKey(final UsbDevice device) {
@@ -685,9 +683,9 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * デバイスキーを整数として取得
-	 * getDeviceKeyNameで得られる文字列のhasCodeを取得
-	 * useNewAPI=falseで同種の製品だと同じデバイスキーになるので注意
+	 * 获取设备密钥为整数
+	 * 获取由getDeviceKeyName获得的字符串的hasCode
+	 * 请注意，useNewAPI = false将导致相似产品使用相同的设备密钥
 	 * @param device
 	 * @param useNewAPI
 	 * @return
@@ -697,12 +695,12 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * デバイスキーを整数として取得
-	 * getDeviceKeyNameで得られる文字列のhasCodeを取得
-	 * serialがnullでuseNewAPI=falseで同種の製品だと同じデバイスキーになるので注意
-	 * @param device nullなら0を返す
-	 * @param serial UsbDeviceConnection#getSerialで取得したシリアル番号を渡す, nullでuseNewAPI=trueでAPI>=21なら内部で取得
-	 * @param useNewAPI API>=21またはAPI>=23のみで使用可能なメソッドも使用する(ただし機器によってはnullが返ってくるので有効かどうかは機器による)
+	 * 获取设备密钥为整数
+	 * 获取由getDeviceKeyName获得的字符串的hasCode
+	 * 请注意，如果serial为null且useNewAPI = false，则如果是类似产品，它将是相同的设备密钥。
+	 * @param device 如果为null，则返回0
+	 * @param serial 传递由UsbDeviceConnection＃getSerial获得的序列号，如果为null，则useNewAPI = true，API> = 21，在内部获取
+	 * @param useNewAPI 还要使用仅适用于API> = 21或API> = 23的方法（但是，返回的值取决于设备，因此有效性取决于设备）
 	 * @return
 	 */
 	public static final int getDeviceKey(final UsbDevice device, final String serial, final boolean useNewAPI) {
@@ -823,7 +821,7 @@ public final class USBMonitor {
 	private static final int USB_DT_DEVICE_SIZE = 18;
 
 	/**
-	 * 指定したIDのStringディスクリプタから文字列を取得する。取得できなければnull
+	 * 从具有指定ID的字符串描述符中提取一个字符串。 如果未获得，则为null
 	 * @param connection
 	 * @param id
 	 * @param languageCount
@@ -856,7 +854,7 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * ベンダー名・製品名・バージョン・シリアルを取得する
+	 * 获取供应商名称/产品名称/版本/序列号
 	 * @param device
 	 * @return
 	 */
@@ -865,7 +863,7 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * ベンダー名・製品名・バージョン・シリアルを取得する
+	 * 获取供应商名称/产品名称/版本/序列号
 	 * #updateDeviceInfo(final UsbManager, final UsbDevice, final UsbDeviceInfo)のヘルパーメソッド
 	 * @param context
 	 * @param device
@@ -876,7 +874,7 @@ public final class USBMonitor {
 	}
 
 	/**
-	 * ベンダー名・製品名・バージョン・シリアルを取得する
+	 * 获取供应商名称/产品名称/版本/序列号
 	 * @param manager
 	 * @param device
 	 * @param _info
@@ -1013,7 +1011,7 @@ public final class USBMonitor {
 			mWeakDevice = new WeakReference<UsbDevice>(device);
 			mBusNum = src.mBusNum;
 			mDevNum = src.mDevNum;
-			// FIXME USBMonitor.mCtrlBlocksに追加する(今はHashMapなので追加すると置き換わってしまうのでだめ, ListかHashMapにListをぶら下げる?)
+			// FIXME 将其添加到USBMonitor.mCtrlBlocks（现在它是一个HashMap，因此如果添加它，它将被替换，因此将List挂在List或HashMap上？）
 		}
 
 		/**

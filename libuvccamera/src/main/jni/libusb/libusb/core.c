@@ -64,7 +64,7 @@
 #include "libusbi.h"
 #include "hotplug.h"
 
-#if defined(OS_ANDROID)	// XXX for non rooted android device
+#if defined(OS_ANDROID)	// XXX for non rooted android device  对于无根的android设备
 const struct usbi_os_backend * const usbi_backend = &android_usbfs_backend;
 #elif defined(OS_LINUX)
 const struct usbi_os_backend * const usbi_backend = &linux_usbfs_backend;
@@ -474,7 +474,12 @@ int android_generate_device(struct libusb_context *ctx, struct libusb_device **d
  * so we create this discovered_devs model which is similar to a linked-list
  * which grows when required. it can be freed once discovery has completed,
  * eliminating the need for a list node in the libusb_device structure
- * itself. */
+ * itself.
+ *
+ * 我们遍历usbfs却不知道要找到多少个设备。
+ * 因此，我们创建了一个Discovered_devs模型，该模型类似于一个链表，该链表在需要时会增长。
+ * 发现完成后可以将其释放，从而无需在libusb_device结构本身中使用列表节点。
+ */
 #define DISCOVERED_DEVICES_SIZE_STEP 8
 
 static struct discovered_devs *discovered_devs_alloc(void) {
@@ -490,25 +495,30 @@ static struct discovered_devs *discovered_devs_alloc(void) {
 }
 
 /* append a device to the discovered devices collection. may realloc itself,
- * returning new discdevs. returns NULL on realloc failure. */
+ * returning new discdevs. returns NULL on realloc failure.
+ * 将设备追加到发现的设备集合中。可能会重新分配自身，返回新的discdev。重新分配失败时返回NULL。
+ */
 struct discovered_devs *discovered_devs_append(
 	struct discovered_devs *discdevs, struct libusb_device *dev) {
 	
 	size_t len = discdevs->len;
 	size_t capacity;
 
-	/* if there is space, just append the device */
+	/* if there is space, just append the device
+	 * 如果有空间，只需附加设备
+	 */
 	if (LIKELY(len < discdevs->capacity)) {
 		discdevs->devices[len] = libusb_ref_device(dev);
 		discdevs->len++;
 		return discdevs;
 	}
 
-	/* exceeded capacity, need to grow */
+	/* exceeded capacity, need to grow
+	 * 超出容量，需要增长
+	 */
 	usbi_dbg("need to increase capacity");
 	capacity = discdevs->capacity + DISCOVERED_DEVICES_SIZE_STEP;
-	discdevs = usbi_reallocf(discdevs,
-			sizeof(*discdevs) + (sizeof(void *) * capacity));
+	discdevs = usbi_reallocf(discdevs, sizeof(*discdevs) + (sizeof(void *) * capacity));
 	if (LIKELY(discdevs)) {
 		discdevs->capacity = capacity;
 		discdevs->devices[len] = libusb_ref_device(dev);
@@ -528,8 +538,9 @@ static void discovered_devs_free(struct discovered_devs *discdevs) {
 	free(discdevs);
 }
 
-/* Allocate a new device with a specific session ID. The returned device has
- * a reference count of 1. */
+/* Allocate a new device with a specific session ID. The returned device has a reference count of 1.
+ * 使用特定的会话ID分配新设备。 返回的设备的参考计数为1。
+ */
 struct libusb_device *usbi_alloc_device(struct libusb_context *ctx,
 	unsigned long session_id) {
 	
@@ -576,9 +587,10 @@ void usbi_connect_device(struct libusb_device *dev) {
 
 	/* Signal that an event has occurred for this device if we support hotplug AND
 	 * the hotplug pipe is ready. This prevents an event from getting raised during
-	 * initial enumeration. */
-	if (libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG)
-			&& dev->ctx->hotplug_pipe[1] > 0) {
+	 * initial enumeration.
+	 * 如果我们支持热插拔并且热插拔管道已准备就绪，则表明此设备发生了事件。 这样可以防止在初始枚举期间引发事件。
+	 */
+	if (libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG) && dev->ctx->hotplug_pipe[1] > 0) {
 		ret = usbi_write(dev->ctx->hotplug_pipe[1], &message, sizeof(message));
 		if (UNLIKELY(sizeof(message) != ret)) {
 			usbi_err(DEVICE_CTX(dev), "error writing hotplug message");
@@ -610,9 +622,10 @@ void usbi_disconnect_device(struct libusb_device *dev) {
 	/* Signal that an event has occurred for this device if we support hotplug AND
 	 * the hotplug pipe is ready. This prevents an event from getting raised during
 	 * initial enumeration. libusb_handle_events will take care of dereferencing the
-	 * device. */
-	if (libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG)
-			&& dev->ctx->hotplug_pipe[1] > 0) {
+	 * device.
+	 * 如果我们支持热插拔并且热插拔管道已准备就绪，则表明此设备发生了事件。这样可以防止在初始枚举期间引发事件。libusb_handle_events将负责取消对设备的引用。
+	 */
+	if (libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG) && dev->ctx->hotplug_pipe[1] > 0) {
 		ret = usbi_write(dev->ctx->hotplug_pipe[1], &message, sizeof(message));
 		if (UNLIKELY(sizeof(message) != ret)) {
 			usbi_err(DEVICE_CTX(dev), "error writing hotplug message");
@@ -622,7 +635,9 @@ void usbi_disconnect_device(struct libusb_device *dev) {
 
 /* Perform some final sanity checks on a newly discovered device. If this
  * function fails (negative return code), the device should not be added
- * to the discovered device list. */
+ * to the discovered device list.
+ * 在新发现的设备上执行一些最终的健全性检查。如果此功能失败（返回码为负），则不应将设备添加到发现的设备列表中。
+ */
 int usbi_sanitize_device(struct libusb_device *dev) {
 
 	int r;
@@ -645,7 +660,9 @@ int usbi_sanitize_device(struct libusb_device *dev) {
 
 /* Examine libusb's internal list of known devices, looking for one with
  * a specific session ID. Returns the matching device if it was found, and
- * NULL otherwise. */
+ * NULL otherwise.
+ * 检查libusb的内部已知设备列表，以查找具有特定会话ID的设备。返回匹配的设备（如果找到），否则返回NULL。
+ */
 struct libusb_device *usbi_get_device_by_session_id(struct libusb_context *ctx,
 		unsigned long session_id) {
 		
@@ -684,6 +701,11 @@ struct libusb_device *usbi_get_device_by_session_id(struct libusb_context *ctx,
  * libusb_free_device_list().
  * \returns the number of devices in the outputted list, or any
  * \ref libusb_error according to errors encountered by the backend.
+ *
+ * 返回当前连接到系统的USB设备的列表。 这是寻找可操作的USB设备的切入点。
+ * 当您完成对所有设备的使用后，应先取消对它们的引用，然后使用libusb_free_device_list()释放列表。
+ * 请注意，libusb_free_device_list()可以为您取消引用所有设备。在打开设备之前，请小心不要取消引用即将打开的设备。
+ * 此函数的此返回值指示结果列表中的设备数。 该列表实际上是一个大元素，因为它以NULL终止。
  */
 ssize_t API_EXPORTED libusb_get_device_list(libusb_context *ctx,
 		libusb_device ***list) {
@@ -730,7 +752,9 @@ ssize_t API_EXPORTED libusb_get_device_list(libusb_context *ctx,
 		goto out;
 	}
 
-	/* convert discovered_devs into a list */
+	/* convert discovered_devs into a list
+	 * 将found_devs转换为列表
+	 */
 	len = discdevs->len;
 	ret = calloc(len + 1, sizeof(struct libusb_device *));
 	if (UNLIKELY(!ret)) {
@@ -760,6 +784,8 @@ out:
  * @param sn: serial number(currently not use)
  * @param fd: file descripter that need to access device on no-rooted Android
  * @return null if not found
+ * 具有特定供应商ID和产品ID的搜索设备
+ * TODO 最好检查具有相同供应商ID和产品ID的多个设备连接的序列号
  */
 libusb_device *libusb_find_device(libusb_context *ctx, const int vid,
 		const int pid, const char* sn, int fd) {
@@ -768,6 +794,7 @@ libusb_device *libusb_find_device(libusb_context *ctx, const int vid,
 
 	libusb_device **devs;
 	// get list of devices
+	// 获取设备列表
 	int cnt = libusb_get_device_list(ctx, &devs);
 	if (UNLIKELY(cnt < 0)) {
 		LOGI("failed to get device list");
@@ -805,6 +832,8 @@ libusb_device *libusb_find_device(libusb_context *ctx, const int vid,
  * reference count of each device in the list is decremented by 1.
  * \param list the list to free
  * \param unref_devices whether to unref the devices in the list
+ *
+ * 释放先前使用libusb_get_device_list()发现的设备列表。如果设置了unref_devices参数，则列表中每个设备的引用计数都会减少1。
  */
 void API_EXPORTED libusb_free_device_list(libusb_device **list,
 		int unref_devices) {
@@ -826,6 +855,7 @@ void API_EXPORTED libusb_free_device_list(libusb_device **list,
  * Get the number of the bus that a device is connected to.
  * \param dev a device
  * \returns the bus number
+ * 获取设备连接的总线号。
  */
 uint8_t API_EXPORTED libusb_get_bus_number(libusb_device *dev) {
 
@@ -845,6 +875,10 @@ uint8_t API_EXPORTED libusb_get_bus_number(libusb_device *dev) {
  *
  * \param dev a device
  * \returns the port number (0 if not available)
+ *
+ * 获取设备连接的端口号。
+ * 除非操作系统做一些时髦的事情，或者您正在热插拔USB扩展卡，否则通常会保证此调用返回的端口号唯一地绑定到物理端口，这意味着插入同一物理端口的不同设备应返回相同的端口号。
+ * 但是除此之外，不能保证此调用返回的端口号将保持不变，甚至与HUB/HCD制造商对端口编号的顺序匹配。
  */
 uint8_t API_EXPORTED libusb_get_port_number(libusb_device *dev) {
 
@@ -861,6 +895,9 @@ uint8_t API_EXPORTED libusb_get_port_number(libusb_device *dev) {
  * specs, the current maximum limit for the depth is 7.
  * \returns the number of elements filled
  * \returns LIBUSB_ERROR_OVERFLOW if the array is too small
+ *
+ * 从根获取指定设备的所有端口号的列表
+ * 从1.0.16版本开始，LIBUSB_API_VERSION >= 0x01000102
  */
 int API_EXPORTED libusb_get_port_numbers(libusb_device *dev,
 		uint8_t* port_numbers, int port_numbers_len) {
@@ -872,6 +909,7 @@ int API_EXPORTED libusb_get_port_numbers(libusb_device *dev,
 		return LIBUSB_ERROR_INVALID_PARAM;
 
 	// HCDs can be listed as devices with port #0
+	// HCD可以列为端口号为0的设备
 	while ((dev) && (dev->port_number != 0)) {
 		if (--i < 0) {
 			usbi_warn(ctx, "port numbers array is too small");
@@ -887,6 +925,7 @@ int API_EXPORTED libusb_get_port_numbers(libusb_device *dev,
 
 /** \ingroup dev
  * Deprecated please use libusb_get_port_numbers instead.
+ * 不推荐使用，请改用libusb_get_port_numbers。
  */
 int API_EXPORTED libusb_get_port_path(libusb_context *ctx, libusb_device *dev,
 		uint8_t* port_numbers, uint8_t port_numbers_len) {
@@ -906,6 +945,8 @@ int API_EXPORTED libusb_get_port_path(libusb_context *ctx, libusb_device *dev,
  * not maintain a permanent list of device instances, and therefore can
  * only guarantee that parents are fully instantiated within a 
  * libusb_get_device_list() - libusb_free_device_list() block.
+ *
+ * 从指定设备获取父级。
  */
 DEFAULT_VISIBILITY
 libusb_device * LIBUSB_CALL libusb_get_parent(libusb_device *dev) {
@@ -917,6 +958,8 @@ libusb_device * LIBUSB_CALL libusb_get_parent(libusb_device *dev) {
  * Get the address of the device on the bus it is connected to.
  * \param dev a device
  * \returns the device address
+ *
+ * 获取设备在其连接的总线上的地址。
  */
 uint8_t API_EXPORTED libusb_get_device_address(libusb_device *dev) {
 
@@ -928,6 +971,8 @@ uint8_t API_EXPORTED libusb_get_device_address(libusb_device *dev) {
  * \param dev a device
  * \returns a \ref libusb_speed code, where LIBUSB_SPEED_UNKNOWN means that
  * the OS doesn't know or doesn't support returning the negotiated speed.
+ *
+ * 获取设备的协商连接速度。
  */
 int API_EXPORTED libusb_get_device_speed(libusb_device *dev) {
 
@@ -974,6 +1019,10 @@ static const struct libusb_endpoint_descriptor *find_endpoint(
  * \returns the wMaxPacketSize value
  * \returns LIBUSB_ERROR_NOT_FOUND if the endpoint does not exist
  * \returns LIBUSB_ERROR_OTHER on other failure
+ *
+ * 便利功能，用于检索活动设备配置中特定端点的wMaxPacketSize值。
+ * 此功能最初是在设置同步传输时提供帮助的，但由于设计错误而导致使用此功能。
+ * 它仅返回wMaxPacketSize值，而不考虑其内容。如果要处理同步传输，则可能需要libusb_get_max_iso_packet_size()。
  */
 int API_EXPORTED libusb_get_max_packet_size(libusb_device *dev,
 		unsigned char endpoint) {
@@ -1027,6 +1076,11 @@ out:
  * \returns the maximum packet size which can be sent/received on this endpoint
  * \returns LIBUSB_ERROR_NOT_FOUND if the endpoint does not exist
  * \returns LIBUSB_ERROR_OTHER on other failure
+ *
+ * 计算特定端点能够在1个微帧的持续时间内发送或接收的最大数据包大小。仅检查活动配置。该计算基于端点描述符中的wMaxPacketSize字段，如USB 2.0规范中的9.6.6节所述。
+ * 如果作用于同步或中断端点，则此功能会将位0:10中的值乘以每个微帧的事务数（由位11:12确定）。 否则，此函数仅返回在位0:10中找到的数值。
+ * 此函数对于设置同步传输很有用，例如，您可以将此函数的返回值传递给libusb_set_iso_packet_lengths()，以设置传输中每个同步数据包的长度字段。
+ * 从v1.0.3开始
  */
 int API_EXPORTED libusb_get_max_iso_packet_size(libusb_device *dev,
 		unsigned char endpoint) {
@@ -1065,6 +1119,8 @@ out:
 
 /** \ingroup dev
  * Increment the reference count of a device.
+ * 增加设备的引用计数。
+ *
  * \param dev the device to reference
  * \returns the same device
  */
@@ -1085,6 +1141,8 @@ libusb_device * LIBUSB_CALL libusb_ref_device(libusb_device *dev) {
  * Decrement the reference count of a device. If the decrement operation
  * causes the reference count to reach zero, the device shall be destroyed.
  * \param dev the device to unreference
+ *
+ * 减少设备的引用计数。 如果递减操作导致参考计数达到零，则应销毁该设备。
  */
 void API_EXPORTED libusb_unref_device(libusb_device *dev) {
 
@@ -1109,7 +1167,9 @@ void API_EXPORTED libusb_unref_device(libusb_device *dev) {
 			usbi_backend->destroy_device(dev);
 
 		if (!libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG)) {
-			/* backend does not support hotplug */
+			/* backend does not support hotplug
+			 * 后端不支持热插拔
+			 */
 			usbi_disconnect_device(dev);
 		}
 
@@ -1121,6 +1181,8 @@ void API_EXPORTED libusb_unref_device(libusb_device *dev) {
 /*
  * Interrupt the iteration of the event handling thread, so that it picks
  * up the new fd.
+ *
+ * 中断事件处理线程的迭代，以便它获取新的fd。
  */
 void usbi_fd_notification(struct libusb_context *ctx) {
 
@@ -1130,14 +1192,18 @@ void usbi_fd_notification(struct libusb_context *ctx) {
 	if (UNLIKELY(ctx == NULL))
 		return;
 
-	/* record that we are messing with poll fds */
+	/* record that we are messing with poll fds
+	 * 记录我们丢失的poll fds
+	 */
 	usbi_mutex_lock(&ctx->pollfd_modify_lock);
 	{
 		ctx->pollfd_modify++;
 	}
 	usbi_mutex_unlock(&ctx->pollfd_modify_lock);
 
-	/* write some data on control pipe to interrupt event handlers */
+	/* write some data on control pipe to interrupt event handlers
+	 * 在控制管道上写入一些数据以中断事件处理程序
+	 */
 	r = usbi_write(ctx->ctrl_pipe[1], &dummy, sizeof(dummy));
 	if (UNLIKELY(r <= 0)) {
 		usbi_warn(ctx, "internal signalling write failed");
@@ -1149,22 +1215,30 @@ void usbi_fd_notification(struct libusb_context *ctx) {
 		return;
 	}
 
-	/* take event handling lock */
+	/* take event handling lock
+	 * 取得事件处理锁
+	 */
 	libusb_lock_events(ctx);
 	{
-		/* read the dummy data */
+		/* read the dummy data
+		 * 读取虚拟数据
+		 */
 		r = usbi_read(ctx->ctrl_pipe[0], &dummy, sizeof(dummy));
 		if (UNLIKELY(r <= 0))
 			usbi_warn(ctx, "internal signalling read failed");
 
-		/* we're done with modifying poll fds */
+		/* we're done with modifying poll fds
+		* 我们已经完成了对poll fds的修改
+		 */
 		usbi_mutex_lock(&ctx->pollfd_modify_lock);
 		{
 			ctx->pollfd_modify--;
 		}
 		usbi_mutex_unlock(&ctx->pollfd_modify_lock);
 	}
-	/* Release event handling lock and wake up event waiters */
+	/* Release event handling lock and wake up event waiters
+	 * 释放事件处理锁定并唤醒事件等待者
+	 */
 	libusb_unlock_events(ctx);
 }
 
@@ -1186,6 +1260,10 @@ void usbi_fd_notification(struct libusb_context *ctx) {
  * \returns LIBUSB_ERROR_ACCESS if the user has insufficient permissions
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns another LIBUSB_ERROR code on other failure
+ *
+ * 打开设备并获取设备句柄。 您可以使用句柄在设备上执行I/O请求。
+ * 在内部，此函数添加对设备的引用，并通过libusb_get_device()使您可以使用它。 在libusb_close()期间删除了此引用。
+ * 这是一个非阻塞功能； 没有请求通过总线发送。
  */
 int API_EXPORTED libusb_open(libusb_device *dev, libusb_device_handle **handle) {
 
@@ -1235,7 +1313,11 @@ int API_EXPORTED libusb_open(libusb_device *dev, libusb_device_handle **handle) 
 	 * example when this is desirable is if the user is running a separate
 	 * dedicated libusb events handling thread, which is running with a long
 	 * or infinite timeout. We want to interrupt that iteration of the loop,
-	 * so that it picks up the new fd, and then continues. */
+	 * so that it picks up the new fd, and then continues.
+	 * 在这一点上，我们想中断任何现有的事件处理程序，以便它们实现新设备的poll fd的添加。
+	 * 一个理想的例子是用户正在运行一个单独的专用libusb事件处理线程，该线程正在长时间或无限超时下运行。
+	 * 我们要中断循环的迭代，以便它拾取新的fd，然后继续。
+	 */
 	usbi_fd_notification(ctx);
 
 	return LIBUSB_SUCCESS;
@@ -1253,6 +1335,7 @@ libusb_device * LIBUSB_CALL libusb_get_device_with_fd(libusb_context *ctx,
 
 	struct libusb_device *device = NULL;
 	// android_generate_device内でusbi_alloc_deviceが呼ばれた時に参照カウンタは1
+	// 在android_generate_device中调用usbi_alloc_device时，参考计数器为1
 	int ret = android_generate_device(ctx, &device, vid, pid, serial, fd, busnum, devaddr);
 	if (ret) {
 		LOGD("android_generate_device failed:err=%d", ret);
@@ -1277,7 +1360,12 @@ libusb_device * LIBUSB_CALL libusb_get_device_with_fd(libusb_context *ctx,
  * \param vendor_id the idVendor value to search for
  * \param product_id the idProduct value to search for
  * \returns a handle for the first found device, or NULL on error or if the
- * device could not be found. */
+ * device could not be found.
+ *
+ * 便捷功能，用于查找具有特定 idVendor/idProduct 组合的设备。
+ * 此函数适用于使用libusb调用快速测试应用程序的情况-它使您避免调用libusb_get_device_list()并避免遍历/释放列表的麻烦。
+ * 此功能有局限性，因此不适合在实际应用中使用：如果多个设备具有相同的ID，则只会为您提供第一个，依此类推。
+ */
 DEFAULT_VISIBILITY
 libusb_device_handle * LIBUSB_CALL libusb_open_device_with_vid_pid(
 		libusb_context *ctx, uint16_t vendor_id, uint16_t product_id) {
@@ -1322,10 +1410,14 @@ static void do_close(struct libusb_context *ctx,
 
 	libusb_lock_events(ctx);
 	{
-		/* remove any transfers in flight that are for this device */
+		/* remove any transfers in flight that are for this device
+		 * 删除此设备正在传输中的所有传输
+		 */
 		usbi_mutex_lock(&ctx->flying_transfers_lock);
 		{
-			/* safe iteration because transfers may be being deleted */
+			/* safe iteration because transfers may be being deleted
+			 * 安全的迭代，因为传输可能会被删除
+			 */
 			list_for_each_entry_safe(itransfer, tmp, &ctx->flying_transfers, list, struct usbi_transfer)
 			{
 				struct libusb_transfer *transfer =
@@ -1349,6 +1441,7 @@ static void do_close(struct libusb_context *ctx,
 				/* remove from the list of in-flight transfers and make sure
 				 * we don't accidentally use the device handle in the future
 				 * (or that such accesses will be easily caught and identified as a crash)
+				 * 从机上传输列表中删除，并确保将来我们不会意外使用设备句柄（否则此类访问将很容易被捕获并识别为崩溃）
 				 */
 				usbi_mutex_lock(&itransfer->lock);
 				{
@@ -1360,6 +1453,7 @@ static void do_close(struct libusb_context *ctx,
 				/* it is up to the user to free up the actual transfer struct.  this is
 				 * just making sure that we don't attempt to process the transfer after
 				 * the device handle is invalid
+				 * 用户可以自行释放实际的传输结构。 这只是确保我们不会在设备句柄无效之后尝试处理传输
 				 */
 				usbi_dbg(
 						"Removed transfer %p from the in-flight list because device handle %p closed",
@@ -1392,6 +1486,10 @@ static void do_close(struct libusb_context *ctx,
  * This is a non-blocking function; no requests are sent over the bus.
  *
  * \param dev_handle the handle to close
+ *
+ * 关闭设备手柄。 在应用程序退出之前，应在所有打开的句柄上调用它。
+ * 在内部，此函数将破坏由libusb_open()在给定设备上添加的引用。
+ * 这是一个非阻塞功能； 没有请求通过总线发送。
  */
 void API_EXPORTED libusb_close(libusb_device_handle *dev_handle) {
 
@@ -1409,16 +1507,24 @@ void API_EXPORTED libusb_close(libusb_device_handle *dev_handle) {
 	 * at this point. More importantly, we want to perform the actual close of
 	 * the device while holding the event handling lock (preventing any other
 	 * thread from doing event handling) because we will be removing a file
-	 * descriptor from the polling loop. */
+	 * descriptor from the polling loop.
+	 *
+	 * 与libusb_open()类似，我们现在要中断所有事件处理程序。
+	 * 更重要的是，我们要在保持事件处理锁定的同时执行设备的实际关闭操作（防止任何其他线程进行事件处理），因为我们将从轮询循环中删除文件描述符。
+	 */
 
-	/* record that we are messing with poll fds */
+	/* record that we are messing with poll fds
+	 * 记录我们丢失的 poll fds
+	 */
 	usbi_mutex_lock(&ctx->pollfd_modify_lock);
 	{
 		ctx->pollfd_modify++;
 	}
 	usbi_mutex_unlock(&ctx->pollfd_modify_lock);
 
-	/* write some data on control pipe to interrupt event handlers */
+	/* write some data on control pipe to interrupt event handlers
+	 * 在控制管道上写入一些数据以中断事件处理程序
+	 */
 	r = usbi_write(ctx->ctrl_pipe[1], &dummy, sizeof(dummy));
 	if (UNLIKELY(r <= 0)) {
 		usbi_warn(ctx, "internal signalling write failed, closing anyway");
@@ -1431,27 +1537,37 @@ void API_EXPORTED libusb_close(libusb_device_handle *dev_handle) {
 		return;
 	}
 
-	/* take event handling lock */
+	/* take event handling lock
+	 * 取得事件处理锁
+	 */
 	libusb_lock_events(ctx);	// XXX crash
 	{
-		/* read the dummy data */
+		/* read the dummy data
+		 * 读取虚拟数据
+		 */
 		r = usbi_read(ctx->ctrl_pipe[0], &dummy, sizeof(dummy));	// XXX crash
 		if (UNLIKELY(r <= 0)) {
 			usbi_warn(ctx, "internal signalling read failed, closing anyway");
 		}
 
-		/* Close the device */
-		do_close(ctx, dev_handle);	// XXX this function internally call libusb_lock_events/libusb_unlock_events
-									// while libusb_lock_events is already called and will hang-up on some OS?
+		/* Close the device
+		 * 关闭设备
+		 */
+		do_close(ctx, dev_handle);	// XXX this function internally call libusb_lock_events/libusb_unlock_events while libusb_lock_events is already called and will hang-up on some OS?
+									// 这个函数在内部调用libusb_lock_events/libusb_unlock_events，而libusb_lock_events已经被调用并且会在某些OS上挂断？
 
-		/* we're done with modifying poll fds */
+		/* we're done with modifying poll fds
+		 * 我们已经完成了对poll fds的修改
+		 */
 		usbi_mutex_lock(&ctx->pollfd_modify_lock);
 		{
 			ctx->pollfd_modify--;
 		}
 		usbi_mutex_unlock(&ctx->pollfd_modify_lock);
 	}
-	/* Release event handling lock and wake up event waiters */
+	/* Release event handling lock and wake up event waiters
+	 * 释放事件处理锁定并唤醒事件等待者
+	 */
 	libusb_unlock_events(ctx);
 }
 
@@ -1461,6 +1577,8 @@ void API_EXPORTED libusb_close(libusb_device_handle *dev_handle) {
  * unreference it when you are done.
  * \param dev_handle a device handle
  * \returns the underlying device
+ *
+ * 获取句柄的基础设备。 此功能不会修改返回的设备的引用计数，因此在完成操​​作时不要感到被迫取消引用。
  */
 DEFAULT_VISIBILITY
 libusb_device * LIBUSB_CALL libusb_get_device(libusb_device_handle *dev_handle) {
@@ -1487,6 +1605,11 @@ libusb_device * LIBUSB_CALL libusb_get_device(libusb_device_handle *dev_handle) 
  * \returns 0 on success
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns another LIBUSB_ERROR code on other failure
+ *
+ * 确定当前活动配置的bConfigurationValue。
+ * 您可以制定自己的控制请求来获取此信息，但是此功能的优点是它可以从操作系统缓存中检索信息（不涉及I/O）。
+ * 如果操作系统没有缓存该信息，则在提交控制权以检索信息时该功能将阻塞。
+ * 如果设备处于未配置状态，此函数将在 config 输出参数中返回值0。
  */
 int API_EXPORTED libusb_get_configuration(libusb_device_handle *dev,
 		int *config) {
@@ -1563,6 +1686,17 @@ int API_EXPORTED libusb_get_configuration(libusb_device_handle *dev,
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns another LIBUSB_ERROR code on other failure
  * \see libusb_set_auto_detach_kernel_driver()
+ *
+ * 设置设备的活动配置。
+ * 操作系统可能已经或可能尚未在设备上设置活动配置。 在尝试声明接口并执行其他操作之前，由应用程序确定是否选择了正确的配置。
+ * 如果在已经配置了所选配置的设备上调用此功能，则此功能将充当轻型设备重置：它将使用当前配置发出SET_CONFIGURATION请求，
+ * 从而导致大多数与USB相关的设备状态被重置（设置为零，清除端点停止，切换复位）。
+ * 如果您的应用程序声明了接口，则无法更改/重置配置。 建议在声明接口之前设置所需的配置。
+ * 或者，您可以先调用libusb_release_interface()。 请注意，如果以这种方式进行操作，则必须确保 dev 的auto_detach_kernel_driver为0，否则在释放接口时将重新附加内核驱动程序。
+ * 如果其他应用程序或驱动程序声明了接口，则无法更改/重置配置。
+ * 配置值为-1将使设备处于未配置状态。  USB规范指出，配置值为0可以做到这一点，但实际上存在配置为0的有问题设备。
+ * 您应该始终使用此功能，而不是制定自己的SET_CONFIGURATION控制请求。 这是因为底层操作系统需要知道何时发生此类更改。
+ * 这是一个阻止功能。
  */
 int API_EXPORTED libusb_set_configuration(libusb_device_handle *dev,
 		int configuration) {
@@ -1598,6 +1732,12 @@ int API_EXPORTED libusb_set_configuration(libusb_device_handle *dev,
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns a LIBUSB_ERROR code on other failure
  * \see libusb_set_auto_detach_kernel_driver()
+ *
+ * 声明给定设备句柄上的接口。 您必须先声明要使用的接口，然后才能在其任何端点上执行I/O。
+ * 尝试声明一个已经声明的接口是合法的，在这种情况下，libusb 仅返回0而没有执行任何操作。
+ * 如果将 dev 的 auto_detach_kernel_driver 设置为1，则将在必要时分离内核驱动程序，如果失败，则返回分离错误。
+ * 声明接口是纯粹的逻辑操作； 它不会导致任何请求通过总线发送。 接口声明用于指示基础操作系统您的应用程序希望获得该接口的所有权。
+ * 这是一个非阻塞功能。
  */
 int API_EXPORTED libusb_claim_interface(libusb_device_handle *dev,
 		int interface_number) {
@@ -1623,6 +1763,8 @@ int API_EXPORTED libusb_claim_interface(libusb_device_handle *dev,
 		if (r == LIBUSB_ERROR_BUSY) {
 			// EBUSYが返ってきた時はたぶんカーネルドライバーがアタッチされているから
 			// デタッチ要求してから再度claimしてみる
+			// 当EBUSY回来时，也许内核驱动程序已附加
+			// 请求分队，然后回收
 			LOGV("request detach kernel driver and retry claim interface");
 			r = usbi_backend->release_interface(dev, interface_number);
 			libusb_detach_kernel_driver(dev, interface_number);
@@ -1659,6 +1801,10 @@ int API_EXPORTED libusb_claim_interface(libusb_device_handle *dev,
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns another LIBUSB_ERROR code on other failure
  * \see libusb_set_auto_detach_kernel_driver()
+ *
+ * 释放先前使用libusb_claim_interface()声明的接口。 您应该在关闭设备句柄之前释放所有声明的接口。
+ * 这是一个阻止功能。SET_INTERFACE控制请求将发送到设备，将接口状态重置为第一个备用设置。
+ * 如果将 dev 的auto_detach_kernel_driver设置为1，则在释放接口后将重新附加内核驱动程序。
  */
 int API_EXPORTED libusb_release_interface(libusb_device_handle *dev,
 		int interface_number) {
@@ -1682,6 +1828,7 @@ int API_EXPORTED libusb_release_interface(libusb_device_handle *dev,
 			}
 		} else {
 			// already released
+			// 已经释放
 			r = LIBUSB_ERROR_NOT_FOUND;
 		}
 	}
@@ -1710,23 +1857,31 @@ int API_EXPORTED libusb_release_interface(libusb_device_handle *dev,
  * requested alternate setting does not exist
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns another LIBUSB_ERROR code on other failure
+ *
+ * 激活接口的备用设置。 该接口必须先前已通过libusb_claim_interface()声明了所有权。
+ * 您应该始终使用此功能，而不是制定自己的SET_INTERFACE控制请求。 这是因为底层操作系统需要知道何时发生此类更改。
+ * 这是一个阻塞功能。
  */
 int API_EXPORTED libusb_set_interface_alt_setting(libusb_device_handle *dev,
 		int interface_number, int alternate_setting) {
 
 	usbi_dbg("interface %d altsetting %d", interface_number, alternate_setting);
-	if (interface_number >= USB_MAXINTERFACES)
-		return LIBUSB_ERROR_INVALID_PARAM;
+	if (interface_number >= USB_MAXINTERFACES) {
+	    // 不合法参数
+	    return LIBUSB_ERROR_INVALID_PARAM;
+	}
 
 	usbi_mutex_lock(&dev->lock);
 	{
 		if (UNLIKELY(!dev->dev->attached)) {
 			usbi_mutex_unlock(&dev->lock);
+			// 没有设备
 			return LIBUSB_ERROR_NO_DEVICE;
 		}
 
 		if (UNLIKELY(!(dev->claimed_interfaces & (1 << interface_number)))) {
 			usbi_mutex_unlock(&dev->lock);
+			// 接口不存在
 			return LIBUSB_ERROR_NOT_FOUND;
 		}
 	}
@@ -1751,6 +1906,10 @@ int API_EXPORTED libusb_set_interface_alt_setting(libusb_device_handle *dev,
  * \returns LIBUSB_ERROR_NOT_FOUND if the endpoint does not exist
  * \returns LIBUSB_ERROR_NO_DEVICE if the device has been disconnected
  * \returns another LIBUSB_ERROR code on other failure
+ *
+ * 清除端点的暂停/停止条件。 具有暂停状态的端点在暂停条件停止之前无法接收或传输数据。
+ * 在尝试清除暂停条件之前，您应该取消所有挂起的传输。
+ * 这是一个阻止功能。
  */
 int API_EXPORTED libusb_clear_halt(libusb_device_handle *dev,
 		unsigned char endpoint) {
@@ -1780,6 +1939,10 @@ int API_EXPORTED libusb_clear_halt(libusb_device_handle *dev,
  * \returns LIBUSB_ERROR_NOT_FOUND if re-enumeration is required, or if the
  * device has been disconnected
  * \returns another LIBUSB_ERROR code on other failure
+ *
+ * 执行USB端口重置以重新初始化设备。 重置完成后，系统将尝试恢复先前的配置和备用设置。
+ * 如果重置失败，描述符更改或无法恢复以前的状态，则设备似乎已断开连接并重新连接。这意味着设备句柄不再有效（您应将其关闭）并重新发现设备。 出现这种情况时，将返回LIBUSB_ERROR_NOT_FOUND的返回码。
+ * 这是一个阻止功能，通常会引起明显的延迟。
  */
 int API_EXPORTED libusb_reset_device(libusb_device_handle *dev) {
 
@@ -1810,6 +1973,11 @@ int API_EXPORTED libusb_reset_device(libusb_device_handle *dev) {
  * \param endpoints array of endpoints to allocate streams on
  * \param num_endpoints length of the endpoints array
  * \returns number of streams allocated, or a LIBUSB_ERROR code on failure
+ *
+ * 在指定的端点上最多分配num_streams个USB块流。 此功能采用一组端点而不是单个端点，因为某些协议要求使用类似的流ID设置端点。 传入的所有端点必须属于同一接口。
+ * 请注意，此函数返回的流可能少于请求的流。 还要注意，为端点数组中的每个端点分配了相同数量的流。
+ * 流ID 0是保留的，不应用于与设备通信。 如果libusb_alloc_streams() 返回的值为N，则可以使用流ID 1到N。
+ * 从1.0.19版本开始，LIBUSB_API_VERSION >= 0x01000103
  */
 int API_EXPORTED libusb_alloc_streams(libusb_device_handle *dev,
 	uint32_t num_streams, unsigned char *endpoints, int num_endpoints)
@@ -1837,6 +2005,10 @@ int API_EXPORTED libusb_alloc_streams(libusb_device_handle *dev,
  * \param endpoints array of endpoints to free streams on
  * \param num_endpoints length of the endpoints array
  * \returns LIBUSB_SUCCESS, or a LIBUSB_ERROR code on failure
+ *
+ * 用libusb_alloc_streams()分配的免费USB块流。
+ * 释放接口时，注释流会自动释放。
+ * 自版本1.0.19起，LIBUSB_API_VERSION >= 0x01000103
  */
 int API_EXPORTED libusb_free_streams(libusb_device_handle *dev,
 	unsigned char *endpoints, int num_endpoints)
@@ -1873,6 +2045,9 @@ int API_EXPORTED libusb_free_streams(libusb_device_handle *dev,
  * is not available
  * \returns another LIBUSB_ERROR code on other failure
  * \see libusb_detach_kernel_driver()
+ *
+ * 确定内核驱动程序在接口上是否处于活动状态。 如果内核驱动程序处于活动状态，则无法声明该接口，并且libusb将无法执行I/O。
+ * 此功能在Windows上不可用。
  */
 int API_EXPORTED libusb_kernel_driver_active(libusb_device_handle *dev,
 		int interface_number) {
@@ -1913,6 +2088,10 @@ int API_EXPORTED libusb_kernel_driver_active(libusb_device_handle *dev,
  * is not available
  * \returns another LIBUSB_ERROR code on other failure
  * \see libusb_kernel_driver_active()
+ *
+ * 从接口分离内核驱动程序。 如果成功，则可以声明该接口并执行I/O。
+ * 此功能在Darwin或Windows上不可用。
+ * 请注意，libusb本身也通过特殊的内核驱动程序与该设备通信，如果该驱动程序已连接到该设备，则此调用不会分离该驱动程序并返回LIBUSB_ERROR_NOT_FOUND。
  */
 int API_EXPORTED libusb_detach_kernel_driver(libusb_device_handle *dev,
 		int interface_number) {
@@ -1947,6 +2126,9 @@ int API_EXPORTED libusb_detach_kernel_driver(libusb_device_handle *dev,
  * interface is claimed by a program or driver
  * \returns another LIBUSB_ERROR code on other failure
  * \see libusb_kernel_driver_active()
+ *
+ * 重新连接接口的内核驱动程序，该驱动程序以前是使用libusb_detach_kernel_driver()分离的。 该调用仅在Linux上有效，并在所有其他平台上返回LIBUSB_ERROR_NOT_SUPPORTED。
+ * 此功能在Darwin或Windows上不可用。
  */
 int API_EXPORTED libusb_attach_kernel_driver(libusb_device_handle *dev,
 		int interface_number) {
@@ -1988,6 +2170,10 @@ int API_EXPORTED libusb_attach_kernel_driver(libusb_device_handle *dev,
  * \see libusb_claim_interface()
  * \see libusb_release_interface()
  * \see libusb_set_configuration()
+ *
+ * 启用/禁用libusb的自动内核驱动程序分离。 启用此选项后，libusb将在声明接口时自动分离接口上的内核驱动程序，并在释放接口时将其附加。
+ * 默认情况下，在新打开的设备句柄上禁用自动内核驱动程序分离。
+ * 在没有LIBUSB_CAP_SUPPORTS_DETACH_KERNEL_DRIVER的平台上，此函数将返回LIBUSB_ERROR_NOT_SUPPORTED，并且libusb将继续运行，就像从未调用此函数一样。
  */
 int API_EXPORTED libusb_set_auto_detach_kernel_driver(libusb_device_handle *dev,
 		int enable) {
@@ -2028,6 +2214,13 @@ int API_EXPORTED libusb_set_auto_detach_kernel_driver(libusb_device_handle *dev,
  *
  * \param ctx the context to operate on, or NULL for the default context
  * \param level debug level to set
+ *
+ * 设置日志消息的详细程度。
+ * 默认级别为LIBUSB_LOG_LEVEL_NONE，这意味着不会打印任何消息。 如果选择增加消息的详细程度，请确保您的应用程序未关闭stdout/stderr文件描述符。
+ * 建议您使用级别LIBUSB_LOG_LEVEL_WARNING。  libusb的消息记录很保守，在大多数情况下，只会记录说明错误情况和其他异常情况的消息。 这将帮助您调试软件。
+ * 如果在初始化libusb时设置了LIBUSB_DEBUG环境变量，则此函数不执行任何操作：消息详细程度固定为环境变量中的值。
+ * 如果libusb编译时未记录任何消息，则此功能不执行任何操作：您将永远不会收到任何消息。
+ * 如果libusb是用详细的调试消息日志记录编译的，则此函数将不执行任何操作：您将始终从各个级别获取消息。
  */
 void API_EXPORTED libusb_set_debug(libusb_context *ctx, int level) {
 
@@ -2074,7 +2267,9 @@ int API_EXPORTED libusb_init2(libusb_context **context, const char *usbfs) {
 				ctx->debug_fixed = 1;
 		}
 
-		/* default context should be initialized before calling usbi_dbg */
+		/* default context should be initialized before calling usbi_dbg
+		 * 调用usbi_dbg之前，应初始化默认上下文
+		 */
 		if (!usbi_default_context) {
 			usbi_default_context = ctx;
 			default_context_refcnt++;
@@ -2185,6 +2380,9 @@ err_unlock:
  * Only valid on return code 0.
  * \returns 0 on success, or a LIBUSB_ERROR code on failure
  * \see contexts
+ *
+ * 初始化libusb。 必须在调用任何其他libusb函数之前调用此函数。
+ * 如果不为上下文指针提供输出位置，则将创建默认上下文。 如果已经有一个默认上下文，它将被重用（不会初始化/重新初始化任何内容）。
  */
 int API_EXPORTED libusb_init(libusb_context **context) {
 
@@ -2225,7 +2423,9 @@ int API_EXPORTED libusb_init(libusb_context **context) {
 				ctx->debug_fixed = 1;
 		}
 
-		/* default context should be initialized before calling usbi_dbg */
+		/* default context should be initialized before calling usbi_dbg
+		 * 调用usbi_dbg之前，应初始化默认上下文
+		 */
 		if (!usbi_default_context) {
 			usbi_default_context = ctx;
 			default_context_refcnt++;
@@ -2307,6 +2507,8 @@ err_unlock:
  * Deinitialize libusb. Should be called after closing all open devices and
  * before your application terminates.
  * \param ctx the context to deinitialize, or NULL for the default context
+ *
+ * 取消初始化libusb。 在关闭所有打开的设备之后且应用程序终止之前应调用此方法。
  */
 void API_EXPORTED libusb_exit(struct libusb_context *ctx) {
 
@@ -2316,8 +2518,9 @@ void API_EXPORTED libusb_exit(struct libusb_context *ctx) {
 	usbi_dbg("");
 	USBI_GET_CONTEXT(ctx);
 
-	/* if working with default context, only actually do the deinitialization
-	 * if we're the last user */
+	/* if working with default context, only actually do the deinitialization if we're the last user
+	 * 如果使用默认上下文，则只有在我们是最后一个用户的情况下才进行反初始化
+	 */
 	usbi_mutex_static_lock(&default_context_lock);
 	if (ctx == usbi_default_context) {
 		if (--default_context_refcnt > 0) {
@@ -2347,6 +2550,9 @@ void API_EXPORTED libusb_exit(struct libusb_context *ctx) {
 		 * Note we don't do this if the application has left devices
 		 * open (which implies a buggy app) to avoid packet completion
 		 * handlers running when the app does not expect them to run.
+		 *
+		 * 确保从热插拔管道读取任何未决的拔出事件。 事件中的usb_device-s不再是usb_devs的一部分，但事件仍然具有引用！
+         * 请注意，如果应用程序未打开设备（这意味着有问题的应用程序），则我们不会这样做，以避免在应用程序不希望它们运行时运行数据包完成处理程序。
 		 */
 		if (list_empty(&ctx->open_devs))
 			libusb_handle_events_timeout(ctx, &tv);
@@ -2363,7 +2569,9 @@ void API_EXPORTED libusb_exit(struct libusb_context *ctx) {
 	}
 
 	/* a few sanity checks. don't bother with locking because unless
-	 * there is an application bug, nobody will be accessing these. */
+	 * there is an application bug, nobody will be accessing these.
+	 * 一些健全性检查。 不必担心锁定，因为除非有应用程序错误，否则没有人会访问它们。
+	 */
 	if (!list_empty(&ctx->usb_devs))
 		usbi_warn(ctx, "some libusb_devices were leaked");
 	if (!list_empty(&ctx->open_devs))
@@ -2383,6 +2591,7 @@ void API_EXPORTED libusb_exit(struct libusb_context *ctx) {
  * Check at runtime if the loaded library has a given capability.
  * This call should be performed after \ref libusb_init(), to ensure the
  * backend has updated its capability set.
+ * 在运行时检查加载的库是否具有给定的功能。 此调用应在 libusb_init() 之后执行，以确保后端已更新其功能集。
  *
  * \param capability the \ref libusb_capability to check for
  * \returns nonzero if the running library has the capability, 0 otherwise
@@ -2402,13 +2611,16 @@ int API_EXPORTED libusb_has_capability(uint32_t capability) {
 	return LIBUSB_SUCCESS;
 }
 
-/* this is defined in libusbi.h if needed */
+/* this is defined in libusbi.h if needed
+ * 如果需要，可以在libusbi.h中定义
+ */
 #ifdef LIBUSB_GETTIMEOFDAY_WIN32
 /*
  * gettimeofday
  * Implementation according to:
  * The Open Group Base Specifications Issue 6
  * IEEE Std 1003.1, 2004 Edition
+ * 根据以下内容的实施：开放组基本规范第6版IEEE标准1003.1，2004版
  */
 
 /*
@@ -2424,15 +2636,20 @@ int API_EXPORTED libusb_has_capability(uint32_t capability) {
  *
  *  Contributed by:
  *  Danny Smith <dannysmith@users.sourceforge.net>
+ *
+ * 本软件不受版权保护本源代码提供在公共领域中使用。 您可以自由使用，修改或分发它。
+ * 分发此代码是希望它会有用，但没有任何保证。 此处不作任何明示或暗示的担保。 这包括但不限于对适销性或特定用途适用性的保证。
  */
 
-/* Offset between 1/1/1601 and 1/1/1970 in 100 nanosec units */
+/* Offset between 1/1/1601 and 1/1/1970 in 100 nanosec units
+ * 偏移量在1/1/1601和1/1/1970之间，以100纳秒为单位
+ */
 #define _W32_FT_OFFSET (116444736000000000)
 
 int usbi_gettimeofday(struct timeval *tp, void *tzp)
 {
 	union {
-		unsigned __int64 ns100; /* Time since 1 Jan 1601, in 100ns units */
+		unsigned __int64 ns100; /* Time since 1 Jan 1601, in 100ns units  自1601年1月1日以来的时间，以100ns为单位 */
 		FILETIME ft;
 	} _now;
 	UNUSED(tzp);
@@ -2448,8 +2665,9 @@ int usbi_gettimeofday(struct timeval *tp, void *tzp)
 		tp->tv_usec=(long)((_now.ns100 / 10) % 1000000 );
 		tp->tv_sec= (long)((_now.ns100 - _W32_FT_OFFSET) / 10000000);
 	}
-	/* Always return 0 as per Open Group Base Specifications Issue 6.
-	 Do not set errno on error.  */
+	/* Always return 0 as per Open Group Base Specifications Issue 6. Do not set errno on error.
+	 * 根据开放组基本规范第6期，始终返回0。 不要将errno设置为错误。
+	 */
 	return LIBUSB_SUCCESS;
 }
 #endif
@@ -2459,14 +2677,16 @@ static void usbi_log_str(struct libusb_context *ctx,
 
 #if defined(USE_SYSTEM_LOGGING_FACILITY)
 #if defined(OS_WINDOWS) || defined(OS_WINCE)
-	/* Windows CE only supports the Unicode version of OutputDebugString. */
+	/* Windows CE only supports the Unicode version of OutputDebugString.
+	 * Windows CE仅支持OutputDebugString的Unicode版本。
+	 */
 	WCHAR wbuf[USBI_MAX_LOG_LEN];
 	MultiByteToWideChar(CP_UTF8, 0, str, -1, wbuf, sizeof(wbuf));
 	OutputDebugStringW(wbuf);
 #elif defined(__ANDROID__)
 	int priority = ANDROID_LOG_UNKNOWN;
 	switch (level) {
-	case LIBUSB_LOG_LEVEL_NONE: break;	// XXX add to avoid warning when compiling with clang
+	case LIBUSB_LOG_LEVEL_NONE: break;	// XXX add to avoid warning when compiling with clang  添加以避免在使用clang编译时发出警告
 	case LIBUSB_LOG_LEVEL_INFO: priority = ANDROID_LOG_INFO; break;
 	case LIBUSB_LOG_LEVEL_WARNING: priority = ANDROID_LOG_WARN; break;
 	case LIBUSB_LOG_LEVEL_ERROR: priority = ANDROID_LOG_ERROR; break;
@@ -2482,7 +2702,7 @@ static void usbi_log_str(struct libusb_context *ctx,
 	case LIBUSB_LOG_LEVEL_DEBUG: syslog_level = LOG_DEBUG; break;
 	}
 	syslog(syslog_level, "%s", str);
-#else /* All of gcc, Clang, XCode seem to use #warning */
+#else /* All of gcc, Clang, XCode seem to use #warning  所有的gcc，Clang和XCode似乎都使用#warning */
 #warning System logging is not supported on this platform. Logging to stderr will be used instead.
 	fputs(str, stderr);
 #endif
@@ -2581,19 +2801,27 @@ void usbi_log_v(struct libusb_context *ctx, enum libusb_log_level level,
 
 	if (header_len < 0 || header_len >= sizeof(buf)) {
 		/* Somehow snprintf failed to write to the buffer,
-		 * remove the header so something useful is output. */
+		 * remove the header so something useful is output.
+		 * snprintf不知何故无法写入缓冲区，请删除标头，以便输出有用的信息。
+		 */
 		header_len = 0;
 	}
-	/* Make sure buffer is NUL terminated */
+	/* Make sure buffer is NUL terminated
+	 * 确保缓冲区以NULL终止
+	 */
 	buf[header_len] = '\0';
 	text_len = vsnprintf(buf + header_len, sizeof(buf) - header_len, format, args);
 	if (text_len < 0 || text_len + header_len >= sizeof(buf)) {
 		/* Truncated log output. On some platforms a -1 return value means
-		 * that the output was truncated. */
+		 * that the output was truncated.
+		 * 日志输出被截断。 在某些平台上，返回值-1表示输出被截断。
+		 */
 		text_len = sizeof(buf) - header_len;
 	}
 	if (header_len + text_len + sizeof(USBI_LOG_LINE_END) >= sizeof(buf)) {
-		/* Need to truncate the text slightly to fit on the terminator. */
+		/* Need to truncate the text slightly to fit on the terminator.
+		 * 需要略微截断文本以适合终止符。
+		 */
 		text_len -= (header_len + text_len + sizeof(USBI_LOG_LINE_END)) - sizeof(buf);
 	}
 	strcpy(buf + header_len + text_len, USBI_LOG_LINE_END);
@@ -2620,6 +2848,8 @@ void usbi_log(struct libusb_context *ctx, enum libusb_log_level level,
  * return the name of.
  * \returns The error name, or the string **UNKNOWN** if the value of
  * error_code is not a known error / status code.
+ *
+ * 返回一个以NULL终止的常量字符串，其中带有libusb错误或传输状态代码的ASCII名称。 调用者不得free()返回的字符串。
  */
 DEFAULT_VISIBILITY const char * LIBUSB_CALL libusb_error_name(int error_code) {
 
@@ -2674,6 +2904,7 @@ DEFAULT_VISIBILITY const char * LIBUSB_CALL libusb_error_name(int error_code) {
 /** \ingroup misc
  * Returns a pointer to const struct libusb_version with the version
  * (major, minor, micro, nano and rc) of the running library.
+ * 返回具有运行库版本（主要，次要，微型，nano和rc）的const struct libusb_version的指针。
  */
 DEFAULT_VISIBILITY
 const struct libusb_version * LIBUSB_CALL libusb_get_version(void) {

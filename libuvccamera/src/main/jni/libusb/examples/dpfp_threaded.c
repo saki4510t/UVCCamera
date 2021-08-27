@@ -199,6 +199,7 @@ static int set_mode_async(unsigned char data)
 	if (!buf)
 		return -ENOMEM;
 
+    // 为libusb传输分配指定数量的同步数据包描述符
 	transfer = libusb_alloc_transfer(0);
 	if (!transfer) {
 		free(buf);
@@ -211,8 +212,8 @@ static int set_mode_async(unsigned char data)
 	libusb_fill_control_transfer(transfer, devh, buf, cb_mode_changed, NULL,
 		1000);
 
-	transfer->flags = LIBUSB_TRANSFER_SHORT_NOT_OK
-		| LIBUSB_TRANSFER_FREE_BUFFER | LIBUSB_TRANSFER_FREE_TRANSFER;
+	transfer->flags = LIBUSB_TRANSFER_SHORT_NOT_OK | LIBUSB_TRANSFER_FREE_BUFFER | LIBUSB_TRANSFER_FREE_TRANSFER;
+	// 提交传输。 此功能将触发USB传输，然后立即返回。
 	return libusb_submit_transfer(transfer);
 }
 
@@ -339,6 +340,7 @@ static void LIBUSB_CALL cb_irq(struct libusb_transfer *transfer)
 		}
 		break;
 	}
+	// 提交传输。 此功能将触发USB传输，然后立即返回。
 	if (libusb_submit_transfer(irq_transfer) < 0)
 		request_exit(2);
 }
@@ -358,6 +360,7 @@ static void LIBUSB_CALL cb_img(struct libusb_transfer *transfer)
 		request_exit(2);
 		return;
 	}
+	// 提交传输。 此功能将触发USB传输，然后立即返回。
 	if (libusb_submit_transfer(img_transfer) < 0)
 		request_exit(2);
 }
@@ -365,11 +368,11 @@ static void LIBUSB_CALL cb_img(struct libusb_transfer *transfer)
 static int init_capture(void)
 {
 	int r;
-
+    // 提交传输。 此功能将触发USB传输，然后立即返回。
 	r = libusb_submit_transfer(irq_transfer);
 	if (r < 0)
 		return r;
-
+    // 提交传输。 此功能将触发USB传输，然后立即返回。
 	r = libusb_submit_transfer(img_transfer);
 	if (r < 0) {
 		libusb_cancel_transfer(irq_transfer);
@@ -420,14 +423,17 @@ static int do_init(void)
 
 static int alloc_transfers(void)
 {
+    // 为libusb传输分配指定数量的同步数据包描述符
 	img_transfer = libusb_alloc_transfer(0);
 	if (!img_transfer)
 		return -ENOMEM;
 
+    // 为libusb传输分配指定数量的同步数据包描述符
 	irq_transfer = libusb_alloc_transfer(0);
 	if (!irq_transfer)
 		return -ENOMEM;
 
+    // Helper函数可填充批量传输所需的libusb_transfer字段。
 	libusb_fill_bulk_transfer(img_transfer, devh, EP_DATA, imgbuf,
 		sizeof(imgbuf), cb_img, NULL, 0);
 	libusb_fill_interrupt_transfer(irq_transfer, devh, EP_INTR, irqbuf,

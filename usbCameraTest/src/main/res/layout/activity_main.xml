@@ -33,8 +33,7 @@
         android:id="@+id/UVCCameraTextureView1"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_gravity="center"
-        android:background="#ff000000" />
+        android:layout_gravity="center" />
 
     <ImageButton
         android:id="@+id/camera_button"

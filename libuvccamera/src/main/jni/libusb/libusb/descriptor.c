@@ -42,6 +42,7 @@
 /** @defgroup desc USB descriptors
  * This page details how to examine the various standard USB descriptors
  * for detected devices
+ * 本页详细介绍如何检查检测到的设备的各种标准USB描述符
  */
 
 static inline int is_known_descriptor_type(int type) {
@@ -53,7 +54,9 @@ static inline int is_known_descriptor_type(int type) {
 }
 
 /* set host_endian if the w values are already in host endian format,
- * as opposed to bus endian. */
+ * as opposed to bus endian.
+ * 如果w值已经是主机字节序格式（与总线字节序相反），则设置host_endian。
+ */
 int usbi_parse_descriptor(const unsigned char *source, const char *descriptor,
 	void *dest, int host_endian)
 {
@@ -65,11 +68,11 @@ int usbi_parse_descriptor(const unsigned char *source, const char *descriptor,
 
 	for (cp = descriptor; *cp; cp++) {
 		switch (*cp) {
-			case 'b':	/* 8-bit byte */
+			case 'b':	/* 8-bit byte 8位字节 */
 				*dp++ = *sp++;
 				break;
-			case 'w':	/* 16-bit word, convert from little endian to CPU */
-				dp += ((uintptr_t)dp & 1);	/* Align to word boundary */
+			case 'w':	/* 16-bit word, convert from little endian to CPU  16位字，从小尾数转换为CPU */
+				dp += ((uintptr_t)dp & 1);	/* Align to word boundary  对齐单词边界 */
 
 				if (host_endian) {
 					memcpy(dp, sp, 2);
@@ -80,8 +83,8 @@ int usbi_parse_descriptor(const unsigned char *source, const char *descriptor,
 				sp += 2;
 				dp += 2;
 				break;
-			case 'd':	/* 32-bit word, convert from little endian to CPU */
-				dp += ((uintptr_t)dp & 1);	/* Align to word boundary */
+			case 'd':	/* 32-bit word, convert from little endian to CPU  32位字，从小尾数转换为CPU */
+				dp += ((uintptr_t)dp & 1);	/* Align to word boundary  对齐单词边界 */
 
 				if (host_endian) {
 					memcpy(dp, sp, 4);
@@ -93,7 +96,7 @@ int usbi_parse_descriptor(const unsigned char *source, const char *descriptor,
 				sp += 4;
 				dp += 4;
 				break;
-			case 'u':	/* 16 byte UUID */
+			case 'u':	/* 16 byte UUID  16字节的UUID */
 				memcpy(dp, sp, 16);
 				sp += 16;
 				dp += 16;
@@ -155,8 +158,8 @@ static int parse_endpoint(struct libusb_context *ctx,
 	size -= header.bLength;
 	parsed += header.bLength;
 
-	/* Skip over the rest of the Class Specific or Vendor Specific */
-	/*  descriptors */
+	/* Skip over the rest of the Class Specific or Vendor Specific descriptors
+	 * 跳过其余的特定于类或供应商的描述符 */
 	begin = buffer;
 	while (size >= LIBUSB_DT_HEADER_SIZE/*DESC_HEADER_LENGTH*/) {
 		usbi_parse_descriptor(buffer, "bb", &header, 0);
@@ -170,7 +173,7 @@ static int parse_endpoint(struct libusb_context *ctx,
 			RETURN(parsed, int);
 		}
 
-		/* If we find another "proper" descriptor then we're done  */
+		/* If we find another "proper" descriptor then we're done  如果找到另一个“适当的”描述符，那么我们就完成了  */
 		if (is_known_descriptor_type(header.bDescriptorType))
 			break;
 
@@ -180,8 +183,8 @@ static int parse_endpoint(struct libusb_context *ctx,
 		parsed += header.bLength;
 	}
 
-	/* Copy any unknown descriptors into a storage area for drivers */
-	/*  to later parse */
+	/* Copy any unknown descriptors into a storage area for drivers to later parse
+	 * 将所有未知的描述符复制到存储区中，以供驱动程序以后解析 */
 	len = (int)(buffer - begin);
 	if (!len) {
 		endpoint->extra = NULL;
@@ -287,14 +290,16 @@ static int parse_interface(libusb_context *ctx,
 		if (interface_number == -1)
 			interface_number = ifp->bInterfaceNumber;
 
-		/* Skip over the interface */
+		/* Skip over the interface
+		 * 跳过接口 */
 		buffer += ifp->bLength;
 		parsed += ifp->bLength;
 		size -= ifp->bLength;
 
 		begin = buffer;
 
-		/* Skip over any interface, class or vendor descriptors */
+		/* Skip over any interface, class or vendor descriptors
+		 * 跳过任何接口，类或供应商描述符 */
 		while (size >= LIBUSB_DT_HEADER_SIZE/*DESC_HEADER_LENGTH*/) {
 			usbi_parse_descriptor(buffer, "bb", &header, 0);
 			if UNLIKELY(header.bLength < LIBUSB_DT_HEADER_SIZE/*DESC_HEADER_LENGTH*/) {
@@ -311,7 +316,8 @@ static int parse_interface(libusb_context *ctx,
 			}
 
 			MARK("bDescriptorType=0x%02x", header.bDescriptorType);
-			/* If we find another "proper" descriptor then we're done */
+			/* If we find another "proper" descriptor then we're done
+			 * 如果找到另一个“适当的”描述符，那么我们就完成了 */
 			if (is_known_descriptor_type(header.bDescriptorType))
 				break;
 
@@ -320,8 +326,8 @@ static int parse_interface(libusb_context *ctx,
 			size -= header.bLength;
 		}
 
-		/* Copy any unknown descriptors into a storage area for */
-		/*  drivers to later parse */
+		/* Copy any unknown descriptors into a storage area for drivers to later parse */
+		/* 将所有未知的描述符复制到存储区中，以供驱动程序以后解析  */
 		len = (int)(buffer - begin);
 		if (len) {
 			MARK("save unknown descriptors into ifp->extra:lebgth=%d", len);
@@ -362,7 +368,8 @@ static int parse_interface(libusb_context *ctx,
 			}
 		}
 
-		/* We check to see if it's an alternate to this one */
+		/* We check to see if it's an alternate to this one
+		 * 我们检查一下是否可以替代此 */
 		ifp = (struct libusb_interface_descriptor *) buffer;
 		if (size < LIBUSB_DT_INTERFACE_SIZE ||
 				ifp->bDescriptorType != LIBUSB_DT_INTERFACE ||
@@ -402,13 +409,14 @@ static int parse_association(struct libusb_context *ctx,
 		RETURN(LIBUSB_ERROR_IO, int);
 	}
 	// ディスクリプタの先頭2バイトだけ解析して長さとディスクリプタの種類を取得
+	// 仅解析描述符的前2个字节以获取长度和描述符类型
 	usbi_parse_descriptor(buffer, "bb", &header, 0);
-	if UNLIKELY(header.bDescriptorType != LIBUSB_DT_ASSOCIATION) {	// 種類が違う時
+	if UNLIKELY(header.bDescriptorType != LIBUSB_DT_ASSOCIATION) {	// 種類が違う時  当不同的类型
 		usbi_err(ctx, "unexpected descriptor %x (expected %x)",
 			header.bDescriptorType, LIBUSB_DT_ASSOCIATION);
 		RETURN(parsed, int);	// return 0;
 	}
-	if UNLIKELY(header.bLength > size) {	// IADに長さが足りない時
+	if UNLIKELY(header.bLength > size) {	// IADに長さが足りない時  当IAD不够长时
 		usbi_warn(ctx, "short association descriptor read %d/%d",
 			  size, header.bLength);
 		RETURN(parsed, int);	// return 0;
@@ -438,20 +446,25 @@ static int parse_association(struct libusb_context *ctx,
 #endif
 		} else {
 			// 解析に失敗した時は未使用部分を削除
+			// 分析失败时，删除未使用的部分
 			config->association_descriptor = usbi_reallocf(association,
 				sizeof(struct libusb_association_descriptor) * config->num_associations);
 		}
 	} else {
 		// 種類はIADで有るにも関わらず長さが足りない時
+		// 当类型为IAD但长度不足时
 		usbi_err(ctx, "invalid interface association descriptor bLength (%d)", header.bLength);
 		RETURN(LIBUSB_ERROR_IO, int);
 	}
 	// 次の解析開始位置・残りサイズをセット
+	// 设置下一个分析开始位置/剩余大小
 	buffer += header.bLength;
 	size -= header.bLength;
 	parsed += header.bLength;
 
-	/* Skip over the rest of the Class Specific or Vendor Specific descriptors */
+	/* Skip over the rest of the Class Specific or Vendor Specific descriptors
+	 * 跳过其余的特定于类或供应商的描述符
+	 */
 	begin = buffer;
 	while (size >= LIBUSB_DT_HEADER_SIZE/*DESC_HEADER_LENGTH*/) {
 		usbi_parse_descriptor(buffer, "bb", &header, 0);
@@ -466,7 +479,8 @@ static int parse_association(struct libusb_context *ctx,
 		}
 
 		MARK("bDescriptorType=0x%02x", header.bDescriptorType);
-		/* If we find another "proper" descriptor then we're done  */
+		/* If we find another "proper" descriptor then we're done
+		 * 如果找到另一个“适当的”描述符，那么我们就完成了 */
 		if (is_known_descriptor_type(header.bDescriptorType))
 			break;
 
@@ -477,6 +491,7 @@ static int parse_association(struct libusb_context *ctx,
 	}
 
 	// Append/Copy any unknown descriptors into a storage area for drivers to later parse
+	// 将未知描述符追加/复制到存储区中，以供驱动程序以后解析
 	len = (int)(buffer - begin);
 	if (!len) {
 		RETURN(parsed, int);
@@ -562,9 +577,11 @@ static int parse_configuration(struct libusb_context *ctx,
 		RETURN(LIBUSB_ERROR_IO, int);
 	}
 	// インターフェースディスクリプタ配列を確保(長さはconfig->bNumInterfaces)
+	// 分配接口描述符数组（长度为config->bNumInterfaces）
 	tmp = config->bNumInterfaces * sizeof(struct libusb_interface);
 	config->interface = usb_interface = malloc(tmp);
 	// インターフェースディスクリプタ配列を確保できなかった
+	// 无法保护接口描述符数组
 	if UNLIKELY(!config->interface)
 		RETURN(LIBUSB_ERROR_NO_MEM, int);
 
@@ -582,7 +599,8 @@ static int parse_configuration(struct libusb_context *ctx,
 		int len;
 		unsigned char *begin;
 
-		/* Skip over the rest of the Class Specific or Vendor Specific descriptors */
+		/* Skip over the rest of the Class Specific or Vendor Specific descriptors
+		 * 跳过其余的特定于类或供应商的描述符 */
 		begin = buffer;
 		while (size >= LIBUSB_DT_HEADER_SIZE/*DESC_HEADER_LENGTH*/) {
 			usbi_parse_descriptor(buffer, "bb", &header, 0);
@@ -602,7 +620,8 @@ static int parse_configuration(struct libusb_context *ctx,
 			}
 
 			MARK("bDescriptorType=0x%02x", header.bDescriptorType);
-			/* If we find another "proper" descriptor then we're done */
+			/* If we find another "proper" descriptor then we're done
+			 * 如果找到另一个“适当的”描述符，那么我们就完成了 */
 			if (is_known_descriptor_type(header.bDescriptorType))
 				break;
 
@@ -611,8 +630,8 @@ static int parse_configuration(struct libusb_context *ctx,
 			size -= header.bLength;
 		}
 
-		/* Copy any unknown descriptors into a storage area for */
-		/*  drivers to later parse */
+		/* Copy any unknown descriptors into a storage area for drivers to later parse */
+		/* 将所有未知的描述符复制到存储区中，以供驱动程序以后解析 */
 		len = (int)(buffer - begin);
 		if (len) {
 			MARK("save skipped unknown descriptors into config->extra:len=%d", len);
@@ -858,6 +877,10 @@ int API_EXPORTED libusb_get_raw_descriptor(libusb_device *dev,
  * \param dev the device
  * \param desc output location for the descriptor data
  * \returns 0 on success or a LIBUSB_ERROR code on failure
+ *
+ * 获取给定设备的USB设备描述符。
+ * 这是一个非阻塞功能； 设备描述符缓存在内存中。
+ * 请注意，由于libusb-1.0.16，LIBUSB_API_VERSION >= 0x01000102，此功能始终成功。
  */
 int API_EXPORTED libusb_get_device_descriptor(libusb_device *dev,
 	struct libusb_device_descriptor *desc)
@@ -883,6 +906,9 @@ int API_EXPORTED libusb_get_device_descriptor(libusb_device *dev,
  * \returns LIBUSB_ERROR_NOT_FOUND if the device is in unconfigured state
  * \returns another LIBUSB_ERROR code on error
  * \see libusb_get_config_descriptor
+ *
+ * 获取当前活动配置的USB配置描述符。
+ * 这是一种非阻塞功能，不涉及任何发送到设备的请求。
  */
 int API_EXPORTED libusb_get_active_config_descriptor(libusb_device *dev,
 	struct libusb_config_descriptor **config)
@@ -893,7 +919,7 @@ int API_EXPORTED libusb_get_active_config_descriptor(libusb_device *dev,
 	int host_endian = 0;
 	int r;
 
-	r = usbi_backend->get_active_config_descriptor(dev, tmp,	// XXX this function will return error on some buggy device
+	r = usbi_backend->get_active_config_descriptor(dev, tmp,	// XXX this function will return error on some buggy device  此功能将在某些故障设备上返回错误
 		LIBUSB_DT_CONFIG_SIZE, &host_endian);
 	if UNLIKELY(r < 0)
 		return r;
@@ -908,7 +934,7 @@ int API_EXPORTED libusb_get_active_config_descriptor(libusb_device *dev,
 	if UNLIKELY(!buf)
 		return LIBUSB_ERROR_NO_MEM;
 
-	r = usbi_backend->get_active_config_descriptor(dev, buf,	// XXX this function will return error on some buggy device
+	r = usbi_backend->get_active_config_descriptor(dev, buf,	// XXX this function will return error on some buggy device  此功能将在某些故障设备上返回错误
 		_config.wTotalLength, &host_endian);
 	if (r >= 0)
 		r = raw_desc_to_config(dev->ctx, buf, r, host_endian, config);
@@ -932,6 +958,8 @@ int API_EXPORTED libusb_get_active_config_descriptor(libusb_device *dev,
  * \returns another LIBUSB_ERROR code on error
  * \see libusb_get_active_config_descriptor()
  * \see libusb_get_config_descriptor_by_value()
+ *
+ * 根据其索引获取USB配置描述符。 这是一种非阻塞功能，不涉及任何发送到设备的请求。
  */
 int API_EXPORTED libusb_get_config_descriptor(libusb_device *dev,
 	uint8_t config_index, struct libusb_config_descriptor **config)
@@ -974,6 +1002,8 @@ int API_EXPORTED libusb_get_config_descriptor(libusb_device *dev,
  * matching a specific bConfigurationValue in the idx output parameter, or -1
  * if the config was not found.
  * returns 0 on success or a LIBUSB_ERROR code
+ *
+ * 遍历所有配置，在idx输出参数中返回与特定bConfigurationValue匹配的配置索引，如果未找到该配置，则返回-1。 成功返回0或LIBUSB_ERROR代码
  */
 int usbi_get_config_index_by_value(struct libusb_device *dev,
 	uint8_t bConfigurationValue, int *idx)
@@ -1016,6 +1046,8 @@ int usbi_get_config_index_by_value(struct libusb_device *dev,
  * \returns another LIBUSB_ERROR code on error
  * \see libusb_get_active_config_descriptor()
  * \see libusb_get_config_descriptor()
+ *
+ * 获取具有特定bConfigurationValue的USB配置描述符。 这是一种非阻塞功能，不涉及任何发送到设备的请求。
  */
 int API_EXPORTED libusb_get_config_descriptor_by_value(libusb_device *dev,
 	uint8_t bConfigurationValue, struct libusb_config_descriptor **config)
@@ -1047,6 +1079,9 @@ int API_EXPORTED libusb_get_config_descriptor_by_value(libusb_device *dev,
  * case the function simply returns.
  *
  * \param config the configuration descriptor to free
+ *
+ * 释放从libusb_get_active_config_descriptor()或libusb_get_config_descriptor()获得的配置描述符。
+ * 使用NULL config参数调用此函数是安全的，在这种情况下，该函数只是返回。
  */
 void API_EXPORTED libusb_free_config_descriptor(
 	struct libusb_config_descriptor *config)
@@ -1070,6 +1105,8 @@ void API_EXPORTED libusb_free_config_descriptor(
  * \returns 0 on success
  * \returns LIBUSB_ERROR_NOT_FOUND if the configuration does not exist
  * \returns another LIBUSB_ERROR code on error
+ *
+ * 获取端点超速端点伴随描述符（如果有）
  */
 int API_EXPORTED libusb_get_ss_endpoint_companion_descriptor(
 	struct libusb_context *ctx,
@@ -1115,6 +1152,9 @@ int API_EXPORTED libusb_get_ss_endpoint_companion_descriptor(
  * case the function simply returns.
  *
  * \param ep_comp the superspeed endpoint companion descriptor to free
+ *
+ * 释放从libusb_get_ss_endpoint_companion_descriptor()获得的超高速端点伴随描述符。
+ * 使用NULL ep_comp参数调用此函数是安全的，在这种情况下，该函数只是返回。
  */
 void API_EXPORTED libusb_free_ss_endpoint_companion_descriptor(
 	struct libusb_ss_endpoint_companion_descriptor *ep_comp)
@@ -1161,7 +1201,9 @@ static int parse_bos(struct libusb_context *ctx,
 	buffer += bos_header.bLength;
 	size -= bos_header.bLength;
 
-	/* Get the device capability descriptors */
+	/* Get the device capability descriptors
+	 * 获取设备功能描述符
+	 */
 	for (i = 0; i < bos_header.bNumDeviceCaps; i++) {
 		if (size < LIBUSB_DT_DEVICE_CAPABILITY_SIZE) {
 			usbi_warn(ctx, "short dev-cap descriptor read %d/%d",
@@ -1211,6 +1253,8 @@ static int parse_bos(struct libusb_context *ctx,
  * \returns 0 on success
  * \returns LIBUSB_ERROR_NOT_FOUND if the device doesn't have a BOS descriptor
  * \returns another LIBUSB_ERROR code on error
+ *
+ * 获取二进制对象存储（BOS）描述符这是一个BLOCKING函数，它将请求发送给设备。
  */
 int API_EXPORTED libusb_get_bos_descriptor(libusb_device_handle *handle,
 	struct libusb_bos_descriptor **bos)
@@ -1222,7 +1266,8 @@ int API_EXPORTED libusb_get_bos_descriptor(libusb_device_handle *handle,
 	int r;
 
 	/* Read the BOS. This generates 2 requests on the bus,
-	 * one for the header, and one for the full BOS */
+	 * one for the header, and one for the full BOS
+	 * 阅读BOS。 这会在总线上生成2个请求，一个用于标头，一个用于完整的BOS。 */
 	r = libusb_get_descriptor(handle, LIBUSB_DT_BOS, 0, bos_header,
 				  LIBUSB_DT_BOS_SIZE);
 	if UNLIKELY(r < 0) {
@@ -1260,6 +1305,8 @@ int API_EXPORTED libusb_get_bos_descriptor(libusb_device_handle *handle,
  * case the function simply returns.
  *
  * \param bos the BOS descriptor to free
+ *
+ * 释放从libusb_get_bos_descriptor() 获得的BOS描述符。 使用NULL bos参数调用此函数是安全的，在这种情况下，该函数只是返回。
  */
 void API_EXPORTED libusb_free_bos_descriptor(struct libusb_bos_descriptor *bos)
 {
@@ -1285,6 +1332,8 @@ void API_EXPORTED libusb_free_bos_descriptor(struct libusb_bos_descriptor *bos)
  * libusb_free_usb_2_0_extension_descriptor() after use.
  * \returns 0 on success
  * \returns a LIBUSB_ERROR code on error
+ *
+ * 获取USB 2.0扩展描述符
  */
 int API_EXPORTED libusb_get_usb_2_0_extension_descriptor(
 	struct libusb_context *ctx,
@@ -1324,6 +1373,8 @@ int API_EXPORTED libusb_get_usb_2_0_extension_descriptor(
  * in which case the function simply returns.
  *
  * \param usb_2_0_extension the USB 2.0 Extension descriptor to free
+ *
+ * 释放从libusb_get_usb_2_0_extension_descriptor() 获得的USB 2.0扩展描述符。 使用NULL usb_2_0_extension参数调用此函数是安全的，在这种情况下，该函数只是返回。
  */
 void API_EXPORTED libusb_free_usb_2_0_extension_descriptor(
 	struct libusb_usb_2_0_extension_descriptor *usb_2_0_extension)
@@ -1343,6 +1394,8 @@ void API_EXPORTED libusb_free_usb_2_0_extension_descriptor(
  * libusb_free_ss_usb_device_capability_descriptor() after use.
  * \returns 0 on success
  * \returns a LIBUSB_ERROR code on error
+ *
+ * 获取SuperSpeed USB设备功能描述符
  */
 int API_EXPORTED libusb_get_ss_usb_device_capability_descriptor(
 	struct libusb_context *ctx,
@@ -1382,6 +1435,8 @@ int API_EXPORTED libusb_get_ss_usb_device_capability_descriptor(
  * parameter, in which case the function simply returns.
  *
  * \param ss_usb_device_cap the USB 2.0 Extension descriptor to free
+ *
+ * 释放从libusb_get_ss_usb_device_capability_descriptor()获得的SuperSpeed USB设备功能描述符。 使用NULL ss_usb_device_cap参数调用此函数是安全的，在这种情况下，该函数只是返回。
  */
 void API_EXPORTED libusb_free_ss_usb_device_capability_descriptor(
 	struct libusb_ss_usb_device_capability_descriptor *ss_usb_device_cap)
@@ -1401,6 +1456,8 @@ void API_EXPORTED libusb_free_ss_usb_device_capability_descriptor(
  * libusb_free_container_id_descriptor() after use.
  * \returns 0 on success
  * \returns a LIBUSB_ERROR code on error
+ *
+ * 获取容器ID描述符
  */
 int API_EXPORTED libusb_get_container_id_descriptor(struct libusb_context *ctx,
 	struct libusb_bos_dev_capability_descriptor *dev_cap,
@@ -1439,6 +1496,8 @@ int API_EXPORTED libusb_get_container_id_descriptor(struct libusb_context *ctx,
  * in which case the function simply returns.
  *
  * \param container_id the USB 2.0 Extension descriptor to free
+ *
+ * 释放从libusb_get_container_id_descriptor()获得的容器ID描述符。 使用NULL container_id参数调用此函数是安全的，在这种情况下，该函数只是返回。
  */
 void API_EXPORTED libusb_free_container_id_descriptor(
 	struct libusb_container_id_descriptor *container_id)
@@ -1457,6 +1516,9 @@ void API_EXPORTED libusb_free_container_id_descriptor(
  * \param data output buffer for ASCII string descriptor
  * \param length size of data buffer
  * \returns number of bytes returned in data, or LIBUSB_ERROR code on failure
+ *
+ * 以C样式ASCII检索字符串描述符。
+ * 围绕libusb_get_string_descriptor()的包装。 使用设备支持的第一语言。
  */
 int API_EXPORTED libusb_get_string_descriptor_ascii(libusb_device_handle *dev,
 	uint8_t desc_index, unsigned char *data, int length)
@@ -1472,6 +1534,10 @@ int API_EXPORTED libusb_get_string_descriptor_ascii(libusb_device_handle *dev,
 	 * descriptor. There's also no point in trying to read descriptor 0
 	 * with this function. See USB 2.0 specification section 9.6.7 for
 	 * more information.
+	 *
+	 * 要求第零个索引很特殊-它返回一个字符串描述符，其中包含设备支持的所有语言ID。
+	 * 通常没有很多-通常只有一个。 语言ID是16位数字，它们从描述符的第三个字节开始。
+	 * 尝试使用此函数读取描述符0也没有意义。 有关更多信息，请参见USB 2.0规范第9.6.7节。
 	 */
 
 	if UNLIKELY(!desc_index)

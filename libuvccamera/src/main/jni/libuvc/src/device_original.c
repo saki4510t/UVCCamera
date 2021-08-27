@@ -216,10 +216,13 @@ uvc_error_t uvc_open(
   if (ret != UVC_SUCCESS)
     goto fail;
 
-  /* Automatically attach/detach kernel driver on supported platforms */
+  /* Automatically attach/detach kernel driver on supported platforms
+   * 在支持的平台上自动附加/分离内核驱动程序
+   */
   libusb_set_auto_detach_kernel_driver(usb_devh, 1);
 
   UVC_DEBUG("claiming control interface %d", internal_devh->info->ctrl_if.bInterfaceNumber);
+  // 声明UVC接口，必要时分离内核驱动程序。
   ret = uvc_claim_if(internal_devh, internal_devh->info->ctrl_if.bInterfaceNumber);
   if (ret != UVC_SUCCESS)
     goto fail;
@@ -228,6 +231,7 @@ uvc_error_t uvc_open(
   internal_devh->is_isight = (desc.idVendor == 0x05ac && desc.idProduct == 0x8501);
 
   if (internal_devh->info->ctrl_if.bEndpointAddress) {
+    // 为libusb传输分配指定数量的同步数据包描述符
     internal_devh->status_xfer = libusb_alloc_transfer(0);
     if (!internal_devh->status_xfer) {
       ret = UVC_ERROR_NO_MEM;
@@ -242,6 +246,7 @@ uvc_error_t uvc_open(
                                    _uvc_status_callback,
                                    internal_devh,
                                    0);
+    // 提交传输。 此功能将触发USB传输，然后立即返回。
     ret = libusb_submit_transfer(internal_devh->status_xfer);
     UVC_DEBUG("libusb_submit_transfer() = %d", ret);
 
@@ -253,7 +258,9 @@ uvc_error_t uvc_open(
   }
 
   if (dev->ctx->own_usb_ctx && dev->ctx->open_devices == NULL) {
-    /* Since this is our first device, we need to spawn the event handler thread */
+    /* Since this is our first device, we need to spawn the event handler thread
+     * 由于这是我们的第一台设备，因此我们需要生成事件处理程序线程
+     */
     uvc_start_handler_thread(dev->ctx);
   }
 
@@ -702,6 +709,7 @@ void uvc_unref_device(uvc_device_t *dev) {
 /** @internal
  * Claim a UVC interface, detaching the kernel driver if necessary.
  * @ingroup device
+ * 声明UVC接口，必要时分离内核驱动程序。
  *
  * @param devh UVC device handle
  * @param idx UVC interface index
@@ -1381,7 +1389,7 @@ void _uvc_status_callback(struct libusb_transfer *transfer) {
     UVC_DEBUG("retrying transfer, status = %d", transfer->status);
     break;
   }
-
+  // 提交传输。 此功能将触发USB传输，然后立即返回。
   uvc_error_t ret = libusb_submit_transfer(transfer);
   UVC_DEBUG("libusb_submit_transfer() = %d", ret);
 

@@ -199,7 +199,7 @@ uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);
+	jpeg_mem_src(&dinfo, in->data, in->actual_bytes);
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
@@ -269,7 +269,7 @@ uvc_error_t uvc_mjpeg2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);
+	jpeg_mem_src(&dinfo, in->data, in->actual_bytes);
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
@@ -343,7 +343,7 @@ uvc_error_t uvc_mjpeg2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);
+	jpeg_mem_src(&dinfo, in->data, in->actual_bytes);
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
@@ -420,7 +420,7 @@ uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);	// XXX
+	jpeg_mem_src(&dinfo, in->data, in->actual_bytes);	// XXX
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
@@ -464,6 +464,9 @@ static inline unsigned char sat(int i) {
 		*(yuyv++) = (*(YCbCr+2) + *(YCbCr+5)) >> 1; \
 	}
 
+/**
+ * 将MJPEG转为YUYV
+ */
 uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 
 	out->actual_bytes = 0;	// XXX
@@ -496,7 +499,7 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);	// XXX
+	jpeg_mem_src(&dinfo, in->data, in->actual_bytes);	// XXX
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
