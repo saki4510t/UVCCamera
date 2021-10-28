@@ -181,8 +181,9 @@ int UVCPreview::setPreviewSize(int width, int height, int min_fps, int max_fps, 
 
 		uvc_stream_ctrl_t ctrl;
 		result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
-			!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
-			requestWidth, requestHeight, requestMinFps, requestMaxFps);
+		    UVC_FRAME_FORMAT_H264,
+			// !requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
+			848, 480, requestMinFps, requestMaxFps);
 	}
 	
 	RETURN(result, int);
@@ -387,7 +388,31 @@ int UVCPreview::stopPreview() {
 //
 //**********************************************************************
 void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args) {
+#if 0
+    LOGE("frame_format = %d, data_bytes = %d, actual_bytes = %d, width = %d, height = %d",
+        frame->frame_format,
+        frame->data_bytes,
+        frame->actual_bytes,
+        frame->width,
+        frame->height);
+#endif
 	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
+
+    JavaVM *vm = getVM();
+    JNIEnv *env;
+    // attach to JavaVM
+    vm->AttachCurrentThread(&env, NULL);
+
+    if (preview->mFrameCallbackObj) {
+        jobject buf = env->NewDirectByteBuffer(frame->data, frame->actual_bytes);
+        env->CallVoidMethod(preview->mFrameCallbackObj, preview->iframecallback_fields.onFrame, buf);
+        env->ExceptionClear();
+        env->DeleteLocalRef(buf);
+    }
+    // detach from JavaVM
+    vm->DetachCurrentThread();
+
+#if 0
 	if UNLIKELY(!preview->isRunning() || !frame || !frame->frame_format || !frame->data || !frame->data_bytes) return;
 	if (UNLIKELY(
 		((frame->frame_format != UVC_FRAME_FORMAT_MJPEG) && (frame->actual_bytes < preview->frameBytes))
@@ -415,6 +440,7 @@ void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args)
 		}
 		preview->addPreviewFrame(copy);
 	}
+#endif
 }
 
 void UVCPreview::addPreviewFrame(uvc_frame_t *frame) {
@@ -477,8 +503,9 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 
 	ENTER();
 	result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, ctrl,
-		!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
-		requestWidth, requestHeight, requestMinFps, requestMaxFps
+	    UVC_FRAME_FORMAT_H264,
+		// !requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
+		848, 480, requestMinFps, requestMaxFps
 	);
 	if (LIKELY(!result)) {
 #if LOCAL_DEBUG
@@ -489,7 +516,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 		if (LIKELY(!result)) {
 			frameWidth = frame_desc->wWidth;
 			frameHeight = frame_desc->wHeight;
-			LOGI("frameSize=(%d,%d)@%s", frameWidth, frameHeight, (!requestMode ? "YUYV" : "MJPEG"));
+			LOGI("frameSize=(%d,%d)@%s", frameWidth, frameHeight, (!requestMode ? "H264" : "MJPEG"));
 			pthread_mutex_lock(&preview_mutex);
 			if (LIKELY(mPreviewWindow)) {
 				ANativeWindow_setBuffersGeometry(mPreviewWindow,
@@ -524,6 +551,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 #if LOCAL_DEBUG
 		LOGI("Streaming...");
 #endif
+#if 0
 		if (frameMode) {
 			// MJPEG mode
 			for ( ; LIKELY(isRunning()) ; ) {
@@ -550,6 +578,18 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				}
 			}
 		}
+#endif
+        for ( ; LIKELY(isRunning()) ; ) {
+            frame = waitPreviewFrame();
+            if (LIKELY(frame)) {
+                LOGE("do_preview frame_format = %d, data_bytes = %d, actual_bytes = %d, width = %d, height = %d",
+                    frame->frame_format,
+                    frame->data_bytes,
+                    frame->actual_bytes,
+                    frame->width,
+                    frame->height);
+            }
+        }
 		pthread_cond_signal(&capture_sync);
 #if LOCAL_DEBUG
 		LOGI("preview_thread_func:wait for all callbacks complete");

@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~  UVCCamera
   ~  library and sample to access to UVC web camera on non-rooted Android device
   ~
@@ -27,10 +26,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context="com.serenegiant.usbcameratest0.MainActivity"
-    tools:ignore="MergeRootFrame" >
+    tools:ignore="MergeRootFrame">
 
     <SurfaceView
         android:id="@+id/camera_surface_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <SurfaceView
+        android:id="@+id/surfaceView1"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
@@ -41,5 +45,12 @@
         android:contentDescription="@string/camera"
         android:scaleType="centerCrop"
         android:src="@android:drawable/ic_menu_camera" />
+
+    <Button
+        android:id="@+id/btn_readfile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right"
+        android:text="Start" />
 
 </FrameLayout>

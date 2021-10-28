@@ -36,7 +36,7 @@
         android:layout_height="match_parent"
         android:layout_centerInParent="true"
         android:layout_gravity="center"
-        android:background="#ff000000" />
+        />
 
     <ImageView
         android:id="@+id/imageView1"
