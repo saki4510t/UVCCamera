@@ -1,25 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
+        <option name="testRunner" value="GRADLE" />
         <option name="distributionType" value="DEFAULT_WRAPPED" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleHome" value="$APPLICATION_HOME_DIR$/gradle/gradle-2.14.1" />
+        <option name="gradleHome" value="$USER_HOME$/gradle-5.1" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/libuvccamera" />
             <option value="$PROJECT_DIR$/usbCameraCommon" />
-            <option value="$PROJECT_DIR$/usbCameraTest" />
-            <option value="$PROJECT_DIR$/usbCameraTest0" />
-            <option value="$PROJECT_DIR$/usbCameraTest2" />
-            <option value="$PROJECT_DIR$/usbCameraTest3" />
-            <option value="$PROJECT_DIR$/usbCameraTest4" />
-            <option value="$PROJECT_DIR$/usbCameraTest5" />
-            <option value="$PROJECT_DIR$/usbCameraTest6" />
-            <option value="$PROJECT_DIR$/usbCameraTest7" />
-            <option value="$PROJECT_DIR$/usbCameraTest8" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />
